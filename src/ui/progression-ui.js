@@ -1,4 +1,4 @@
-import { ENVIRONMENTS, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
+import { ENVIRONMENTS, getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 
 function createWorldTrack() {
   return ENVIRONMENTS.map((environment, index) => `
@@ -16,6 +16,7 @@ export function enhanceProgressionMarkup() {
     heading.insertAdjacentHTML("beforeend", `
       <div id="route-summary" class="route-summary">
         <span id="route-count">0 / 3 Pokémon</span>
+        <span id="route-levels">NV. 3–5</span>
         <span id="boss-status">Mini Boss</span>
       </div>`);
   }
@@ -54,6 +55,7 @@ export function enhanceProgressionMarkup() {
 
 export function renderProgression(state) {
   const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
+  const levels = getRouteLevelRange(route.worldIndex, route.routeIndex, route.bossType);
   const scene = document.querySelector("#scene");
   const completedRoutes = Math.max(0, Number(state.journey?.completedRoutes) || 0);
   const regularVictories = Math.min(state.area.requiredVictories, state.area.regularVictories || 0);
@@ -74,13 +76,18 @@ export function renderProgression(state) {
   document.querySelector("#environment-label").textContent = `DIFICULDADE ${route.worldIndex + 1} · ${route.environment.name.toUpperCase()}`;
   document.querySelector("#area-name").textContent = state.journey?.complete ? "Campeão da Jornada" : `Rota ${route.routeNumber}`;
   document.querySelector("#route-count").textContent = `${regularVictories} / ${state.area.requiredVictories} Pokémon`;
+  document.querySelector("#route-levels").textContent = levels.minLevel === levels.maxLevel
+    ? `NV. ${levels.minLevel}`
+    : `NV. ${levels.minLevel}–${levels.maxLevel}`;
   document.querySelector("#boss-status").textContent = bossDefeated
     ? `${bossLabel} derrotado`
     : bossReady ? `${bossLabel} disponível` : `${bossLabel}: ${route.boss.name}`;
-  document.querySelector("#route-hud-label").textContent = bossReady ? `${bossLabel} PRONTO PARA A BATALHA` : `PROGRESSO DA ROTA ${route.routeNumber}`;
+  document.querySelector("#route-hud-label").textContent = bossReady
+    ? `${bossLabel} PRONTO PARA A BATALHA`
+    : `ROTA ${route.routeNumber} · NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
   document.querySelector("#route-hud-boss").textContent = bossDefeated
     ? `${route.boss.name} derrotado`
-    : `${bossLabel}: ${route.boss.name} · NV. ${route.recommendedLevel + (route.bossType === "final" ? 4 : 2)}`;
+    : `${bossLabel}: ${route.boss.name} · NV. ${levels.bossLevel}`;
   document.querySelector("#route-progress-bar").style.width = `${routePercent}%`;
   document.querySelector("#routes-completed-stat").textContent = `${completedRoutes} / ${TOTAL_ROUTES}`;
   document.querySelector("#journey-progress-stat").textContent = `${Math.round((completedRoutes / TOTAL_ROUTES) * 100)}%`;
@@ -96,5 +103,5 @@ export function renderProgression(state) {
   if (state.journey?.complete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA";
 
   const footerVersion = document.querySelector("footer span:last-child");
-  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.4.0";
+  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.5.0";
 }
