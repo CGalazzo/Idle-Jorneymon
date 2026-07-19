@@ -1,4 +1,5 @@
 import { POKEDEX_SPECIES, STARTERS } from "../data/pokemon.js";
+import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
 
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
@@ -62,7 +63,7 @@ export function createAppMarkup() {
     <div class="app-shell">
       <header class="topbar">
         <div class="brand"><span class="brand-mark">◆</span><div><strong>IDLE JORNEYMON</strong><small>Uma jornada automática</small></div></div>
-        <div class="header-actions"><button id="menu-button" class="menu-button">VOLTAR AO MENU</button><button id="pokedex-button" class="pokedex-button">POKÉDEX</button><button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button></div>
+        <div class="header-actions"><button id="menu-button" class="menu-button">VOLTAR AO MENU</button><button id="team-button" class="team-button">EQUIPE</button><button id="pokedex-button" class="pokedex-button">POKÉDEX</button><button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button></div>
       </header>
 
       <main>
@@ -85,8 +86,9 @@ export function createAppMarkup() {
 
         <section class="dashboard-grid">
           <article class="partner-panel panel">
-            <div class="section-title"><span>SEU PARCEIRO</span><b id="level-chip"></b></div>
+            <div class="section-title"><span>POKÉMON ATIVO</span><b id="level-chip"></b></div>
             <div class="partner-row"><img id="partner-sprite" alt="Pokémon parceiro" /><div class="partner-details"><h2 id="partner-name"></h2><div class="stat-line"><span>HP</span><span id="hp-copy"></span></div><div class="bar health"><i id="hp-bar"></i></div><div class="stat-line xp-copy"><span>XP</span><span id="xp-copy"></span></div><div class="bar xp"><i id="xp-bar"></i></div></div></div>
+            <div id="team-mini" class="team-mini"></div>
           </article>
 
           <article class="panel activity-panel">
@@ -107,7 +109,36 @@ export function createAppMarkup() {
       <div class="dialog-heading"><div><small>REGISTRO DA ROTA 1</small><h2>Pokédex</h2></div><button id="close-pokedex" class="icon-button" aria-label="Fechar Pokédex">×</button></div>
       <div class="pokedex-summary"><span id="seen-total">0 vistos</span><span id="caught-total">0 capturados</span></div>
       <div id="pokedex-grid" class="pokedex-grid"></div>
+    </dialog>
+    <dialog id="team-dialog" class="team-dialog">
+      <div class="dialog-heading"><div><small>ORGANIZAÇÃO</small><h2>Equipe Pokémon</h2></div><button id="close-team" class="icon-button" aria-label="Fechar equipe">×</button></div>
+      <p class="team-help">A ordem define quem entra primeiro nas batalhas. Sua equipe pode ter até ${MAX_TEAM_SIZE} Pokémon.</p>
+      <h3>Equipe <span id="team-count"></span></h3>
+      <div id="team-list" class="team-list"></div>
+      <h3>Depósito <span id="storage-count"></span></h3>
+      <div id="storage-list" class="storage-list"></div>
     </dialog>`;
+}
+
+function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull = false) {
+  const hpPercent = percent(pokemon.hp, pokemon.maxHp);
+  return `<article class="team-card">
+    <img src="${pokemon.sprite}" alt="${pokemon.name}" />
+    <div class="team-card-info"><strong>${pokemon.name}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
+    <div class="team-card-actions">${inStorage
+      ? `<button data-add-team="${pokemon.uid}" ${teamFull ? "disabled" : ""}>Adicionar</button>`
+      : `<button data-team-up="${pokemon.uid}" ${index === 0 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para cima">↑</button><button data-team-down="${pokemon.uid}" ${index === teamLength - 1 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para baixo">↓</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>`}
+    </div>
+  </article>`;
+}
+
+export function renderTeam(state) {
+  document.querySelector("#team-count").textContent = `${state.team.length}/${MAX_TEAM_SIZE}`;
+  document.querySelector("#storage-count").textContent = state.storage.length;
+  document.querySelector("#team-list").innerHTML = state.team.map((pokemon, index) => teamPokemonCard(pokemon, index, state.team.length)).join("");
+  document.querySelector("#storage-list").innerHTML = state.storage.length
+    ? state.storage.map((pokemon, index) => teamPokemonCard(pokemon, index, state.storage.length, true, state.team.length >= MAX_TEAM_SIZE)).join("")
+    : `<div class="empty-storage">O depósito está vazio. Capturas excedentes aparecerão aqui.</div>`;
 }
 
 export function renderPokedex(state) {
@@ -127,6 +158,7 @@ export function renderPokedex(state) {
 }
 
 export function render(state) {
+  const player = getActivePokemon(state);
   const [modeLabel, progressTitle] = modeCopy[state.mode];
   const scene = document.querySelector("#scene");
   scene.className = `scene ${state.mode}`;
@@ -144,24 +176,26 @@ export function render(state) {
   const battleStage = document.querySelector("#battle-stage");
   if (state.mode === "battle") {
     walker.innerHTML = "";
-    battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(state.player)}`;
+    battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
   } else {
     battleStage.innerHTML = "";
-    walker.innerHTML = `<img src="${state.player.sprite}" alt="${state.player.name} caminhando" /><span class="shadow"></span>`;
+    walker.innerHTML = `<img src="${player.sprite}" alt="${player.name} caminhando" /><span class="shadow"></span>`;
   }
 
-  document.querySelector("#partner-sprite").src = state.player.sprite;
-  document.querySelector("#partner-name").textContent = state.player.name;
-  document.querySelector("#level-chip").textContent = `NV. ${state.player.level}`;
-  document.querySelector("#hp-copy").textContent = `${state.player.hp} / ${state.player.maxHp}`;
-  document.querySelector("#hp-bar").style.width = `${percent(state.player.hp, state.player.maxHp)}%`;
-  document.querySelector("#hp-bar").className = healthClass(state.player.hp, state.player.maxHp);
-  document.querySelector("#xp-copy").textContent = `${state.player.xp} / ${state.player.xpToNext}`;
-  document.querySelector("#xp-bar").style.width = `${percent(state.player.xp, state.player.xpToNext)}%`;
+  document.querySelector("#partner-sprite").src = player.sprite;
+  document.querySelector("#partner-name").textContent = player.name;
+  document.querySelector("#level-chip").textContent = `NV. ${player.level}`;
+  document.querySelector("#hp-copy").textContent = `${player.hp} / ${player.maxHp}`;
+  document.querySelector("#hp-bar").style.width = `${percent(player.hp, player.maxHp)}%`;
+  document.querySelector("#hp-bar").className = healthClass(player.hp, player.maxHp);
+  document.querySelector("#xp-copy").textContent = `${player.xp} / ${player.xpToNext}`;
+  document.querySelector("#xp-bar").style.width = `${percent(player.xp, player.xpToNext)}%`;
+  document.querySelector("#team-mini").innerHTML = state.team.map((pokemon, index) => `<span class="mini-member ${index === state.activeTeamIndex ? "active" : ""} ${pokemon.hp <= 0 ? "fainted" : ""}"><img src="${pokemon.sprite}" alt="${pokemon.name}" /><i></i></span>`).join("");
   document.querySelector("#steps-stat").textContent = state.totalSteps.toLocaleString("pt-BR");
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
-  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.2.0";
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.0";
   renderPokedex(state);
+  renderTeam(state);
 }
