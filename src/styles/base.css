@@ -33,8 +33,10 @@ button { -webkit-tap-highlight-color: transparent; }
 .icon-button { width: 39px; height: 39px; color: #b9cee1; background: #102641; border: 1px solid var(--panel-border); border-radius: 12px; cursor: pointer; font-size: 22px; transition: .2s; }
 .icon-button:hover { color: white; transform: rotate(-25deg); border-color: #3e89c5; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
-.pokedex-button { height: 39px; padding: 0 14px; color: #76dfff; background: rgba(27,105,157,.18); border: 1px solid rgba(72,221,246,.24); border-radius: 12px; font-size: 9px; font-weight: 900; letter-spacing: .11em; cursor: pointer; }
+.pokedex-button, .menu-button { height: 39px; padding: 0 14px; color: #76dfff; background: rgba(27,105,157,.18); border: 1px solid rgba(72,221,246,.24); border-radius: 12px; font-size: 9px; font-weight: 900; letter-spacing: .11em; cursor: pointer; }
 .pokedex-button:hover { background: rgba(42,139,199,.28); }
+.menu-button { color: #b4c9da; background: rgba(21,53,80,.72); border-color: rgba(122,163,194,.2); }
+.menu-button:hover { color: white; background: rgba(35,75,106,.86); }
 
 .welcome-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 50% 15%, rgba(32,89,139,.95), rgba(6,17,32,.98) 58%); transition: opacity .3s ease, visibility .3s ease; }
 .welcome-screen::before { content: ""; position: absolute; inset: 0; opacity: .1; background-image: linear-gradient(rgba(255,255,255,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.2) 1px, transparent 1px); background-size: 32px 32px; mask-image: linear-gradient(to bottom, black, transparent 72%); }
@@ -174,6 +176,7 @@ footer { display: flex; justify-content: space-between; padding: 14px 4px 0; col
   .starter-image { height: 85px; }
   .starter-image img { width: 70px; height: 70px; }
   .pokedex-grid { grid-template-columns: repeat(2, 1fr); }
+  .menu-button { padding: 0 10px; font-size: 8px; }
 }
 
 @media (max-width: 420px) {
@@ -189,6 +192,8 @@ footer { display: flex; justify-content: space-between; padding: 14px 4px 0; col
   .enemy-card .pokemon-sprite { top: 28%; }
   footer { font-size: 7px; }
   .pokedex-button { padding: 0 9px; font-size: 8px; }
+  .menu-button { width: 39px; padding: 0; overflow: hidden; color: transparent; }
+  .menu-button::after { content: "☰"; display: grid; place-items: center; height: 100%; color: #b4c9da; font-size: 18px; }
   .welcome-actions { flex-direction: column; }
   .primary-button, .secondary-button { width: 100%; }
   .text-button { position: static; display: block; }
