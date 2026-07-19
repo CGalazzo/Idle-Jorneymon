@@ -1,3 +1,4 @@
+import { createInstanceId } from "../data/pokemon.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 
 const SAVE_KEY = "idle-jorneymon-save";
@@ -6,22 +7,35 @@ export function hasSavedGame() {
   return Boolean(localStorage.getItem(SAVE_KEY));
 }
 
-function migrateV1(saved) {
-  const starterId = saved.player?.id || 4;
+function normalizePokemon(pokemon) {
   return {
-    ...createInitialState(starterId, true),
+    ...pokemon,
+    uid: pokemon.uid || createInstanceId(pokemon.id),
+    hp: Math.max(0, Math.min(pokemon.hp ?? pokemon.maxHp, pokemon.maxHp)),
+    xp: pokemon.xp || 0,
+    xpToNext: pokemon.xpToNext || 30
+  };
+}
+
+function migrateLegacySave(saved) {
+  const legacyPlayer = saved.player || saved.team?.[0];
+  const starterId = legacyPlayer?.id || 4;
+  const base = createInitialState(starterId, true);
+  const player = normalizePokemon({ ...base.team[0], ...legacyPlayer });
+
+  return {
+    ...base,
     ...saved,
     saveVersion: SAVE_VERSION,
     gameVersion: GAME_VERSION,
     hasStarted: true,
-    player: { ...createInitialState(starterId, true).player, ...saved.player },
-    pokedex: {
-      [starterId]: { seen: 1, caught: 1 },
-      ...(saved.enemy ? { [saved.enemy.id]: { seen: 1, caught: 0 } } : {})
-    },
-    collection: {
-      [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() }
-    }
+    team: [player],
+    storage: [],
+    activeTeamIndex: 0,
+    battleParticipants: [],
+    pokedex: saved.pokedex || { [starterId]: { seen: 1, caught: 1 } },
+    collection: saved.collection || { [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() } },
+    enemy: saved.mode === "battle" ? saved.enemy : null
   };
 }
 
@@ -31,17 +45,19 @@ export function loadGame() {
     if (!raw) return createInitialState();
 
     const saved = JSON.parse(raw);
-    if (!saved.player) return createInitialState();
-    if (saved.saveVersion === 1) return migrateV1(saved);
-    if (saved.saveVersion !== SAVE_VERSION) return createInitialState();
+    if (saved.saveVersion < SAVE_VERSION) return migrateLegacySave(saved);
+    if (saved.saveVersion !== SAVE_VERSION || !Array.isArray(saved.team) || !saved.team.length) return createInitialState();
 
-    const base = createInitialState(saved.player.id, true);
+    const base = createInitialState(saved.team[0].id, true);
     return {
       ...base,
       ...saved,
       gameVersion: GAME_VERSION,
       hasStarted: true,
-      player: { ...base.player, ...saved.player },
+      team: saved.team.map(normalizePokemon),
+      storage: (saved.storage || []).map(normalizePokemon),
+      activeTeamIndex: Math.min(saved.activeTeamIndex || 0, saved.team.length - 1),
+      battleParticipants: saved.battleParticipants || [],
       pokedex: saved.pokedex || base.pokedex,
       collection: saved.collection || base.collection,
       enemy: saved.mode === "battle" ? saved.enemy : null
