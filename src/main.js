@@ -6,12 +6,12 @@ import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 
 const app = document.querySelector("#app");
-const hadSaveAtLaunch = hasSavedGame();
 app.innerHTML = createAppMarkup();
 
 let state = loadGame();
 let lastFrame = performance.now();
 let lastSave = performance.now();
+let isMenuOpen = false;
 
 const welcomeScreen = document.querySelector("#welcome-screen");
 const welcomeActions = document.querySelector("#welcome-actions");
@@ -19,6 +19,7 @@ const starterSelection = document.querySelector("#starter-selection");
 const continueButton = document.querySelector("#continue-button");
 
 function showGame() {
+  isMenuOpen = false;
   welcomeScreen.classList.add("is-hidden");
   document.body.classList.remove("welcome-open");
   lastFrame = performance.now();
@@ -26,18 +27,20 @@ function showGame() {
 }
 
 function showWelcome() {
+  isMenuOpen = true;
+  saveGame(state);
   welcomeScreen.classList.remove("is-hidden");
   document.body.classList.add("welcome-open");
   welcomeActions.hidden = false;
   starterSelection.hidden = true;
-  continueButton.hidden = !hadSaveAtLaunch;
+  continueButton.hidden = !hasSavedGame();
 }
 
 function loop(now) {
   const delta = Math.min((now - lastFrame) / 1000, 0.25);
   lastFrame = now;
 
-  if (state.hasStarted && !document.hidden) {
+  if (state.hasStarted && !document.hidden && !isMenuOpen) {
     if (state.mode === "exploring") updateExploration(state, delta);
     if (state.mode === "battle") updateBattle(state, delta);
     if (state.mode === "recovering") updateRecovery(state, delta);
@@ -59,9 +62,11 @@ document.querySelector("#new-journey-button").addEventListener("click", () => {
 
 document.querySelector("#back-to-welcome").addEventListener("click", showWelcome);
 
+document.querySelector("#menu-button").addEventListener("click", showWelcome);
+
 document.querySelectorAll("[data-starter-id]").forEach((button) => {
   button.addEventListener("click", () => {
-    if (hadSaveAtLaunch && !window.confirm("Começar uma nova jornada apagará o progresso atual. Deseja continuar?")) return;
+    if (hasSavedGame() && !window.confirm("Começar uma nova jornada apagará o progresso atual. Deseja continuar?")) return;
     resetGame();
     state = startNewJourney(button.dataset.starterId);
     saveGame(state);
