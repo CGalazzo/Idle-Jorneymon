@@ -1,6 +1,6 @@
 import "./styles/base.css";
 import { startNewJourney } from "./core/game-state.js";
-import { createAppMarkup, render } from "./ui/render.js";
+import { createAppMarkup, render, renderTeam } from "./ui/render.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
@@ -14,6 +14,7 @@ let state = loadGame();
 let lastFrame = performance.now();
 let lastSave = performance.now();
 let isMenuOpen = false;
+let isTeamOpen = false;
 
 const welcomeScreen = document.querySelector("#welcome-screen");
 const welcomeActions = document.querySelector("#welcome-actions");
@@ -42,7 +43,7 @@ function loop(now) {
   const delta = Math.min((now - lastFrame) / 1000, 0.25);
   lastFrame = now;
 
-  if (state.hasStarted && !document.hidden && !isMenuOpen) {
+  if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen) {
     if (state.mode === "exploring") updateExploration(state, delta);
     if (state.mode === "approach") updateApproach(state, delta);
     if (state.mode === "battle") updateBattle(state, delta);
@@ -87,17 +88,28 @@ document.querySelector("#close-pokedex").addEventListener("click", () => {
   document.querySelector("#pokedex-dialog").close();
 });
 
+const teamDialog = document.querySelector("#team-dialog");
+
 document.querySelector("#team-button").addEventListener("click", () => {
-  document.querySelector("#team-dialog").showModal();
+  isTeamOpen = true;
+  saveGame(state);
+  renderTeam(state);
+  teamDialog.showModal();
 });
 
 document.querySelector("#close-team").addEventListener("click", () => {
-  document.querySelector("#team-dialog").close();
+  teamDialog.close();
 });
 
-document.querySelector("#team-dialog").addEventListener("click", (event) => {
+teamDialog.addEventListener("close", () => {
+  isTeamOpen = false;
+  lastFrame = performance.now();
+  render(state);
+});
+
+teamDialog.addEventListener("click", (event) => {
   if (event.target.id === "team-dialog") {
-    event.target.close();
+    teamDialog.close();
     return;
   }
 
@@ -110,7 +122,7 @@ document.querySelector("#team-dialog").addEventListener("click", (event) => {
   if (actionButton.dataset.addTeam) changed = addToTeam(state, actionButton.dataset.addTeam);
   if (changed) {
     saveGame(state);
-    render(state);
+    renderTeam(state);
   }
 });
 
