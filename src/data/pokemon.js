@@ -15,6 +15,10 @@ export const ROUTE_ONE_ENCOUNTERS = [
 
 export const POKEDEX_SPECIES = [...STARTERS, ...ROUTE_ONE_ENCOUNTERS];
 
+export function createInstanceId(speciesId) {
+  return `${speciesId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function withSprites(pokemon) {
   return {
     ...pokemon,
@@ -27,9 +31,28 @@ export function createStarter(starterId) {
   const selected = STARTERS.find((pokemon) => pokemon.id === Number(starterId)) || STARTERS[1];
   return {
     ...selected,
+    uid: createInstanceId(selected.id),
     xp: 0,
     xpToNext: 30,
     hp: selected.maxHp
+  };
+}
+
+export function createCapturedPokemon(wildPokemon) {
+  return {
+    id: wildPokemon.id,
+    uid: createInstanceId(wildPokemon.id),
+    name: wildPokemon.name,
+    type: wildPokemon.type,
+    level: wildPokemon.level,
+    maxHp: wildPokemon.maxHp,
+    hp: wildPokemon.maxHp,
+    attack: wildPokemon.attack,
+    defense: wildPokemon.defense,
+    xp: 0,
+    xpToNext: Math.round(30 * Math.pow(1.28, Math.max(0, wildPokemon.level - 5))),
+    sprite: wildPokemon.sprite,
+    backSprite: wildPokemon.backSprite
   };
 }
 
