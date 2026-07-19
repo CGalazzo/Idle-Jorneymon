@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.3.0` — equipe de até 3 Pokémon, depósito, organização manual, substituição automática em batalha e XP individual/compartilhada, além dos sistemas das versões anteriores.
+`v0.3.1` — decisão manual de captura após cada vitória, chances por raridade e Pokémon shiny com chance reduzida de captura, além dos sistemas das versões anteriores.
