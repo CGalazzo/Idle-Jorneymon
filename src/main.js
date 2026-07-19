@@ -5,6 +5,7 @@ import { updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, moveTeamMember, sendToStorage } from "./systems/team.js";
+import { attemptCapture, declineCapture } from "./systems/capture.js";
 
 const app = document.querySelector("#app");
 app.innerHTML = createAppMarkup();
@@ -110,6 +111,18 @@ document.querySelector("#team-dialog").addEventListener("click", (event) => {
     saveGame(state);
     render(state);
   }
+});
+
+document.querySelector("#try-capture").addEventListener("click", () => {
+  attemptCapture(state);
+  saveGame(state);
+  render(state);
+});
+
+document.querySelector("#decline-capture").addEventListener("click", () => {
+  declineCapture(state);
+  saveGame(state);
+  render(state);
 });
 
 document.querySelector("#pokedex-dialog").addEventListener("click", (event) => {
