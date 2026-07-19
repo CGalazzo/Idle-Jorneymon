@@ -62,7 +62,7 @@ export function createAppMarkup() {
     <div class="app-shell">
       <header class="topbar">
         <div class="brand"><span class="brand-mark">◆</span><div><strong>IDLE JORNEYMON</strong><small>Uma jornada automática</small></div></div>
-        <div class="header-actions"><button id="pokedex-button" class="pokedex-button">POKÉDEX</button><button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button></div>
+        <div class="header-actions"><button id="menu-button" class="menu-button">VOLTAR AO MENU</button><button id="pokedex-button" class="pokedex-button">POKÉDEX</button><button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button></div>
       </header>
 
       <main>
