@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.4.0` — sistema completo de progressão com 10 dificuldades, 100 rotas, encontros crescentes, Mini Bosses, Bosses Finais e cenários visuais próprios para cada ambiente.
+`v0.5.0` — atributos-base oficiais, Ataque Especial, Defesa Especial e Velocidade; fraquezas, resistências, imunidades, STAB e categorias física/especial; progressão contínua de níveis da Rota 1 (NV. 3–5) até a Rota 100 (NV. 100).
