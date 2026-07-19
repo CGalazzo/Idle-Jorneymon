@@ -86,11 +86,6 @@ export function createAppMarkup() {
           </div>
         </section>
 
-        <section class="progress-panel">
-          <div class="progress-copy"><strong id="progress-title"></strong><span id="progress-value"></span></div>
-          <div class="bar journey"><i id="journey-bar"></i></div>
-        </section>
-
         <section class="dashboard-grid">
           <article class="partner-panel panel">
             <div class="section-title"><span>POKÉMON ATIVO</span><b id="level-chip"></b></div>
@@ -105,7 +100,6 @@ export function createAppMarkup() {
         </section>
 
         <section class="stats-row">
-          <div><small>PASSOS</small><strong id="steps-stat">0</strong></div>
           <div><small>ENCONTROS</small><strong id="encounters-stat">0</strong></div>
           <div><small>VITÓRIAS</small><strong id="wins-stat">0</strong></div>
         </section>
@@ -167,19 +161,11 @@ export function renderPokedex(state) {
 
 export function render(state) {
   const player = getActivePokemon(state);
-  const [modeLabel, progressTitle] = modeCopy[state.mode];
+  const [modeLabel] = modeCopy[state.mode];
   const scene = document.querySelector("#scene");
   scene.className = `scene ${state.mode}`;
   document.querySelector("#mode-badge").textContent = modeLabel;
   document.querySelector("#area-name").textContent = state.area.name;
-  document.querySelector("#progress-title").textContent = progressTitle;
-
-  let progress = percent(state.exploration, state.nextEncounterAt);
-  if (state.mode === "battle") progress = state.enemy ? percent(state.enemy.maxHp - state.enemy.hp, state.enemy.maxHp) : 0;
-  if (state.mode === "capture") progress = 100;
-  if (state.mode === "recovering") progress = percent(5 - state.recoveryCooldown, 5);
-  document.querySelector("#progress-value").textContent = `${Math.round(progress)}%`;
-  document.querySelector("#journey-bar").style.width = `${progress}%`;
 
   const walker = document.querySelector("#walker");
   const battleStage = document.querySelector("#battle-stage");
@@ -210,7 +196,6 @@ export function render(state) {
   document.querySelector("#xp-copy").textContent = `${player.xp} / ${player.xpToNext}`;
   document.querySelector("#xp-bar").style.width = `${percent(player.xp, player.xpToNext)}%`;
   document.querySelector("#team-mini").innerHTML = state.team.map((pokemon, index) => `<span class="mini-member ${index === state.activeTeamIndex ? "active" : ""} ${pokemon.hp <= 0 ? "fainted" : ""} ${pokemon.isShiny ? "shiny" : ""}"><img src="${pokemon.sprite}" alt="${pokemon.name}" /><i></i></span>`).join("");
-  document.querySelector("#steps-stat").textContent = state.totalSteps.toLocaleString("pt-BR");
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
