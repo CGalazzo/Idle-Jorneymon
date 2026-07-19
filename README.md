@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.3.4` — novo cenário ilustrado como fundo fixo e responsivo de toda a interface da jornada.
+`v0.4.0` — sistema completo de progressão com 10 dificuldades, 100 rotas, encontros crescentes, Mini Bosses, Bosses Finais e cenários visuais próprios para cada ambiente.
