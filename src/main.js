@@ -1,6 +1,8 @@
 import "./styles/base.css";
+import "./styles/progression.css";
 import { startNewJourney } from "./core/game-state.js";
-import { createAppMarkup, render, renderTeam } from "./ui/render.js";
+import { createAppMarkup, render as renderBase, renderTeam } from "./ui/render.js";
+import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
@@ -9,6 +11,7 @@ import { attemptCapture, declineCapture } from "./systems/capture.js";
 
 const app = document.querySelector("#app");
 app.innerHTML = createAppMarkup();
+enhanceProgressionMarkup();
 
 let state = loadGame();
 let lastFrame = performance.now();
@@ -22,12 +25,17 @@ const starterCard = document.querySelector("#starter-card");
 const starterSelection = document.querySelector("#starter-selection");
 const continueButton = document.querySelector("#continue-button");
 
+function renderGame() {
+  renderBase(state);
+  renderProgression(state);
+}
+
 function showGame() {
   isMenuOpen = false;
   welcomeScreen.classList.add("is-hidden");
   document.body.classList.remove("welcome-open");
   lastFrame = performance.now();
-  render(state);
+  renderGame();
 }
 
 function showWelcome() {
@@ -60,7 +68,7 @@ function loop(now) {
       saveGame(state);
       lastSave = now;
     }
-    render(state);
+    renderGame();
   }
 
   requestAnimationFrame(loop);
@@ -108,7 +116,7 @@ document.querySelector("#close-team").addEventListener("click", () => {
 teamDialog.addEventListener("close", () => {
   isTeamOpen = false;
   lastFrame = performance.now();
-  render(state);
+  renderGame();
 });
 
 teamDialog.addEventListener("click", (event) => {
@@ -133,13 +141,13 @@ teamDialog.addEventListener("click", (event) => {
 document.querySelector("#try-capture").addEventListener("click", () => {
   attemptCapture(state);
   saveGame(state);
-  render(state);
+  renderGame();
 });
 
 document.querySelector("#decline-capture").addEventListener("click", () => {
   declineCapture(state);
   saveGame(state);
-  render(state);
+  renderGame();
 });
 
 document.querySelector("#pokedex-dialog").addEventListener("click", (event) => {
@@ -158,7 +166,7 @@ document.addEventListener("visibilitychange", () => {
   lastFrame = performance.now();
 });
 
-render(state);
+renderGame();
 if (state.hasStarted) showGame();
 else showWelcome();
 requestAnimationFrame(loop);
