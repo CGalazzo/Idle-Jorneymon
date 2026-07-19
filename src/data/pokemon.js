@@ -110,7 +110,7 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
   const template = POKEDEX_SPECIES.find((entry) => entry.id === Number(pokemon.id)) || pokemon;
   const level = clampLevel(pokemon.level);
   const iv = clampIv(pokemon.iv ?? NORMAL_IV);
-  const type = pokemon.type || template.type || "Normal";
+  const type = template.type || pokemon.type || "Normal";
   const baseStats = getOfficialBaseStats(pokemon.id, { ...template, ...pokemon });
   const calculated = calculatePokemonStats(baseStats, level, iv);
   const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || calculated.maxHp);
