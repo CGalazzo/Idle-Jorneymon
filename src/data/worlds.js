@@ -7,6 +7,7 @@ function species(id, name, type, stage = 1, rarity) {
     name,
     type,
     rarity: resolvedRarity,
+    stage,
     baseHp: 16 + stage * 7 + (id % 4),
     attack: 6 + stage * 3 + (id % 3),
     defense: 5 + stage * 3 + ((id + 1) % 3),
@@ -20,7 +21,7 @@ function uniqueSpecies(list) {
   return [...new Map(list.map((pokemon) => [pokemon.id, pokemon])).values()];
 }
 
-function buildRoutes(lines, levelStart, finalBoss = null) {
+function buildRoutes(lines, finalBoss = null) {
   const bases = lines.map(([base]) => base);
   const routes = [];
 
@@ -48,17 +49,16 @@ function buildRoutes(lines, levelStart, finalBoss = null) {
   return routes.map((route, routeIndex) => ({
     ...route,
     routeNumber: routeIndex + 1,
-    requiredVictories: ROUTE_TARGETS[routeIndex],
-    recommendedLevel: levelStart + routeIndex
+    requiredVictories: ROUTE_TARGETS[routeIndex]
   }));
 }
 
-function world(id, name, theme, levelStart, lines, finalBoss = null) {
+function world(id, name, theme, lines, finalBoss = null) {
   return {
     id,
     name,
     theme,
-    routes: buildRoutes(lines, levelStart, finalBoss)
+    routes: buildRoutes(lines, finalBoss)
   };
 }
 
@@ -146,16 +146,16 @@ const eliteLines = [
 ];
 
 export const ENVIRONMENTS = [
-  world("bosque", "Bosque", "env-bosque", 3, bosqueLines),
-  world("floresta", "Floresta", "env-floresta", 13, florestaLines),
-  world("caverna", "Caverna", "env-caverna", 23, cavernaLines),
-  world("praia", "Praia", "env-praia", 33, praiaLines),
-  world("montanhas", "Montanhas", "env-montanhas", 43, montanhasLines),
-  world("caverna-gelo", "Caverna de Gelo", "env-gelo", 53, geloLines, geloFinal),
-  world("torre-fantasma", "Torre Fantasma", "env-fantasma", 63, fantasmaLines, fantasmaFinal),
-  world("vulcao", "Vulcão", "env-vulcao", 73, vulcaoLines),
-  world("planalto-indigo", "Planalto Índigo", "env-planalto", 83, planaltoLines),
-  world("elite-4", "Ginásios da Elite 4", "env-elite", 93, eliteLines, eliteFinal)
+  world("bosque", "Bosque", "env-bosque", bosqueLines),
+  world("floresta", "Floresta", "env-floresta", florestaLines),
+  world("caverna", "Caverna", "env-caverna", cavernaLines),
+  world("praia", "Praia", "env-praia", praiaLines),
+  world("montanhas", "Montanhas", "env-montanhas", montanhasLines),
+  world("caverna-gelo", "Caverna de Gelo", "env-gelo", geloLines, geloFinal),
+  world("torre-fantasma", "Torre Fantasma", "env-fantasma", fantasmaLines, fantasmaFinal),
+  world("vulcao", "Vulcão", "env-vulcao", vulcaoLines),
+  world("planalto-indigo", "Planalto Índigo", "env-planalto", planaltoLines),
+  world("elite-4", "Ginásios da Elite 4", "env-elite", eliteLines, eliteFinal)
 ];
 
 export const TOTAL_ROUTES = ENVIRONMENTS.reduce((total, environment) => total + environment.routes.length, 0);
@@ -176,8 +176,19 @@ export function getRouteDefinition(worldIndex = 0, routeIndex = 0) {
   };
 }
 
+export function getRouteLevelRange(worldIndex = 0, routeIndex = 0, bossType = "mini") {
+  const safeWorldIndex = Math.max(0, Math.min(ENVIRONMENTS.length - 1, Number(worldIndex) || 0));
+  const safeRouteIndex = Math.max(0, Math.min(9, Number(routeIndex) || 0));
+  const globalRouteNumber = safeWorldIndex * 10 + safeRouteIndex + 1;
+  const minLevel = Math.min(100, globalRouteNumber + 2);
+  const maxLevel = Math.min(100, globalRouteNumber + 4);
+  const bossLevel = Math.min(100, maxLevel + (bossType === "final" ? 2 : 1));
+  return { globalRouteNumber, minLevel, maxLevel, bossLevel };
+}
+
 export function createAreaState(worldIndex = 0, routeIndex = 0) {
   const route = getRouteDefinition(worldIndex, routeIndex);
+  const levels = getRouteLevelRange(route.worldIndex, route.routeIndex, route.bossType);
   return {
     id: `${route.environment.id}-route-${route.routeNumber}`,
     name: `${route.environment.name} · Rota ${route.routeNumber}`,
@@ -189,6 +200,9 @@ export function createAreaState(worldIndex = 0, routeIndex = 0) {
     victories: 0,
     regularVictories: 0,
     requiredVictories: route.requiredVictories,
+    minLevel: levels.minLevel,
+    maxLevel: levels.maxLevel,
+    bossLevel: levels.bossLevel,
     bossDefeated: false,
     bossName: route.boss.name,
     bossType: route.bossType
