@@ -1,19 +1,22 @@
 import { addLog } from "../core/game-state.js";
-import { experienceToNextLevel } from "../data/pokemon.js";
+import { experienceToNextLevel, recalculatePokemonForLevel } from "../data/pokemon.js";
 
 function grantPokemonExperience(state, pokemon, amount) {
   pokemon.xp += amount;
   addLog(state, `${pokemon.name} recebeu ${amount} XP.`);
 
-  while (pokemon.xp >= pokemon.xpToNext) {
+  while (pokemon.level < 100 && pokemon.xp >= pokemon.xpToNext) {
     pokemon.xp -= pokemon.xpToNext;
     pokemon.level += 1;
     pokemon.xpToNext = experienceToNextLevel(pokemon.level);
-    pokemon.maxHp += 4;
-    pokemon.attack += 2;
-    pokemon.defense += 1;
-    pokemon.hp = pokemon.maxHp;
+    recalculatePokemonForLevel(pokemon, true);
     addLog(state, `${pokemon.name} subiu para o nível ${pokemon.level}!`);
+  }
+
+  if (pokemon.level >= 100) {
+    pokemon.level = 100;
+    pokemon.xp = 0;
+    pokemon.xpToNext = experienceToNextLevel(100);
   }
 }
 
