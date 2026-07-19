@@ -17,7 +17,8 @@ let isMenuOpen = false;
 let isTeamOpen = false;
 
 const welcomeScreen = document.querySelector("#welcome-screen");
-const welcomeActions = document.querySelector("#welcome-actions");
+const splashScreen = document.querySelector("#splash-screen");
+const starterCard = document.querySelector("#starter-card");
 const starterSelection = document.querySelector("#starter-selection");
 const continueButton = document.querySelector("#continue-button");
 
@@ -34,9 +35,15 @@ function showWelcome() {
   saveGame(state);
   welcomeScreen.classList.remove("is-hidden");
   document.body.classList.add("welcome-open");
-  welcomeActions.hidden = false;
-  starterSelection.hidden = true;
+  splashScreen.hidden = false;
+  starterCard.hidden = true;
   continueButton.hidden = !hasSavedGame();
+}
+
+function showStarterSelection() {
+  splashScreen.hidden = true;
+  starterCard.hidden = false;
+  starterSelection.hidden = false;
 }
 
 function loop(now) {
@@ -59,10 +66,7 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-document.querySelector("#new-journey-button").addEventListener("click", () => {
-  welcomeActions.hidden = true;
-  starterSelection.hidden = false;
-});
+document.querySelector("#start-image-button").addEventListener("click", showStarterSelection);
 
 document.querySelector("#back-to-welcome").addEventListener("click", showWelcome);
 
