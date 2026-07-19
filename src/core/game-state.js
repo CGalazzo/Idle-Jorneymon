@@ -1,6 +1,6 @@
 import { createStarter } from "../data/pokemon.js";
 
-export const GAME_VERSION = "0.3.3";
+export const GAME_VERSION = "0.3.4";
 export const SAVE_VERSION = 4;
 export const MAX_TEAM_SIZE = 3;
 
