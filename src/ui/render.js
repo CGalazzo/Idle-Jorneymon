@@ -138,8 +138,11 @@ export function createAppMarkup() {
       <p class="team-help">A ordem define quem entra primeiro nas batalhas. Sua equipe pode ter até ${MAX_TEAM_SIZE} Pokémon.</p>
       <h3>Equipe <span id="team-count"></span></h3>
       <div id="team-list" class="team-list"></div>
-      <h3>Depósito <span id="storage-count"></span></h3>
-      <div id="storage-list" class="storage-list"></div>
+      <section class="storage-section">
+        <h3>Depósito Pokémon <span id="storage-count"></span></h3>
+        <p>Pokémon fora da equipe ficam guardados aqui e não recebem XP.</p>
+        <div id="storage-list" class="storage-list"></div>
+      </section>
     </dialog>`;
 }
 
