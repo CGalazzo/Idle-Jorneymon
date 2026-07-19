@@ -60,17 +60,15 @@ function updateBattleCard(card, pokemon) {
 export function createAppMarkup() {
   return `
     <section id="welcome-screen" class="welcome-screen">
-      <div class="welcome-card">
-        <div class="welcome-logo"><span>◆</span></div>
-        <small>UMA NOVA AVENTURA</small>
-        <h1>IDLE JORNEYMON</h1>
-        <p>Escolha seu parceiro e acompanhe uma jornada que continua automaticamente.</p>
-        <div id="welcome-actions" class="welcome-actions">
-          <button id="new-journey-button" class="primary-button">Nova jornada</button>
-          <button id="continue-button" class="secondary-button">Continuar</button>
-        </div>
-        <div id="starter-selection" class="starter-selection" hidden>
-          <button id="back-to-welcome" class="text-button">← Voltar</button>
+      <div id="splash-screen" class="splash-screen">
+        <button id="start-image-button" class="start-image-button" aria-label="Toque para começar uma nova jornada">
+          <img src="/assets/idlemon-jorney-start.webp" alt="Idlemon Jorney — toque para começar" />
+        </button>
+        <button id="continue-button" class="splash-continue" hidden>Continuar jornada</button>
+      </div>
+      <div id="starter-card" class="welcome-card starter-card" hidden>
+        <div id="starter-selection" class="starter-selection">
+          <button id="back-to-welcome" class="text-button">← Voltar à tela inicial</button>
           <h2>Escolha seu primeiro parceiro</h2>
           <p>Essa escolha ficará vinculada ao seu progresso.</p>
           <div class="starter-grid">
