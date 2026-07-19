@@ -1,5 +1,5 @@
-import { addLog, randomEncounterTarget } from "../core/game-state.js";
-import { grantExperience } from "./progression.js";
+import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
+import { grantTeamExperience } from "./progression.js";
 import { attemptAutomaticCapture } from "./capture.js";
 
 function damage(attacker, defender, random = Math.random) {
@@ -7,23 +7,45 @@ function damage(attacker, defender, random = Math.random) {
   return Math.max(1, Math.round((attacker.attack - defender.defense * 0.45) * variance));
 }
 
-function finishBattle(state, victory) {
-  if (victory) {
-    const defeated = state.enemy;
-    state.area.victories += 1;
-    addLog(state, `${defeated.name} foi derrotado!`);
-    grantExperience(state, defeated.xpReward);
-    attemptAutomaticCapture(state, defeated);
-    state.player.hp = Math.min(state.player.maxHp, state.player.hp + Math.ceil(state.player.maxHp * 0.2));
-    state.mode = "exploring";
-    state.enemy = null;
-    state.exploration = 0;
-    state.nextEncounterAt = randomEncounterTarget();
-  } else {
-    addLog(state, `${state.player.name} desmaiou e está se recuperando.`);
-    state.mode = "recovering";
-    state.recoveryCooldown = 5;
+function registerParticipant(state, pokemon) {
+  if (!state.battleParticipants.includes(pokemon.uid)) state.battleParticipants.push(pokemon.uid);
+}
+
+function nextAvailablePokemon(state) {
+  return state.team.findIndex((pokemon) => pokemon.hp > 0);
+}
+
+function finishVictory(state) {
+  const defeated = state.enemy;
+  state.area.victories += 1;
+  addLog(state, `${defeated.name} foi derrotado!`);
+  grantTeamExperience(state, defeated.xpReward);
+  attemptAutomaticCapture(state, defeated);
+  state.team.forEach((pokemon) => {
+    if (pokemon.hp > 0) pokemon.hp = Math.min(pokemon.maxHp, pokemon.hp + Math.ceil(pokemon.maxHp * 0.2));
+  });
+  state.activeTeamIndex = nextAvailablePokemon(state);
+  state.mode = "exploring";
+  state.enemy = null;
+  state.battleParticipants = [];
+  state.exploration = 0;
+  state.nextEncounterAt = randomEncounterTarget();
+}
+
+function handleFaintedPokemon(state) {
+  const nextIndex = nextAvailablePokemon(state);
+  if (nextIndex >= 0) {
+    state.activeTeamIndex = nextIndex;
+    const nextPokemon = getActivePokemon(state);
+    registerParticipant(state, nextPokemon);
+    addLog(state, `${nextPokemon.name} entrou na batalha!`);
+    state.battleCooldown = 1.1;
+    return;
   }
+
+  addLog(state, "Toda a equipe desmaiou e está se recuperando.");
+  state.mode = "recovering";
+  state.recoveryCooldown = 5;
 }
 
 export function updateBattle(state, deltaSeconds, random = Math.random) {
@@ -31,21 +53,29 @@ export function updateBattle(state, deltaSeconds, random = Math.random) {
   state.battleCooldown -= deltaSeconds;
   if (state.battleCooldown > 0) return;
 
-  const playerDamage = damage(state.player, state.enemy, random);
+  const player = getActivePokemon(state);
+  if (!player || player.hp <= 0) {
+    handleFaintedPokemon(state);
+    return;
+  }
+  registerParticipant(state, player);
+
+  const playerDamage = damage(player, state.enemy, random);
   state.enemy.hp = Math.max(0, state.enemy.hp - playerDamage);
-  addLog(state, `${state.player.name} causou ${playerDamage} de dano.`);
+  addLog(state, `${player.name} causou ${playerDamage} de dano.`);
 
   if (state.enemy.hp <= 0) {
-    finishBattle(state, true);
+    finishVictory(state);
     return;
   }
 
-  const enemyDamage = damage(state.enemy, state.player, random);
-  state.player.hp = Math.max(0, state.player.hp - enemyDamage);
+  const enemyDamage = damage(state.enemy, player, random);
+  player.hp = Math.max(0, player.hp - enemyDamage);
   addLog(state, `${state.enemy.name} causou ${enemyDamage} de dano.`);
 
-  if (state.player.hp <= 0) {
-    finishBattle(state, false);
+  if (player.hp <= 0) {
+    addLog(state, `${player.name} desmaiou.`);
+    handleFaintedPokemon(state);
     return;
   }
 
@@ -56,10 +86,12 @@ export function updateRecovery(state, deltaSeconds) {
   state.recoveryCooldown -= deltaSeconds;
   if (state.recoveryCooldown > 0) return;
 
-  state.player.hp = state.player.maxHp;
+  state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
+  state.activeTeamIndex = 0;
   state.mode = "exploring";
   state.enemy = null;
+  state.battleParticipants = [];
   state.exploration = 0;
   state.nextEncounterAt = randomEncounterTarget();
-  addLog(state, `${state.player.name} se recuperou e voltou à jornada.`);
+  addLog(state, "A equipe se recuperou e voltou à jornada.");
 }
