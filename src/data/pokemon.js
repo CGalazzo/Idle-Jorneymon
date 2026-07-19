@@ -1,3 +1,5 @@
+import { ALL_SPECIES, getRouteDefinition } from "./worlds.js";
+
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
 export const SHINY_CHANCE = 1 / 256;
 
@@ -7,14 +9,9 @@ export const STARTERS = [
   { id: 7, name: "Squirtle", type: "Água", level: 5, maxHp: 32, attack: 10, defense: 11 }
 ].map(withSprites);
 
-export const ROUTE_ONE_ENCOUNTERS = [
-  { id: 19, name: "Rattata", type: "Normal", rarity: "common", baseHp: 18, attack: 8, defense: 6, xp: 12 },
-  { id: 16, name: "Pidgey", type: "Normal/Voador", rarity: "uncommon", baseHp: 20, attack: 8, defense: 7, xp: 13 },
-  { id: 10, name: "Caterpie", type: "Inseto", rarity: "common", baseHp: 22, attack: 7, defense: 8, xp: 11 },
-  { id: 13, name: "Weedle", type: "Inseto/Veneno", rarity: "common", baseHp: 20, attack: 8, defense: 7, xp: 12 }
-].map(withSprites);
-
-export const POKEDEX_SPECIES = [...STARTERS, ...ROUTE_ONE_ENCOUNTERS];
+export const POKEDEX_SPECIES = [...new Map(
+  [...STARTERS, ...ALL_SPECIES.map(withSprites)].map((pokemon) => [pokemon.id, pokemon])
+).values()].sort((a, b) => a.id - b.id);
 
 export function createInstanceId(speciesId) {
   return `${speciesId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -36,13 +33,18 @@ function shinySprites(pokemon) {
   };
 }
 
+export function experienceToNextLevel(level) {
+  const progress = Math.max(0, Number(level) - 5);
+  return Math.round(30 + progress * 9 + Math.pow(progress, 1.22) * 2.2);
+}
+
 export function createStarter(starterId) {
   const selected = STARTERS.find((pokemon) => pokemon.id === Number(starterId)) || STARTERS[1];
   return {
     ...selected,
     uid: createInstanceId(selected.id),
     xp: 0,
-    xpToNext: 30,
+    xpToNext: experienceToNextLevel(selected.level),
     hp: selected.maxHp
   };
 }
@@ -61,28 +63,45 @@ export function createCapturedPokemon(wildPokemon) {
     attack: wildPokemon.attack,
     defense: wildPokemon.defense,
     xp: 0,
-    xpToNext: Math.round(30 * Math.pow(1.28, Math.max(0, wildPokemon.level - 5))),
+    xpToNext: experienceToNextLevel(wildPokemon.level),
     sprite: wildPokemon.sprite,
     backSprite: wildPokemon.backSprite
   };
 }
 
-export function createWildPokemon(playerLevel, random = Math.random) {
-  const template = ROUTE_ONE_ENCOUNTERS[Math.floor(random() * ROUTE_ONE_ENCOUNTERS.length)];
-  const level = Math.max(2, playerLevel - 2 + Math.floor(random() * 3));
-  const scale = 1 + (level - 2) * 0.09;
-  const maxHp = Math.round(template.baseHp * scale);
+export function createWildPokemon(state, playerLevel, random = Math.random) {
+  const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
+  const bossReady = state.area.regularVictories >= route.requiredVictories && !state.area.bossDefeated;
+  const template = bossReady
+    ? route.boss
+    : route.encounters[Math.floor(random() * route.encounters.length)];
+  const isFinalBoss = bossReady && route.bossType === "final";
+  const levelOffset = bossReady ? (isFinalBoss ? 4 : 2) : Math.floor(random() * 3) - 1;
+  const targetLevel = Math.max(2, route.recommendedLevel + levelOffset);
+  const level = bossReady
+    ? targetLevel
+    : Math.max(targetLevel, Math.min(Number(playerLevel) + 1, route.recommendedLevel + 2));
+  const levelScale = 1 + Math.max(0, level - 2) * 0.075;
+  const bossScale = bossReady ? (isFinalBoss ? 1.65 : 1.28) : 1;
+  const maxHp = Math.round(template.baseHp * levelScale * bossScale);
   const isShiny = random() < SHINY_CHANCE;
-  const appearance = isShiny ? shinySprites(template) : template;
+  const appearance = isShiny ? shinySprites(template) : withSprites(template);
+  const rarity = bossReady
+    ? (isFinalBoss ? (template.rarity === "legendary" ? "legendary" : "epic") : "rare")
+    : template.rarity;
 
   return {
     ...appearance,
+    rarity,
     isShiny,
+    isBoss: bossReady,
+    bossType: bossReady ? route.bossType : null,
+    encounterRole: bossReady ? (isFinalBoss ? "final-boss" : "mini-boss") : "wild",
     level,
     maxHp,
     hp: maxHp,
-    attack: Math.round(template.attack * scale),
-    defense: Math.round(template.defense * scale),
-    xpReward: Math.round(template.xp * (1 + level * 0.08))
+    attack: Math.round(template.attack * levelScale * bossScale),
+    defense: Math.round(template.defense * levelScale * bossScale),
+    xpReward: Math.round(template.xp * (1 + level * 0.11) * (bossReady ? (isFinalBoss ? 2.8 : 2) : 1))
   };
 }
