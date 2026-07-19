@@ -65,7 +65,8 @@ export function loadGame() {
       captureOffer: saved.mode === "capture" ? saved.captureOffer : null,
       pokedex: saved.pokedex || base.pokedex,
       collection: saved.collection || base.collection,
-      enemy: saved.mode === "battle" || saved.mode === "capture" ? saved.enemy : null
+      approachProgress: saved.approachProgress || 0,
+      enemy: saved.mode === "approach" || saved.mode === "battle" || saved.mode === "capture" ? saved.enemy : null
     };
   } catch {
     return createInitialState();
