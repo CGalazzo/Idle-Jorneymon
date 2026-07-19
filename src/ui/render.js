@@ -1,3 +1,5 @@
+import { POKEDEX_SPECIES, STARTERS } from "../data/pokemon.js";
+
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
   battle: ["BATALHA AUTOMÁTICA", "Batalha em andamento"],
@@ -33,10 +35,34 @@ function pokemonCard(pokemon, enemy = false) {
 
 export function createAppMarkup() {
   return `
+    <section id="welcome-screen" class="welcome-screen">
+      <div class="welcome-card">
+        <div class="welcome-logo"><span>◆</span></div>
+        <small>UMA NOVA AVENTURA</small>
+        <h1>IDLE JORNEYMON</h1>
+        <p>Escolha seu parceiro e acompanhe uma jornada que continua automaticamente.</p>
+        <div id="welcome-actions" class="welcome-actions">
+          <button id="new-journey-button" class="primary-button">Nova jornada</button>
+          <button id="continue-button" class="secondary-button">Continuar</button>
+        </div>
+        <div id="starter-selection" class="starter-selection" hidden>
+          <button id="back-to-welcome" class="text-button">← Voltar</button>
+          <h2>Escolha seu primeiro parceiro</h2>
+          <p>Essa escolha ficará vinculada ao seu progresso.</p>
+          <div class="starter-grid">
+            ${STARTERS.map((starter) => `
+              <button class="starter-option" data-starter-id="${starter.id}">
+                <span class="starter-image"><img src="${starter.sprite}" alt="${starter.name}" /></span>
+                <strong>${starter.name}</strong><small>${starter.type}</small>
+              </button>`).join("")}
+          </div>
+        </div>
+      </div>
+    </section>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand"><span class="brand-mark">◆</span><div><strong>IDLE JORNEYMON</strong><small>Uma jornada automática</small></div></div>
-        <button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button>
+        <div class="header-actions"><button id="pokedex-button" class="pokedex-button">POKÉDEX</button><button id="reset-button" class="icon-button" aria-label="Reiniciar progresso" title="Reiniciar progresso">↻</button></div>
       </header>
 
       <main>
@@ -75,8 +101,29 @@ export function createAppMarkup() {
           <div><small>VITÓRIAS</small><strong id="wins-stat">0</strong></div>
         </section>
       </main>
-      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.1.0</span></footer>
-    </div>`;
+      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.2.0</span></footer>
+    </div>
+    <dialog id="pokedex-dialog" class="pokedex-dialog">
+      <div class="dialog-heading"><div><small>REGISTRO DA ROTA 1</small><h2>Pokédex</h2></div><button id="close-pokedex" class="icon-button" aria-label="Fechar Pokédex">×</button></div>
+      <div class="pokedex-summary"><span id="seen-total">0 vistos</span><span id="caught-total">0 capturados</span></div>
+      <div id="pokedex-grid" class="pokedex-grid"></div>
+    </dialog>`;
+}
+
+export function renderPokedex(state) {
+  let seenTotal = 0;
+  let caughtTotal = 0;
+  const html = POKEDEX_SPECIES.map((pokemon) => {
+    const entry = state.pokedex[pokemon.id] || { seen: 0, caught: 0 };
+    if (entry.seen) seenTotal += 1;
+    if (entry.caught) caughtTotal += 1;
+    const status = entry.caught ? "captured" : entry.seen ? "seen" : "unknown";
+    const label = entry.caught ? `${entry.caught} capturado${entry.caught > 1 ? "s" : ""}` : entry.seen ? "Visto" : "Não encontrado";
+    return `<article class="dex-card ${status}"><span class="dex-number">#${String(pokemon.id).padStart(3, "0")}</span><img src="${pokemon.sprite}" alt="${status === "unknown" ? "Pokémon desconhecido" : pokemon.name}" /><strong>${status === "unknown" ? "???" : pokemon.name}</strong><small>${label}</small></article>`;
+  }).join("");
+  document.querySelector("#pokedex-grid").innerHTML = html;
+  document.querySelector("#seen-total").textContent = `${seenTotal} de ${POKEDEX_SPECIES.length} vistos`;
+  document.querySelector("#caught-total").textContent = `${caughtTotal} espécies capturadas`;
 }
 
 export function render(state) {
@@ -115,4 +162,6 @@ export function render(state) {
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.2.0";
+  renderPokedex(state);
 }
