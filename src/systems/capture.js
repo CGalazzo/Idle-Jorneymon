@@ -1,5 +1,6 @@
 import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state.js";
 import { createCapturedPokemon } from "../data/pokemon.js";
+import { createAreaState, getNextRoutePosition, getRouteDefinition } from "../data/worlds.js";
 
 export const CAPTURE_RATES = {
   common: 30,
@@ -20,13 +21,54 @@ export function registerSeen(state, pokemon) {
   state.pokedex[pokemon.id] = { ...current, seen: current.seen + 1 };
 }
 
-function returnToExploration(state) {
-  state.mode = "exploring";
+function resetEncounter(state) {
   state.enemy = null;
   state.captureOffer = null;
   state.battleParticipants = [];
   state.exploration = 0;
   state.nextEncounterAt = randomEncounterTarget();
+}
+
+function advanceJourney(state) {
+  const previousRoute = getRouteDefinition(state.journey.worldIndex, state.journey.routeIndex);
+  const nextPosition = getNextRoutePosition(state.journey.worldIndex, state.journey.routeIndex);
+  const completedEnvironment = previousRoute.routeIndex === previousRoute.environment.routes.length - 1;
+
+  state.journey.completedRoutes += 1;
+  if (completedEnvironment) state.journey.completedWorlds += 1;
+  state.pendingRouteAdvance = false;
+  resetEncounter(state);
+
+  state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
+  state.activeTeamIndex = Math.max(0, state.team.findIndex((pokemon) => pokemon.hp > 0));
+
+  if (!nextPosition) {
+    state.journey.complete = true;
+    state.mode = "exploring";
+    addLog(state, "Jornada concluída! Você venceu as 100 rotas e se tornou o grande campeão!");
+    return;
+  }
+
+  state.journey.worldIndex = nextPosition.worldIndex;
+  state.journey.routeIndex = nextPosition.routeIndex;
+  state.area = createAreaState(nextPosition.worldIndex, nextPosition.routeIndex);
+  state.mode = "exploring";
+
+  const nextRoute = getRouteDefinition(nextPosition.worldIndex, nextPosition.routeIndex);
+  if (completedEnvironment) {
+    addLog(state, `${nextRoute.environment.name} foi liberado! A equipe avançou para a Dificuldade ${nextRoute.worldIndex + 1}.`);
+  } else {
+    addLog(state, `Rota ${nextRoute.routeNumber} liberada em ${nextRoute.environment.name}.`);
+  }
+}
+
+function returnToExploration(state) {
+  if (state.pendingRouteAdvance) {
+    advanceJourney(state);
+    return;
+  }
+  state.mode = "exploring";
+  resetEncounter(state);
 }
 
 export function declineCapture(state) {
