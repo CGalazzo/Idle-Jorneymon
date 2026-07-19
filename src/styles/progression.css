@@ -1,0 +1,111 @@
+.route-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.route-summary span { padding: 4px 8px; color: #9ec7df; background: rgba(19,51,80,.72); border: 1px solid rgba(104,176,220,.16); border-radius: 999px; font-size: 8px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.route-summary #boss-status { color: #ffd77a; border-color: rgba(255,201,83,.24); background: rgba(117,73,16,.2); }
+
+.route-hud { position: absolute; z-index: 7; top: 15px; right: 15px; width: min(310px, calc(100% - 30px)); padding: 11px 12px 10px; color: #edf8ff; background: rgba(5,19,34,.76); border: 1px solid rgba(190,229,255,.25); border-radius: 13px; box-shadow: 0 10px 28px rgba(0,0,0,.24); backdrop-filter: blur(8px); image-rendering: auto; }
+.route-hud-copy { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.route-hud-copy small { color: #8bb7d3; font-size: 7px; font-weight: 900; letter-spacing: .11em; }
+.route-hud-copy strong { color: #f6d986; font-size: 8px; text-align: right; }
+.route-progress { height: 5px !important; margin-top: 8px; background: rgba(202,227,242,.16) !important; }
+.route-progress i { background: linear-gradient(90deg, #49bdf1, #6ee59a) !important; box-shadow: 0 0 10px rgba(91,220,186,.38); }
+.boss-ready .route-hud { border-color: rgba(255,201,83,.65); box-shadow: 0 0 24px rgba(255,168,45,.2), 0 10px 28px rgba(0,0,0,.24); animation: bossHudPulse 1.15s ease-in-out infinite alternate; }
+.boss-ready .route-progress i { background: linear-gradient(90deg, #ffb13c, #ffdf6a) !important; }
+@keyframes bossHudPulse { to { transform: translateY(2px); } }
+
+.world-track { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 8px; }
+.world-step { position: relative; display: grid; place-items: center; height: 16px; color: #65859e; background: rgba(92,126,151,.12); border: 1px solid rgba(126,170,199,.12); border-radius: 5px; font-size: 6px; font-weight: 900; }
+.world-step i { position: absolute; inset: 0; border-radius: inherit; }
+.world-step.active { color: #071a29; background: #65d7ff; border-color: #8fe5ff; box-shadow: 0 0 9px rgba(72,208,255,.45); }
+.world-step.completed { color: #08291b; background: #65df9c; border-color: #8ceab3; }
+
+.stats-row { grid-template-columns: repeat(4, 1fr) !important; }
+
+.journey-complete-panel { position: absolute; z-index: 12; left: 50%; top: 50%; width: min(440px, calc(100% - 34px)); padding: 25px 22px; transform: translate(-50%, -50%); text-align: center; color: #fff7d4; background: linear-gradient(145deg, rgba(61,35,8,.94), rgba(16,28,46,.96)); border: 2px solid rgba(255,216,104,.7); border-radius: 20px; box-shadow: 0 20px 70px rgba(0,0,0,.48), 0 0 35px rgba(255,198,67,.18); image-rendering: auto; }
+.journey-complete-panel > span { display: block; font-size: 48px; filter: drop-shadow(0 8px 10px rgba(0,0,0,.28)); }
+.journey-complete-panel strong { display: block; margin-top: 7px; font-size: 21px; letter-spacing: .06em; }
+.journey-complete-panel p { margin: 7px 0 0; color: #d8cda8; font-size: 11px; }
+.journey-complete .walker, .journey-complete .battle-stage, .journey-complete .capture-panel, .journey-complete .route-hud { display: none !important; }
+
+.scene.env-bosque { background: linear-gradient(#79cceb 0 52%, #67b457 52%); }
+.scene.env-bosque .sky { background: linear-gradient(#5eb2df, #a4e2ef); }
+.scene.env-bosque .distant-hills { background: #4f9d54; }
+.scene.env-bosque .grass-line { background: repeating-linear-gradient(100deg, transparent 0 18px, rgba(22,102,49,.25) 19px 21px), linear-gradient(#65b95d, #397c3c); }
+
+.scene.env-floresta { background: linear-gradient(#347c70 0 52%, #214d34 52%); }
+.scene.env-floresta .sky { background: linear-gradient(#245f5a, #65a987); }
+.scene.env-floresta .sky::after { background: #e8d982; opacity: .68; }
+.scene.env-floresta .distant-hills { background: #235c3d; }
+.scene.env-floresta .grass-line { background: repeating-linear-gradient(93deg, transparent 0 14px, rgba(6,53,30,.35) 15px 18px), linear-gradient(#2c6d43, #163f2c); }
+.scene.env-floresta .path { background: #8d704a; }
+
+.scene.env-caverna { background: linear-gradient(#353b49 0 50%, #28252d 50%); }
+.scene.env-caverna .sky { background: radial-gradient(circle at 25% 35%, #596277, #252a35 65%); }
+.scene.env-caverna .sky::after, .scene.env-caverna .cloud { display: none; }
+.scene.env-caverna .distant-hills { background: #34313d; clip-path: polygon(0 20%, 10% 48%, 22% 12%, 38% 56%, 51% 8%, 67% 45%, 83% 16%, 100% 52%, 100% 100%, 0 100%); }
+.scene.env-caverna .grass-line { background: linear-gradient(#4c4550, #29252d); }
+.scene.env-caverna .path { background: #716456; }
+
+.scene.env-praia { background: linear-gradient(#78d3f0 0 50%, #e4cf8d 50%); }
+.scene.env-praia .sky { background: linear-gradient(#55bce9, #b5ecf5); }
+.scene.env-praia .distant-hills { background: #3ea4b4; clip-path: polygon(0 68%, 18% 58%, 36% 70%, 54% 55%, 72% 69%, 88% 57%, 100% 64%, 100% 100%, 0 100%); }
+.scene.env-praia .grass-line { background: repeating-linear-gradient(0deg, rgba(255,255,255,.2) 0 3px, transparent 3px 23px), linear-gradient(#4dc0cf, #287f9c); }
+.scene.env-praia .path { background: #e1c77d; }
+
+.scene.env-montanhas { background: linear-gradient(#8bb9d6 0 51%, #657064 51%); }
+.scene.env-montanhas .sky { background: linear-gradient(#648ca9, #c2d5df); }
+.scene.env-montanhas .distant-hills { background: #5f6770; clip-path: polygon(0 70%, 16% 18%, 27% 61%, 44% 3%, 58% 58%, 73% 15%, 88% 65%, 100% 30%, 100% 100%, 0 100%); }
+.scene.env-montanhas .grass-line { background: linear-gradient(#6f7c68, #454d45); }
+.scene.env-montanhas .path { background: #8e8069; }
+
+.scene.env-gelo { background: linear-gradient(#b7e8f6 0 50%, #9dc7d8 50%); }
+.scene.env-gelo .sky { background: radial-gradient(circle at 65% 20%, #dffbff, #7fb8d1 70%); }
+.scene.env-gelo .sky::after { background: #f6ffff; box-shadow: 0 0 38px rgba(224,251,255,.8); }
+.scene.env-gelo .distant-hills { background: #a6d5e4; }
+.scene.env-gelo .grass-line { background: repeating-linear-gradient(110deg, rgba(255,255,255,.22) 0 4px, transparent 5px 24px), linear-gradient(#b9e3ec, #78aabc); }
+.scene.env-gelo .path { background: #d9eef1; }
+
+.scene.env-fantasma { background: linear-gradient(#392c58 0 52%, #252037 52%); }
+.scene.env-fantasma .sky { background: radial-gradient(circle at 72% 25%, #8b76b9, #241d3c 68%); }
+.scene.env-fantasma .sky::after { background: #d6d0e8; box-shadow: 0 0 35px rgba(195,174,239,.45); }
+.scene.env-fantasma .cloud { background: rgba(203,189,225,.38); }
+.scene.env-fantasma .cloud::before, .scene.env-fantasma .cloud::after { background: rgba(203,189,225,.38); }
+.scene.env-fantasma .distant-hills { background: #332945; }
+.scene.env-fantasma .grass-line { background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(116,78,138,.2) 23px 25px), linear-gradient(#372d49, #211c31); }
+.scene.env-fantasma .path { background: #5b4d63; }
+
+.scene.env-vulcao { background: linear-gradient(#8d3425 0 51%, #3a2825 51%); }
+.scene.env-vulcao .sky { background: linear-gradient(#6d2522, #dc7040); }
+.scene.env-vulcao .sky::after { background: #ffb54c; box-shadow: 0 0 42px rgba(255,112,38,.8); }
+.scene.env-vulcao .cloud { background: rgba(71,44,42,.55); }
+.scene.env-vulcao .cloud::before, .scene.env-vulcao .cloud::after { background: rgba(71,44,42,.55); }
+.scene.env-vulcao .distant-hills { background: #532d28; }
+.scene.env-vulcao .grass-line { background: repeating-linear-gradient(110deg, transparent 0 24px, rgba(255,92,29,.25) 25px 28px), linear-gradient(#542f2b, #2d2221); }
+.scene.env-vulcao .path { background: #8f4b35; box-shadow: inset 0 15px rgba(255,136,57,.12); }
+
+.scene.env-planalto { background: linear-gradient(#526a91 0 51%, #3f4b63 51%); }
+.scene.env-planalto .sky { background: linear-gradient(#34476e, #8e9fc1); }
+.scene.env-planalto .sky::after { background: #f5d589; }
+.scene.env-planalto .distant-hills { background: #4c5875; }
+.scene.env-planalto .grass-line { background: linear-gradient(#526079, #333c51); }
+.scene.env-planalto .path { background: #897b70; }
+
+.scene.env-elite { background: linear-gradient(#2f3451 0 51%, #1c2237 51%); border-color: rgba(255,215,103,.5); }
+.scene.env-elite .sky { background: radial-gradient(circle at 50% 20%, #7565a2, #171d35 72%); }
+.scene.env-elite .sky::after { background: #ffe49a; box-shadow: 0 0 50px rgba(255,211,91,.75); }
+.scene.env-elite .distant-hills { background: #343b5a; }
+.scene.env-elite .grass-line { background: repeating-linear-gradient(90deg, transparent 0 34px, rgba(245,206,101,.11) 35px 37px), linear-gradient(#343c59, #1d2438); }
+.scene.env-elite .path { background: #756779; box-shadow: inset 0 15px rgba(255,216,110,.1); }
+
+@media (max-width: 700px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .route-hud { top: 9px; right: 9px; width: calc(100% - 18px); padding: 9px 10px 8px; }
+  .route-hud-copy strong { max-width: 58%; }
+  .world-track { gap: 3px; }
+}
+
+@media (max-width: 420px) {
+  .route-summary { max-width: 250px; }
+  .route-hud-copy strong { font-size: 7px; }
+  .world-step { height: 14px; font-size: 5px; }
+  .journey-complete-panel strong { font-size: 17px; }
+}
