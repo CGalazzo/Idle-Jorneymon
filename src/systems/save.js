@@ -1,4 +1,4 @@
-import { createInstanceId, experienceToNextLevel } from "../data/pokemon.js";
+import { normalizePokemonInstance } from "../data/pokemon.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition } from "../data/worlds.js";
 
@@ -9,19 +9,7 @@ export function hasSavedGame() {
 }
 
 function normalizePokemon(pokemon, refreshExperienceCurve = false) {
-  const level = Math.max(1, Number(pokemon.level) || 1);
-  const maxHp = Math.max(1, Number(pokemon.maxHp) || 1);
-  return {
-    ...pokemon,
-    level,
-    maxHp,
-    uid: pokemon.uid || createInstanceId(pokemon.id),
-    hp: Math.max(0, Math.min(pokemon.hp ?? maxHp, maxHp)),
-    xp: Math.max(0, Number(pokemon.xp) || 0),
-    xpToNext: refreshExperienceCurve
-      ? experienceToNextLevel(level)
-      : Math.max(1, Number(pokemon.xpToNext) || experienceToNextLevel(level))
-  };
+  return normalizePokemonInstance(pokemon, { refreshExperienceCurve });
 }
 
 function normalizeJourney(savedJourney = {}) {
@@ -49,10 +37,12 @@ function normalizeArea(savedArea, journey) {
   };
 }
 
-function migrateLegacySave(saved) {
+function migrateSave(saved) {
   const legacyPlayer = saved.player || saved.team?.[0];
   const starterId = legacyPlayer?.id || 4;
   const base = createInitialState(starterId, true);
+  const journey = normalizeJourney(saved.journey);
+  const area = normalizeArea(saved.area, journey);
   const migratedTeam = Array.isArray(saved.team) && saved.team.length
     ? saved.team.map((pokemon) => normalizePokemon(pokemon, true))
     : [normalizePokemon({ ...base.team[0], ...legacyPlayer }, true)];
@@ -67,11 +57,11 @@ function migrateLegacySave(saved) {
     gameVersion: GAME_VERSION,
     hasStarted: true,
     mode: "exploring",
-    journey: base.journey,
-    area: base.area,
+    journey,
+    area,
     totals: {
-      encounters: Math.max(0, Number(saved.area?.encounters) || 0),
-      victories: Math.max(0, Number(saved.area?.victories) || 0)
+      encounters: Math.max(0, Number(saved.totals?.encounters) || Number(saved.area?.encounters) || 0),
+      victories: Math.max(0, Number(saved.totals?.victories) || Number(saved.area?.victories) || 0)
     },
     pendingRouteAdvance: false,
     team: migratedTeam,
@@ -93,14 +83,15 @@ export function loadGame() {
     if (!raw) return createInitialState();
 
     const saved = JSON.parse(raw);
-    if (saved.saveVersion < SAVE_VERSION) return migrateLegacySave(saved);
+    if (saved.saveVersion < SAVE_VERSION) return migrateSave(saved);
     if (saved.saveVersion !== SAVE_VERSION || !Array.isArray(saved.team) || !saved.team.length) return createInitialState();
 
     const base = createInitialState(saved.team[0].id, true);
     const journey = normalizeJourney(saved.journey);
     const area = normalizeArea(saved.area, journey);
-    const validEncounterMode = ["approach", "battle", "capture"].includes(saved.mode);
-    const mode = journey.complete ? "exploring" : saved.mode;
+    const validEncounterMode = ["approach", "battle", "capture"].includes(saved.mode) && saved.enemy;
+    const allowedModes = ["exploring", "approach", "battle", "capture", "recovering"];
+    const mode = journey.complete ? "exploring" : (allowedModes.includes(saved.mode) ? saved.mode : "exploring");
 
     return {
       ...base,
@@ -123,7 +114,7 @@ export function loadGame() {
       pokedex: saved.pokedex || base.pokedex,
       collection: saved.collection || base.collection,
       approachProgress: saved.approachProgress || 0,
-      enemy: validEncounterMode ? saved.enemy : null
+      enemy: validEncounterMode ? normalizePokemon(saved.enemy) : null
     };
   } catch {
     return createInitialState();
