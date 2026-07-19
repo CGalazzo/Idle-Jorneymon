@@ -1,7 +1,7 @@
 import "./styles/base.css";
 import { startNewJourney } from "./core/game-state.js";
 import { createAppMarkup, render } from "./ui/render.js";
-import { updateExploration } from "./systems/exploration.js";
+import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, moveTeamMember, sendToStorage } from "./systems/team.js";
@@ -44,6 +44,7 @@ function loop(now) {
 
   if (state.hasStarted && !document.hidden && !isMenuOpen) {
     if (state.mode === "exploring") updateExploration(state, delta);
+    if (state.mode === "approach") updateApproach(state, delta);
     if (state.mode === "battle") updateBattle(state, delta);
     if (state.mode === "recovering") updateRecovery(state, delta);
 
