@@ -4,7 +4,7 @@ import { createAppMarkup, render } from "./ui/render.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
-import { addToTeam, moveTeamMember, sendToStorage } from "./systems/team.js";
+import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture } from "./systems/capture.js";
 
 const app = document.querySelector("#app");
@@ -104,8 +104,8 @@ document.querySelector("#team-dialog").addEventListener("click", (event) => {
   const actionButton = event.target.closest("button");
   if (!actionButton || actionButton.disabled) return;
   let changed = false;
-  if (actionButton.dataset.teamUp) changed = moveTeamMember(state, actionButton.dataset.teamUp, -1);
-  if (actionButton.dataset.teamDown) changed = moveTeamMember(state, actionButton.dataset.teamDown, 1);
+  if (actionButton.dataset.teamPosition) changed = setTeamPosition(state, actionButton.dataset.teamPosition, actionButton.dataset.position);
+  if (actionButton.dataset.setActive) changed = setActivePokemon(state, actionButton.dataset.setActive);
   if (actionButton.dataset.sendStorage) changed = sendToStorage(state, actionButton.dataset.sendStorage);
   if (actionButton.dataset.addTeam) changed = addToTeam(state, actionButton.dataset.addTeam);
   if (changed) {
