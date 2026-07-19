@@ -3,6 +3,7 @@ import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
 
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
+  approach: ["ENCONTRO!", "Pokémon se aproximando"],
   battle: ["BATALHA AUTOMÁTICA", "Batalha em andamento"],
   capture: ["DECISÃO DE CAPTURA", "Pokémon derrotado"],
   recovering: ["RECUPERANDO", "Retornando à jornada"]
@@ -33,6 +34,27 @@ function pokemonCard(pokemon, enemy = false) {
       </div>
       <img class="pokemon-sprite" src="${sprite}" alt="${pokemon.name}" />
     </article>`;
+}
+
+function ensureWalker(walker, pokemon) {
+  if (walker.dataset.pokemonUid === pokemon.uid && walker.querySelector("img")) return;
+  walker.innerHTML = `<img src="${pokemon.sprite}" alt="${pokemon.name} caminhando" /><span class="shadow"></span>`;
+  walker.dataset.pokemonUid = pokemon.uid;
+}
+
+function clearWalker(walker) {
+  if (!walker.childElementCount) return;
+  walker.replaceChildren();
+  delete walker.dataset.pokemonUid;
+}
+
+function updateBattleCard(card, pokemon) {
+  if (!card || !pokemon) return;
+  const hpBar = card.querySelector(".bar.health i");
+  hpBar.style.width = `${percent(pokemon.hp, pokemon.maxHp)}%`;
+  hpBar.className = healthClass(pokemon.hp, pokemon.maxHp);
+  card.querySelector(".pokemon-info small").textContent = `${pokemon.hp} / ${pokemon.maxHp} HP`;
+  card.querySelector(".name-line span").textContent = `NV. ${pokemon.level}`;
 }
 
 export function createAppMarkup() {
@@ -163,7 +185,9 @@ export function render(state) {
   const player = getActivePokemon(state);
   const [modeLabel] = modeCopy[state.mode];
   const scene = document.querySelector("#scene");
+  const modeChanged = scene.dataset.renderMode !== state.mode;
   scene.className = `scene ${state.mode}`;
+  scene.dataset.renderMode = state.mode;
   document.querySelector("#mode-badge").textContent = modeLabel;
   document.querySelector("#area-name").textContent = state.area.name;
 
@@ -172,19 +196,38 @@ export function render(state) {
   const capturePanel = document.querySelector("#capture-panel");
   if (state.mode === "battle") {
     capturePanel.hidden = true;
-    walker.innerHTML = "";
-    battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
+    clearWalker(walker);
+    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id) || battleStage.dataset.playerUid !== player.uid) {
+      battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
+      battleStage.dataset.enemyId = String(state.enemy.id);
+      battleStage.dataset.playerUid = player.uid;
+    }
+    updateBattleCard(battleStage.querySelector(".enemy-card"), state.enemy);
+    updateBattleCard(battleStage.querySelector(".player-card"), player);
   } else if (state.mode === "capture") {
-    walker.innerHTML = "";
-    battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
+    clearWalker(walker);
+    if (modeChanged) battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
     capturePanel.hidden = false;
     document.querySelector("#capture-title").textContent = `${state.enemy.name} foi derrotado!`;
     document.querySelector("#try-capture").textContent = `Tentar capturar — ${state.captureOffer.chance}% de chance`;
     document.querySelector("#shiny-label").hidden = !state.enemy.isShiny;
+  } else if (state.mode === "approach") {
+    capturePanel.hidden = true;
+    ensureWalker(walker, player);
+    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
+      battleStage.innerHTML = `<div class="approaching-enemy ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name} se aproximando" /><span class="shadow"></span></div>`;
+      battleStage.dataset.enemyId = String(state.enemy.id);
+    }
+    const approachingEnemy = battleStage.querySelector(".approaching-enemy");
+    approachingEnemy.style.left = `${88 - state.approachProgress * 42}%`;
   } else {
     capturePanel.hidden = true;
-    battleStage.innerHTML = "";
-    walker.innerHTML = `<img src="${player.sprite}" alt="${player.name} caminhando" /><span class="shadow"></span>`;
+    if (modeChanged) {
+      battleStage.replaceChildren();
+      delete battleStage.dataset.enemyId;
+      delete battleStage.dataset.playerUid;
+    }
+    ensureWalker(walker, player);
   }
 
   document.querySelector("#partner-sprite").src = player.sprite;
@@ -199,7 +242,7 @@ export function render(state) {
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
-  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.1";
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.2";
   renderPokedex(state);
   renderTeam(state);
 }
