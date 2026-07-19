@@ -1,4 +1,4 @@
-import { addLog } from "../core/game-state.js";
+import { addLog, getActivePokemon } from "../core/game-state.js";
 import { createWildPokemon } from "../data/pokemon.js";
 import { registerSeen } from "./capture.js";
 
@@ -9,7 +9,9 @@ export function updateExploration(state, deltaSeconds, random = Math.random) {
 
   if (state.exploration < state.nextEncounterAt) return;
 
-  state.enemy = createWildPokemon(state.player.level, random);
+  const activePokemon = getActivePokemon(state);
+  state.enemy = createWildPokemon(activePokemon.level, random);
+  state.battleParticipants = [activePokemon.uid];
   registerSeen(state, state.enemy);
   state.area.encounters += 1;
   state.mode = "battle";
