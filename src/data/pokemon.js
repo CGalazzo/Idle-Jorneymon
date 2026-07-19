@@ -1,4 +1,5 @@
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
+export const SHINY_CHANCE = 1 / 256;
 
 export const STARTERS = [
   { id: 1, name: "Bulbasaur", type: "Planta", level: 5, maxHp: 31, attack: 11, defense: 10 },
@@ -7,10 +8,10 @@ export const STARTERS = [
 ].map(withSprites);
 
 export const ROUTE_ONE_ENCOUNTERS = [
-  { id: 19, name: "Rattata", type: "Normal", baseHp: 18, attack: 8, defense: 6, xp: 12 },
-  { id: 16, name: "Pidgey", type: "Normal/Voador", baseHp: 20, attack: 8, defense: 7, xp: 13 },
-  { id: 10, name: "Caterpie", type: "Inseto", baseHp: 22, attack: 7, defense: 8, xp: 11 },
-  { id: 13, name: "Weedle", type: "Inseto/Veneno", baseHp: 20, attack: 8, defense: 7, xp: 12 }
+  { id: 19, name: "Rattata", type: "Normal", rarity: "common", baseHp: 18, attack: 8, defense: 6, xp: 12 },
+  { id: 16, name: "Pidgey", type: "Normal/Voador", rarity: "uncommon", baseHp: 20, attack: 8, defense: 7, xp: 13 },
+  { id: 10, name: "Caterpie", type: "Inseto", rarity: "common", baseHp: 22, attack: 7, defense: 8, xp: 11 },
+  { id: 13, name: "Weedle", type: "Inseto/Veneno", rarity: "common", baseHp: 20, attack: 8, defense: 7, xp: 12 }
 ].map(withSprites);
 
 export const POKEDEX_SPECIES = [...STARTERS, ...ROUTE_ONE_ENCOUNTERS];
@@ -24,6 +25,14 @@ function withSprites(pokemon) {
     ...pokemon,
     sprite: `${SPRITE_BASE}/${pokemon.id}.gif`,
     backSprite: `${SPRITE_BASE}/back/${pokemon.id}.gif`
+  };
+}
+
+function shinySprites(pokemon) {
+  return {
+    ...pokemon,
+    sprite: `${SPRITE_BASE}/shiny/${pokemon.id}.gif`,
+    backSprite: `${SPRITE_BASE}/back/shiny/${pokemon.id}.gif`
   };
 }
 
@@ -44,6 +53,8 @@ export function createCapturedPokemon(wildPokemon) {
     uid: createInstanceId(wildPokemon.id),
     name: wildPokemon.name,
     type: wildPokemon.type,
+    rarity: wildPokemon.rarity,
+    isShiny: Boolean(wildPokemon.isShiny),
     level: wildPokemon.level,
     maxHp: wildPokemon.maxHp,
     hp: wildPokemon.maxHp,
@@ -61,9 +72,12 @@ export function createWildPokemon(playerLevel, random = Math.random) {
   const level = Math.max(2, playerLevel - 2 + Math.floor(random() * 3));
   const scale = 1 + (level - 2) * 0.09;
   const maxHp = Math.round(template.baseHp * scale);
+  const isShiny = random() < SHINY_CHANCE;
+  const appearance = isShiny ? shinySprites(template) : template;
 
   return {
-    ...template,
+    ...appearance,
+    isShiny,
     level,
     maxHp,
     hp: maxHp,
