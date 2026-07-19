@@ -18,12 +18,27 @@ function nextAvailablePokemon(state) {
 function finishVictory(state) {
   const defeated = state.enemy;
   state.area.victories += 1;
-  addLog(state, `${defeated.name} foi derrotado!`);
+  state.totals.victories += 1;
+
+  if (defeated.isBoss) {
+    state.area.bossDefeated = true;
+    state.pendingRouteAdvance = true;
+    const bossLabel = defeated.bossType === "final" ? "Boss Final" : "Mini Boss";
+    addLog(state, `${bossLabel} ${defeated.name} foi derrotado!`);
+  } else {
+    state.area.regularVictories += 1;
+    addLog(state, `${defeated.name} foi derrotado!`);
+    if (state.area.regularVictories >= state.area.requiredVictories) {
+      const bossLabel = state.area.bossType === "final" ? "Boss Final" : "Mini Boss";
+      addLog(state, `${bossLabel} ${state.area.bossName} apareceu no fim da rota!`);
+    }
+  }
+
   grantTeamExperience(state, defeated.xpReward);
   state.team.forEach((pokemon) => {
     if (pokemon.hp > 0) pokemon.hp = Math.min(pokemon.maxHp, pokemon.hp + Math.ceil(pokemon.maxHp * 0.2));
   });
-  state.activeTeamIndex = nextAvailablePokemon(state);
+  state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
   state.mode = "capture";
   state.captureOffer = { chance: getCaptureChance(defeated) };
   state.battleParticipants = [];
@@ -76,7 +91,7 @@ export function updateBattle(state, deltaSeconds, random = Math.random) {
     return;
   }
 
-  state.battleCooldown = 1.25;
+  state.battleCooldown = state.enemy.isBoss ? 1.45 : 1.25;
 }
 
 export function updateRecovery(state, deltaSeconds) {
