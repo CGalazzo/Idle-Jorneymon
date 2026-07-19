@@ -1,4 +1,5 @@
 import { addLog } from "../core/game-state.js";
+import { experienceToNextLevel } from "../data/pokemon.js";
 
 function grantPokemonExperience(state, pokemon, amount) {
   pokemon.xp += amount;
@@ -7,7 +8,7 @@ function grantPokemonExperience(state, pokemon, amount) {
   while (pokemon.xp >= pokemon.xpToNext) {
     pokemon.xp -= pokemon.xpToNext;
     pokemon.level += 1;
-    pokemon.xpToNext = Math.round(pokemon.xpToNext * 1.28);
+    pokemon.xpToNext = experienceToNextLevel(pokemon.level);
     pokemon.maxHp += 4;
     pokemon.attack += 2;
     pokemon.defense += 1;
