@@ -13,6 +13,33 @@ const app = document.querySelector("#app");
 app.innerHTML = createAppMarkup();
 enhanceProgressionMarkup();
 
+function memoizeInnerHTML(element) {
+  const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+  if (!element || !descriptor?.get || !descriptor?.set) return;
+
+  let previousValue = descriptor.get.call(element);
+  Object.defineProperty(element, "innerHTML", {
+    configurable: true,
+    get() {
+      return descriptor.get.call(this);
+    },
+    set(value) {
+      const nextValue = String(value);
+      if (nextValue === previousValue) return;
+      previousValue = nextValue;
+      descriptor.set.call(this, nextValue);
+    }
+  });
+}
+
+[
+  "#pokedex-grid",
+  "#team-list",
+  "#storage-list",
+  "#team-mini",
+  "#activity-log"
+].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
+
 let state = loadGame();
 let lastFrame = performance.now();
 let lastSave = performance.now();
