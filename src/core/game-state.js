@@ -1,6 +1,6 @@
 import { createStarter } from "../data/pokemon.js";
 
-export const GAME_VERSION = "0.3.1";
+export const GAME_VERSION = "0.3.2";
 export const SAVE_VERSION = 4;
 export const MAX_TEAM_SIZE = 3;
 
@@ -18,6 +18,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     activeTeamIndex: 0,
     battleParticipants: [],
     captureOffer: null,
+    approachProgress: 0,
     enemy: null,
     exploration: 0,
     nextEncounterAt: randomEncounterTarget(),
