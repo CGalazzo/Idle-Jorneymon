@@ -1,10 +1,55 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
+import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
 import { grantTeamExperience } from "./progression.js";
 import { getCaptureChance } from "./capture.js";
 
-function damage(attacker, defender, random = Math.random) {
-  const variance = 0.85 + random() * 0.3;
-  return Math.max(1, Math.round((attacker.attack - defender.defense * 0.45) * variance));
+function offensiveStat(pokemon, move) {
+  return move.category === "special" ? pokemon.specialAttack : pokemon.attack;
+}
+
+function defensiveStat(pokemon, move) {
+  return move.category === "special" ? pokemon.specialDefense : pokemon.defense;
+}
+
+function moveScore(attacker, defender, move) {
+  const attack = Math.max(1, offensiveStat(attacker, move));
+  const defense = Math.max(1, defensiveStat(defender, move));
+  const effectiveness = getTypeEffectiveness(move.type, defender.types || defender.type);
+  const stab = (attacker.types || []).includes(move.type) ? 1.5 : 1;
+  return move.power * (attack / defense) * effectiveness * stab;
+}
+
+function chooseBestMove(attacker, defender) {
+  const moves = Array.isArray(attacker.moves) && attacker.moves.length
+    ? attacker.moves
+    : [{ name: "Investida", type: "normal", category: "physical", power: 40, accuracy: 100 }];
+  return [...moves].sort((a, b) => moveScore(attacker, defender, b) - moveScore(attacker, defender, a))[0];
+}
+
+function calculateDamage(attacker, defender, move, random = Math.random) {
+  const effectiveness = getTypeEffectiveness(move.type, defender.types || defender.type);
+  if (effectiveness === 0) return { damage: 0, effectiveness };
+
+  const attack = Math.max(1, offensiveStat(attacker, move));
+  const defense = Math.max(1, defensiveStat(defender, move));
+  const levelFactor = Math.floor((2 * attacker.level) / 5) + 2;
+  const baseDamage = Math.floor(Math.floor((levelFactor * move.power * attack) / defense) / 50) + 2;
+  const stab = (attacker.types || []).includes(move.type) ? 1.5 : 1;
+  const variance = 0.85 + random() * 0.15;
+  const damage = Math.max(1, Math.floor(baseDamage * stab * effectiveness * variance));
+  return { damage, effectiveness };
+}
+
+function executeAttack(state, attacker, defender, random = Math.random) {
+  const move = chooseBestMove(attacker, defender);
+  const { damage, effectiveness } = calculateDamage(attacker, defender, move, random);
+  defender.hp = Math.max(0, defender.hp - damage);
+
+  if (damage > 0) addLog(state, `${attacker.name} usou ${move.name} e causou ${damage} de dano.`);
+  else addLog(state, `${attacker.name} usou ${move.name}.`);
+
+  const effectivenessCopy = effectivenessLabel(effectiveness);
+  if (effectivenessCopy) addLog(state, effectivenessCopy);
 }
 
 function registerParticipant(state, pokemon) {
@@ -60,6 +105,19 @@ function handleFaintedPokemon(state) {
   state.recoveryCooldown = 5;
 }
 
+function resolveFainting(state, player) {
+  if (state.enemy.hp <= 0) {
+    finishVictory(state);
+    return true;
+  }
+  if (player.hp <= 0) {
+    addLog(state, `${player.name} desmaiou.`);
+    handleFaintedPokemon(state);
+    return true;
+  }
+  return false;
+}
+
 export function updateBattle(state, deltaSeconds, random = Math.random) {
   if (!state.enemy) return;
   state.battleCooldown -= deltaSeconds;
@@ -72,23 +130,16 @@ export function updateBattle(state, deltaSeconds, random = Math.random) {
   }
   registerParticipant(state, player);
 
-  const playerDamage = damage(player, state.enemy, random);
-  state.enemy.hp = Math.max(0, state.enemy.hp - playerDamage);
-  addLog(state, `${player.name} causou ${playerDamage} de dano.`);
+  const enemy = state.enemy;
+  const playerFirst = player.speed === enemy.speed ? random() >= 0.5 : player.speed > enemy.speed;
+  const turns = playerFirst
+    ? [[player, enemy], [enemy, player]]
+    : [[enemy, player], [player, enemy]];
 
-  if (state.enemy.hp <= 0) {
-    finishVictory(state);
-    return;
-  }
-
-  const enemyDamage = damage(state.enemy, player, random);
-  player.hp = Math.max(0, player.hp - enemyDamage);
-  addLog(state, `${state.enemy.name} causou ${enemyDamage} de dano.`);
-
-  if (player.hp <= 0) {
-    addLog(state, `${player.name} desmaiou.`);
-    handleFaintedPokemon(state);
-    return;
+  for (const [attacker, defender] of turns) {
+    if (attacker.hp <= 0 || defender.hp <= 0) break;
+    executeAttack(state, attacker, defender, random);
+    if (resolveFainting(state, player)) return;
   }
 
   state.battleCooldown = state.enemy.isBoss ? 1.45 : 1.25;
