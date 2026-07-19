@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.1.0` — caminhada automática, encontros aleatórios, batalhas automáticas, XP, níveis e salvamento local.
+`v0.2.0` — início de jornada, escolha entre Bulbasaur, Charmander e Squirtle, captura automática e Pokédex básica, além dos sistemas da versão anterior.
