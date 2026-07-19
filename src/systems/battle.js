@@ -1,6 +1,6 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
 import { grantTeamExperience } from "./progression.js";
-import { attemptAutomaticCapture } from "./capture.js";
+import { getCaptureChance } from "./capture.js";
 
 function damage(attacker, defender, random = Math.random) {
   const variance = 0.85 + random() * 0.3;
@@ -20,16 +20,13 @@ function finishVictory(state) {
   state.area.victories += 1;
   addLog(state, `${defeated.name} foi derrotado!`);
   grantTeamExperience(state, defeated.xpReward);
-  attemptAutomaticCapture(state, defeated);
   state.team.forEach((pokemon) => {
     if (pokemon.hp > 0) pokemon.hp = Math.min(pokemon.maxHp, pokemon.hp + Math.ceil(pokemon.maxHp * 0.2));
   });
   state.activeTeamIndex = nextAvailablePokemon(state);
-  state.mode = "exploring";
-  state.enemy = null;
+  state.mode = "capture";
+  state.captureOffer = { chance: getCaptureChance(defeated) };
   state.battleParticipants = [];
-  state.exploration = 0;
-  state.nextEncounterAt = randomEncounterTarget();
 }
 
 function handleFaintedPokemon(state) {
