@@ -4,6 +4,7 @@ import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
   battle: ["BATALHA AUTOMÁTICA", "Batalha em andamento"],
+  capture: ["DECISÃO DE CAPTURA", "Pokémon derrotado"],
   recovering: ["RECUPERANDO", "Retornando à jornada"]
 };
 
@@ -77,6 +78,12 @@ export function createAppMarkup() {
           <div class="distant-hills"></div><div class="grass-line"></div><div class="path"></div>
           <div id="battle-stage" class="battle-stage"></div>
           <div id="walker" class="walker"></div>
+          <div id="capture-panel" class="capture-panel" hidden>
+            <span id="shiny-label" class="shiny-label" hidden>✨ SHINY</span>
+            <strong id="capture-title"></strong>
+            <p>Deseja tentar adicionar este Pokémon à sua equipe?</p>
+            <div><button id="try-capture" class="capture-button"></button><button id="decline-capture" class="decline-button">Não capturar</button></div>
+          </div>
         </section>
 
         <section class="progress-panel">
@@ -124,7 +131,7 @@ function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull
   const hpPercent = percent(pokemon.hp, pokemon.maxHp);
   return `<article class="team-card">
     <img src="${pokemon.sprite}" alt="${pokemon.name}" />
-    <div class="team-card-info"><strong>${pokemon.name}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
+    <div class="team-card-info"><strong>${pokemon.isShiny ? "✨ " : ""}${pokemon.name}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
     <div class="team-card-actions">${inStorage
       ? `<button data-add-team="${pokemon.uid}" ${teamFull ? "disabled" : ""}>Adicionar</button>`
       : `<button data-team-up="${pokemon.uid}" ${index === 0 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para cima">↑</button><button data-team-down="${pokemon.uid}" ${index === teamLength - 1 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para baixo">↓</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>`}
@@ -149,7 +156,8 @@ export function renderPokedex(state) {
     if (entry.seen) seenTotal += 1;
     if (entry.caught) caughtTotal += 1;
     const status = entry.caught ? "captured" : entry.seen ? "seen" : "unknown";
-    const label = entry.caught ? `${entry.caught} capturado${entry.caught > 1 ? "s" : ""}` : entry.seen ? "Visto" : "Não encontrado";
+    const shinyCopy = entry.shinyCaught ? ` · ✨ ${entry.shinyCaught}` : "";
+    const label = entry.caught ? `${entry.caught} capturado${entry.caught > 1 ? "s" : ""}${shinyCopy}` : entry.seen ? "Visto" : "Não encontrado";
     return `<article class="dex-card ${status}"><span class="dex-number">#${String(pokemon.id).padStart(3, "0")}</span><img src="${pokemon.sprite}" alt="${status === "unknown" ? "Pokémon desconhecido" : pokemon.name}" /><strong>${status === "unknown" ? "???" : pokemon.name}</strong><small>${label}</small></article>`;
   }).join("");
   document.querySelector("#pokedex-grid").innerHTML = html;
@@ -168,16 +176,27 @@ export function render(state) {
 
   let progress = percent(state.exploration, state.nextEncounterAt);
   if (state.mode === "battle") progress = state.enemy ? percent(state.enemy.maxHp - state.enemy.hp, state.enemy.maxHp) : 0;
+  if (state.mode === "capture") progress = 100;
   if (state.mode === "recovering") progress = percent(5 - state.recoveryCooldown, 5);
   document.querySelector("#progress-value").textContent = `${Math.round(progress)}%`;
   document.querySelector("#journey-bar").style.width = `${progress}%`;
 
   const walker = document.querySelector("#walker");
   const battleStage = document.querySelector("#battle-stage");
+  const capturePanel = document.querySelector("#capture-panel");
   if (state.mode === "battle") {
+    capturePanel.hidden = true;
     walker.innerHTML = "";
     battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
+  } else if (state.mode === "capture") {
+    walker.innerHTML = "";
+    battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
+    capturePanel.hidden = false;
+    document.querySelector("#capture-title").textContent = `${state.enemy.name} foi derrotado!`;
+    document.querySelector("#try-capture").textContent = `Tentar capturar — ${state.captureOffer.chance}% de chance`;
+    document.querySelector("#shiny-label").hidden = !state.enemy.isShiny;
   } else {
+    capturePanel.hidden = true;
     battleStage.innerHTML = "";
     walker.innerHTML = `<img src="${player.sprite}" alt="${player.name} caminhando" /><span class="shadow"></span>`;
   }
@@ -190,12 +209,12 @@ export function render(state) {
   document.querySelector("#hp-bar").className = healthClass(player.hp, player.maxHp);
   document.querySelector("#xp-copy").textContent = `${player.xp} / ${player.xpToNext}`;
   document.querySelector("#xp-bar").style.width = `${percent(player.xp, player.xpToNext)}%`;
-  document.querySelector("#team-mini").innerHTML = state.team.map((pokemon, index) => `<span class="mini-member ${index === state.activeTeamIndex ? "active" : ""} ${pokemon.hp <= 0 ? "fainted" : ""}"><img src="${pokemon.sprite}" alt="${pokemon.name}" /><i></i></span>`).join("");
+  document.querySelector("#team-mini").innerHTML = state.team.map((pokemon, index) => `<span class="mini-member ${index === state.activeTeamIndex ? "active" : ""} ${pokemon.hp <= 0 ? "fainted" : ""} ${pokemon.isShiny ? "shiny" : ""}"><img src="${pokemon.sprite}" alt="${pokemon.name}" /><i></i></span>`).join("");
   document.querySelector("#steps-stat").textContent = state.totalSteps.toLocaleString("pt-BR");
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
-  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.0";
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.1";
   renderPokedex(state);
   renderTeam(state);
 }
