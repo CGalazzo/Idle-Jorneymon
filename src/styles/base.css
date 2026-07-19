@@ -17,7 +17,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body, #app { min-height: 100%; }
-body { margin: 0; background: radial-gradient(circle at 50% -20%, #15365b 0, #0b1a2d 40%, #071120 82%); }
+body { min-height: 100vh; margin: 0; isolation: isolate; background: #071120; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(rgba(3,13,23,.22), rgba(3,13,23,.34)), url("/assets/idlemon-jorney-background.webp") center / cover no-repeat; }
 body.welcome-open { overflow: hidden; }
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
