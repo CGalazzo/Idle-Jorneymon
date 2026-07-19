@@ -1,5 +1,6 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
 import { grantExperience } from "./progression.js";
+import { attemptAutomaticCapture } from "./capture.js";
 
 function damage(attacker, defender, random = Math.random) {
   const variance = 0.85 + random() * 0.3;
@@ -12,6 +13,7 @@ function finishBattle(state, victory) {
     state.area.victories += 1;
     addLog(state, `${defeated.name} foi derrotado!`);
     grantExperience(state, defeated.xpReward);
+    attemptAutomaticCapture(state, defeated);
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + Math.ceil(state.player.maxHp * 0.2));
     state.mode = "exploring";
     state.enemy = null;
