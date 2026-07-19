@@ -143,14 +143,16 @@ export function createAppMarkup() {
     </dialog>`;
 }
 
-function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull = false) {
+function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull = false, activeIndex = 0) {
   const hpPercent = percent(pokemon.hp, pokemon.maxHp);
-  return `<article class="team-card">
+  const isActive = !inStorage && index === activeIndex;
+  const positionButtons = Array.from({ length: teamLength }, (_, position) => `<button class="position-button ${position === index ? "selected" : ""}" data-team-position="${pokemon.uid}" data-position="${position}" ${position === index ? "disabled" : ""}>${position + 1}</button>`).join("");
+  return `<article class="team-card ${isActive ? "active-member" : ""}">
     <img src="${pokemon.sprite}" alt="${pokemon.name}" />
-    <div class="team-card-info"><strong>${pokemon.isShiny ? "✨ " : ""}${pokemon.name}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
+    <div class="team-card-info"><strong>${pokemon.isShiny ? "✨ " : ""}${pokemon.name}${isActive ? " · ATIVO" : ""}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
     <div class="team-card-actions">${inStorage
       ? `<button data-add-team="${pokemon.uid}" ${teamFull ? "disabled" : ""}>Adicionar</button>`
-      : `<button data-team-up="${pokemon.uid}" ${index === 0 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para cima">↑</button><button data-team-down="${pokemon.uid}" ${index === teamLength - 1 ? "disabled" : ""} aria-label="Mover ${pokemon.name} para baixo">↓</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>`}
+      : `<span class="position-picker"><small>Posição</small>${positionButtons}</span><button class="activate-button ${isActive ? "selected" : ""}" data-set-active="${pokemon.uid}" ${isActive || pokemon.hp <= 0 ? "disabled" : ""}>${isActive ? "Ativo" : "Ativar"}</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>`}
     </div>
   </article>`;
 }
@@ -158,7 +160,7 @@ function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull
 export function renderTeam(state) {
   document.querySelector("#team-count").textContent = `${state.team.length}/${MAX_TEAM_SIZE}`;
   document.querySelector("#storage-count").textContent = state.storage.length;
-  document.querySelector("#team-list").innerHTML = state.team.map((pokemon, index) => teamPokemonCard(pokemon, index, state.team.length)).join("");
+  document.querySelector("#team-list").innerHTML = state.team.map((pokemon, index) => teamPokemonCard(pokemon, index, state.team.length, false, false, state.activeTeamIndex)).join("");
   document.querySelector("#storage-list").innerHTML = state.storage.length
     ? state.storage.map((pokemon, index) => teamPokemonCard(pokemon, index, state.storage.length, true, state.team.length >= MAX_TEAM_SIZE)).join("")
     : `<div class="empty-storage">O depósito está vazio. Capturas excedentes aparecerão aqui.</div>`;
