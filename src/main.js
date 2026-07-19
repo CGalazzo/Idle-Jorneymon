@@ -4,6 +4,7 @@ import { createAppMarkup, render } from "./ui/render.js";
 import { updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
+import { addToTeam, moveTeamMember, sendToStorage } from "./systems/team.js";
 
 const app = document.querySelector("#app");
 app.innerHTML = createAppMarkup();
@@ -82,6 +83,33 @@ document.querySelector("#pokedex-button").addEventListener("click", () => {
 
 document.querySelector("#close-pokedex").addEventListener("click", () => {
   document.querySelector("#pokedex-dialog").close();
+});
+
+document.querySelector("#team-button").addEventListener("click", () => {
+  document.querySelector("#team-dialog").showModal();
+});
+
+document.querySelector("#close-team").addEventListener("click", () => {
+  document.querySelector("#team-dialog").close();
+});
+
+document.querySelector("#team-dialog").addEventListener("click", (event) => {
+  if (event.target.id === "team-dialog") {
+    event.target.close();
+    return;
+  }
+
+  const actionButton = event.target.closest("button");
+  if (!actionButton || actionButton.disabled) return;
+  let changed = false;
+  if (actionButton.dataset.teamUp) changed = moveTeamMember(state, actionButton.dataset.teamUp, -1);
+  if (actionButton.dataset.teamDown) changed = moveTeamMember(state, actionButton.dataset.teamDown, 1);
+  if (actionButton.dataset.sendStorage) changed = sendToStorage(state, actionButton.dataset.sendStorage);
+  if (actionButton.dataset.addTeam) changed = addToTeam(state, actionButton.dataset.addTeam);
+  if (changed) {
+    saveGame(state);
+    render(state);
+  }
 });
 
 document.querySelector("#pokedex-dialog").addEventListener("click", (event) => {
