@@ -11,7 +11,7 @@ export function moveTeamMember(state, uid, direction) {
 }
 
 export function setTeamPosition(state, uid, targetIndex) {
-  if (state.mode === "battle" || state.mode === "approach") return false;
+  if (state.mode === "battle") return false;
   const currentIndex = state.team.findIndex((pokemon) => pokemon.uid === uid);
   const safeTarget = Math.max(0, Math.min(Number(targetIndex), state.team.length - 1));
   if (currentIndex < 0 || currentIndex === safeTarget) return false;
@@ -23,10 +23,11 @@ export function setTeamPosition(state, uid, targetIndex) {
 }
 
 export function setActivePokemon(state, uid) {
-  if (state.mode === "battle" || state.mode === "approach") return false;
+  if (state.mode === "battle") return false;
   const index = state.team.findIndex((pokemon) => pokemon.uid === uid);
   if (index < 0 || state.team[index].hp <= 0 || index === state.activeTeamIndex) return false;
   state.activeTeamIndex = index;
+  if (state.mode === "approach") state.battleParticipants = [state.team[index].uid];
   return true;
 }
 
@@ -38,6 +39,7 @@ export function sendToStorage(state, uid) {
   state.storage.push(state.team.splice(index, 1)[0]);
   const preservedIndex = state.team.findIndex((pokemon) => pokemon.uid === activeUid);
   state.activeTeamIndex = preservedIndex >= 0 ? preservedIndex : 0;
+  if (state.mode === "approach") state.battleParticipants = [state.team[state.activeTeamIndex].uid];
   return true;
 }
 
