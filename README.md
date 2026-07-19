@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.2.0` — início de jornada, escolha entre Bulbasaur, Charmander e Squirtle, captura automática e Pokédex básica, além dos sistemas da versão anterior.
+`v0.3.0` — equipe de até 3 Pokémon, depósito, organização manual, substituição automática em batalha e XP individual/compartilhada, além dos sistemas das versões anteriores.
