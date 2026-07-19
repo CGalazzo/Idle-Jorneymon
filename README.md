@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.3.2` — caminhada contínua virada para a direita e aproximação visual do Pokémon selvagem antes do início da batalha, além dos sistemas das versões anteriores.
+`v0.3.3` — nova tela inicial ilustrada com toque para começar, seleção direta do primeiro parceiro e opção para continuar uma jornada salva.
