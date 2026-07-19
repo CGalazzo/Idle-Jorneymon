@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.3.3` — nova tela inicial ilustrada com toque para começar, seleção direta do primeiro parceiro e opção para continuar uma jornada salva.
+`v0.3.4` — novo cenário ilustrado como fundo fixo e responsivo de toda a interface da jornada.
