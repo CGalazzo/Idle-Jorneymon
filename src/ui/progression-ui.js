@@ -9,7 +9,8 @@ function createWorldTrack() {
 }
 
 export function enhanceProgressionMarkup() {
-  const heading = document.querySelector(".journey-heading > div");
+  const headingSection = document.querySelector(".journey-heading");
+  const heading = headingSection?.querySelector(":scope > div");
   const headingLabel = heading?.querySelector("small");
   if (headingLabel) headingLabel.id = "environment-label";
 
@@ -22,17 +23,22 @@ export function enhanceProgressionMarkup() {
       </div>`);
   }
 
-  const scene = document.querySelector("#scene");
-  if (scene && !document.querySelector("#route-hud")) {
-    scene.insertAdjacentHTML("afterbegin", `
-      <aside id="route-hud" class="route-hud">
+  const modeBadge = document.querySelector("#mode-badge");
+  if (headingSection && modeBadge && !document.querySelector("#route-hud")) {
+    modeBadge.insertAdjacentHTML("beforebegin", `
+      <aside id="route-hud" class="route-hud route-hud-inline">
         <div class="route-hud-copy">
           <small id="route-hud-label">PROGRESSO DA ROTA</small>
           <strong id="route-hud-boss"></strong>
         </div>
         <div class="bar route-progress"><i id="route-progress-bar"></i></div>
         <div id="world-track" class="world-track">${createWorldTrack()}</div>
-      </aside>
+      </aside>`);
+  }
+
+  const scene = document.querySelector("#scene");
+  if (scene && !document.querySelector("#journey-complete-panel")) {
+    scene.insertAdjacentHTML("afterbegin", `
       <div id="journey-complete-panel" class="journey-complete-panel" hidden>
         <span>🏆</span>
         <strong>JORNADA CONCLUÍDA!</strong>
@@ -68,8 +74,13 @@ export function renderProgression(state) {
   const bossLabel = route.bossType === "final" ? "BOSS FINAL" : "MINI BOSS";
 
   if (scene) {
-    [...scene.classList].filter((className) => className.startsWith("env-")).forEach((className) => scene.classList.remove(className));
-    scene.classList.add(route.environment.theme);
+    const theme = route.environment.theme;
+    if (scene.dataset.environmentTheme !== theme) {
+      const previousTheme = scene.dataset.environmentTheme;
+      if (previousTheme) scene.classList.remove(previousTheme);
+      scene.classList.add(theme);
+      scene.dataset.environmentTheme = theme;
+    }
 
     const environmentId = route.environment.id;
     const background = SCENE_BACKGROUNDS[environmentId];
@@ -112,5 +123,5 @@ export function renderProgression(state) {
   if (state.journey?.complete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA";
 
   const footerVersion = document.querySelector("footer span:last-child");
-  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.5.1";
+  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.6.0";
 }
