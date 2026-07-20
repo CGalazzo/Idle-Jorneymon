@@ -21,6 +21,15 @@ function uniqueSpecies(list) {
   return [...new Map(list.map((pokemon) => [pokemon.id, pokemon])).values()];
 }
 
+function finalizeRoutes(routes) {
+  return routes.map((route, routeIndex) => ({
+    ...route,
+    encounters: uniqueSpecies(route.encounters).filter((pokemon) => pokemon.id !== route.boss.id),
+    routeNumber: routeIndex + 1,
+    requiredVictories: ROUTE_TARGETS[routeIndex]
+  }));
+}
+
 function buildRoutes(lines, finalBoss = null) {
   const bases = lines.map(([base]) => base);
   const routes = [];
@@ -46,15 +55,18 @@ function buildRoutes(lines, finalBoss = null) {
   if (finalBoss) routes[routes.length - 1].boss = finalBoss;
   routes[routes.length - 1].bossType = "final";
 
-  return routes.map((route, routeIndex) => ({
-    ...route,
-    routeNumber: routeIndex + 1,
-    requiredVictories: ROUTE_TARGETS[routeIndex]
-  }));
+  return routes;
 }
 
-function world(id, name, theme, lines, finalBoss = null) {
-  const routes = buildRoutes(lines, finalBoss);
+function replaceEncounter(route, replacedId, replacement) {
+  route.encounters = route.encounters.map((pokemon) => (pokemon.id === replacedId ? replacement : pokemon));
+}
+
+function addEncounters(route, ...pokemon) {
+  route.encounters = uniqueSpecies([...route.encounters, ...pokemon]);
+}
+
+function customizeRoutes(id, routes, lines) {
   if (id === "bosque") {
     routes[0].boss = lines[2][1];
     routes[2].boss = lines[3][1];
@@ -62,11 +74,61 @@ function world(id, name, theme, lines, finalBoss = null) {
     routes[7].boss = species(71, "Victreebel", "Planta/Veneno", 3);
   }
 
+  if (id === "caverna") {
+    [routes[7], routes[8]] = [routes[8], routes[7]];
+    replaceEncounter(routes[9], 41, species(169, "Crobat", "Veneno/Voador", 3));
+  }
+
+  if (id === "praia") {
+    replaceEncounter(routes[1], 62, species(258, "Mudkip", "Água"));
+    replaceEncounter(routes[9], 9, species(259, "Marshtomp", "Água/Terra", 2));
+  }
+
+  if (id === "montanhas") {
+    replaceEncounter(routes[1], 464, species(247, "Pupitar", "Pedra/Terra", 2));
+  }
+
+  if (id === "caverna-gelo") {
+    const vaporeon = species(134, "Vaporeon", "Água", 3);
+    const jynx = species(124, "Jynx", "Gelo/Psíquico", 3);
+    const lapras = species(131, "Lapras", "Água/Gelo", 3, "epic");
+
+    addEncounters(routes[2], vaporeon, jynx);
+    routes[2].boss = lapras;
+    addEncounters(routes[4], vaporeon);
+    addEncounters(routes[6], jynx);
+    addEncounters(routes[8], vaporeon, jynx);
+  }
+
+  if (id === "torre-fantasma") {
+    routes[6].boss = species(778, "Mimikyu", "Fantasma/Fada", 3, "epic");
+  }
+
+  if (id === "vulcao") {
+    routes[1].boss = species(136, "Flareon", "Fogo", 3, "rare");
+    addEncounters(routes[2], species(58, "Growlithe", "Fogo"));
+    routes[2].boss = species(59, "Arcanine", "Fogo", 2, "rare");
+  }
+}
+
+function world(id, name, theme, lines, finalBoss = null) {
+  const routes = buildRoutes(lines, finalBoss);
+  customizeRoutes(id, routes, lines);
+
   return {
     id,
     name,
     theme,
-    routes
+    routes: finalizeRoutes(routes)
+  };
+}
+
+function customWorld(id, name, theme, routes) {
+  return {
+    id,
+    name,
+    theme,
+    routes: finalizeRoutes(routes)
   };
 }
 
@@ -132,7 +194,7 @@ const vulcaoLines = [
   line(species(218, "Slugma", "Fogo"), species(219, "Magcargo", "Fogo/Pedra", 2), species(219, "Magcargo", "Fogo/Pedra", 3)),
   line(species(322, "Numel", "Fogo/Terra"), species(323, "Camerupt", "Fogo/Terra", 2), species(323, "Camerupt", "Fogo/Terra", 3)),
   line(species(240, "Magby", "Fogo"), species(126, "Magmar", "Fogo", 2), species(467, "Magmortar", "Fogo", 3, "epic")),
-  line(species(390, "Chimchar", "Fogo"), species(391, "Monferno", "Fogo/Lutador", 2), species(392, "Infernape", "Fogo/Lutador", 3, "epic")),
+  line(species(255, "Torchic", "Fogo"), species(256, "Combusken", "Fogo/Lutador", 2), species(257, "Blaziken", "Fogo/Lutador", 3, "epic")),
   line(species(4, "Charmander", "Fogo"), species(5, "Charmeleon", "Fogo", 2), species(6, "Charizard", "Fogo/Voador", 3, "epic"))
 ];
 
@@ -145,12 +207,64 @@ const planaltoLines = [
 ];
 
 const eliteFinal = species(150, "Mewtwo", "Psíquico", 3, "legendary");
-const eliteLines = [
-  line(species(74, "Geodude", "Pedra/Terra"), species(75, "Graveler", "Pedra/Terra", 2), species(76, "Golem", "Pedra/Terra", 3)),
-  line(species(60, "Poliwag", "Água"), species(61, "Poliwhirl", "Água", 2), species(62, "Poliwrath", "Água/Lutador", 3)),
-  line(species(63, "Abra", "Psíquico"), species(64, "Kadabra", "Psíquico", 2), species(65, "Alakazam", "Psíquico", 3, "epic")),
-  line(species(111, "Rhyhorn", "Terra/Pedra"), species(112, "Rhydon", "Terra/Pedra", 2), species(464, "Rhyperior", "Terra/Pedra", 3, "epic")),
-  line(species(374, "Beldum", "Aço/Psíquico"), species(375, "Metang", "Aço/Psíquico", 2), species(376, "Metagross", "Aço/Psíquico", 3, "epic"))
+const eliteRoutes = [
+  {
+    encounters: [species(91, "Cloyster", "Água/Gelo", 3), species(80, "Slowbro", "Água/Psíquico", 3), species(124, "Jynx", "Gelo/Psíquico", 3)],
+    boss: species(87, "Dewgong", "Água/Gelo", 3),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(87, "Dewgong", "Água/Gelo", 3), species(91, "Cloyster", "Água/Gelo", 3), species(80, "Slowbro", "Água/Psíquico", 3), species(124, "Jynx", "Gelo/Psíquico", 3)],
+    boss: species(131, "Lapras", "Água/Gelo", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(95, "Onix", "Pedra/Terra", 3), species(107, "Hitmonchan", "Lutador", 3), species(106, "Hitmonlee", "Lutador", 3)],
+    boss: species(68, "Machamp", "Lutador", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(24, "Arbok", "Veneno", 3), species(42, "Golbat", "Veneno/Voador", 2), species(93, "Haunter", "Fantasma/Veneno", 2)],
+    boss: species(94, "Gengar", "Fantasma/Veneno", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(130, "Gyarados", "Água/Voador", 3), species(148, "Dragonair", "Dragão", 2), species(142, "Aerodactyl", "Pedra/Voador", 3)],
+    boss: species(149, "Dragonite", "Dragão/Voador", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(178, "Xatu", "Psíquico/Voador", 3), species(124, "Jynx", "Gelo/Psíquico", 3), species(103, "Exeggutor", "Planta/Psíquico", 3)],
+    boss: species(80, "Slowbro", "Água/Psíquico", 3),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(168, "Ariados", "Inseto/Veneno", 3), species(205, "Forretress", "Inseto/Aço", 3), species(89, "Muk", "Veneno", 3), species(49, "Venomoth", "Inseto/Veneno", 3)],
+    boss: species(169, "Crobat", "Veneno/Voador", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(237, "Hitmontop", "Lutador", 3), species(106, "Hitmonlee", "Lutador", 3), species(107, "Hitmonchan", "Lutador", 3), species(95, "Onix", "Pedra/Terra", 3)],
+    boss: species(68, "Machamp", "Lutador", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [species(197, "Umbreon", "Sombrio", 3), species(45, "Vileplume", "Planta/Veneno", 3), species(198, "Murkrow", "Sombrio/Voador", 3), species(94, "Gengar", "Fantasma/Veneno", 3)],
+    boss: species(229, "Houndoom", "Sombrio/Fogo", 3, "epic"),
+    bossType: "mini"
+  },
+  {
+    encounters: [
+      species(131, "Lapras", "Água/Gelo", 3, "epic"),
+      species(149, "Dragonite", "Dragão/Voador", 3, "epic"),
+      species(178, "Xatu", "Psíquico/Voador", 3),
+      species(169, "Crobat", "Veneno/Voador", 3, "epic"),
+      species(229, "Houndoom", "Sombrio/Fogo", 3, "epic"),
+      species(68, "Machamp", "Lutador", 3, "epic")
+    ],
+    boss: eliteFinal,
+    bossType: "final"
+  }
 ];
 
 export const ENVIRONMENTS = [
@@ -163,7 +277,7 @@ export const ENVIRONMENTS = [
   world("torre-fantasma", "Torre Fantasma", "env-fantasma", fantasmaLines, fantasmaFinal),
   world("vulcao", "Vulcão", "env-vulcao", vulcaoLines),
   world("planalto-indigo", "Planalto Índigo", "env-planalto", planaltoLines),
-  world("elite-4", "Ginásios da Elite 4", "env-elite", eliteLines, eliteFinal)
+  customWorld("elite-4", "Ginásios da Elite 4", "env-elite", eliteRoutes)
 ];
 
 export const TOTAL_ROUTES = ENVIRONMENTS.reduce((total, environment) => total + environment.routes.length, 0);
