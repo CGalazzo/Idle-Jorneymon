@@ -81,9 +81,6 @@ function finishVictory(state, now = Date.now()) {
   }
 
   grantTeamExperience(state, defeated.xpReward);
-  state.team.forEach((pokemon) => {
-    if (pokemon.hp > 0) pokemon.hp = Math.min(pokemon.maxHp, pokemon.hp + Math.ceil(pokemon.maxHp * 0.2));
-  });
   state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
   state.mode = "capture";
   state.captureOffer = {
