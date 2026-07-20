@@ -23,6 +23,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     area: createAreaState(0, 0),
     totals: { encounters: 0, victories: 0 },
     pendingRouteAdvance: false,
+    pendingEvolutionChoices: [],
     team: [starter],
     storage: [],
     activeTeamIndex: 0,
