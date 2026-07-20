@@ -137,9 +137,29 @@ function evolutionContext(environmentId) {
   };
 }
 
+function restoreHardEncounterStats(original, normalized) {
+  if (!original?.hardModeEncounter) return normalized;
+  const multiplier = Math.max(1, Number(original.hardStatMultiplier) || 1);
+  if (multiplier <= 1) return normalized;
+
+  const previousMaxHp = Math.max(1, Number(original.maxHp) || 1);
+  const previousHp = Math.max(0, Math.min(previousMaxHp, Number(original.hp) || 0));
+  const hpRatio = previousHp / previousMaxHp;
+  ["maxHp", "attack", "defense", "specialAttack", "specialDefense", "speed"].forEach((key) => {
+    normalized[key] = Math.max(1, Math.round((Number(normalized[key]) || 1) * multiplier));
+  });
+  normalized.hp = Math.max(0, Math.min(normalized.maxHp, Math.round(normalized.maxHp * hpRatio)));
+  normalized.hardModeEncounter = true;
+  normalized.hardStatMultiplier = multiplier;
+  return normalized;
+}
+
 function normalizePokemon(pokemon, refreshExperienceCurve = false, applyPendingEvolutions = true, environmentId = "bosque") {
   const restored = restorePersistedMegaPokemon(pokemon);
-  const normalized = normalizePokemonInstance(restored, { refreshExperienceCurve });
+  const normalized = restoreHardEncounterStats(
+    restored,
+    normalizePokemonInstance(restored, { refreshExperienceCurve })
+  );
   if (applyPendingEvolutions) {
     const context = evolutionContext(environmentId);
     while (evolvePokemonIfReady(normalized, context)) {
@@ -254,6 +274,20 @@ function rebaseCaptureOffer(saved = {}) {
   };
 }
 
+function resolveSavedMode(saved, journey) {
+  const encounterModes = ["approach", "battle", "capture"];
+  const validEncounterMode = encounterModes.includes(saved.mode) && saved.enemy;
+  const allowedModes = ["exploring", "recovering"];
+  if (journey.complete) return { mode: "exploring", validEncounterMode: false };
+  if (encounterModes.includes(saved.mode)) {
+    return { mode: validEncounterMode ? saved.mode : "exploring", validEncounterMode };
+  }
+  return {
+    mode: allowedModes.includes(saved.mode) ? saved.mode : "exploring",
+    validEncounterMode: false
+  };
+}
+
 function migrateSave(saved) {
   const legacyPlayer = saved.player || saved.team?.[0];
   const starterId = legacyPlayer?.id || 4;
@@ -263,6 +297,7 @@ function migrateSave(saved) {
   const journey = normalizeJourney(saved.journey, environmentId, legacyLayout);
   const currentEnvironmentId = ENVIRONMENTS[journey.worldIndex]?.id || "bosque";
   const area = normalizeArea(saved.area, journey);
+  const { mode, validEncounterMode } = resolveSavedMode(saved, journey);
   const migratedTeam = Array.isArray(saved.team) && saved.team.length
     ? saved.team.map((pokemon) => normalizePokemon(pokemon, true, true, currentEnvironmentId))
     : [normalizePokemon({ ...base.team[0], ...legacyPlayer }, true, true, currentEnvironmentId)];
@@ -280,7 +315,7 @@ function migrateSave(saved) {
     saveVersion: SAVE_VERSION,
     gameVersion: GAME_VERSION,
     hasStarted: true,
-    mode: "exploring",
+    mode,
     campaignMode: "normal",
     campaigns: null,
     hardModeUnlocked: Boolean(saved.hardModeUnlocked || journey.complete),
@@ -292,19 +327,23 @@ function migrateSave(saved) {
       encounters: Math.max(0, Number(saved.totals?.encounters) || Number(saved.area?.encounters) || 0),
       victories: Math.max(0, Number(saved.totals?.victories) || Number(saved.area?.victories) || 0)
     },
-    pendingRouteAdvance: false,
+    pendingRouteAdvance: Boolean(saved.pendingRouteAdvance),
     pendingEvolutionChoices: legacyLayout ? [] : (Array.isArray(saved.pendingEvolutionChoices) ? saved.pendingEvolutionChoices : []),
     shop,
     team: migratedTeam,
     storage: migratedStorage,
     activeTeamIndex: Math.min(saved.activeTeamIndex || 0, migratedTeam.length - 1),
-    battleParticipants: [],
-    captureOffer: null,
-    approachProgress: 0,
+    battleParticipants: Array.isArray(saved.battleParticipants) ? saved.battleParticipants : [],
+    captureOffer: mode === "capture" ? rebaseCaptureOffer(saved) : null,
+    approachProgress: Math.max(0, Number(saved.approachProgress) || 0),
     pokedex,
     collection,
-    enemy: null,
-    exploration: 0
+    enemy: validEncounterMode ? normalizePokemon(saved.enemy, false, false, currentEnvironmentId) : null,
+    exploration: Math.max(0, Number(saved.exploration) || 0),
+    nextEncounterAt: Math.max(1, Number(saved.nextEncounterAt) || base.nextEncounterAt),
+    battleCooldown: Math.max(0, Number(saved.battleCooldown) || 0),
+    recoveryCooldown: Math.max(0, Number(saved.recoveryCooldown) || 0),
+    megaEvolutionCooldown: Math.max(0, Number(saved.megaEvolutionCooldown) || 0)
   };
   return ensureCampaignState(migrated);
 }
@@ -326,14 +365,7 @@ export function loadGame() {
     const journey = normalizeJourney(saved.journey, environmentId, false);
     const currentEnvironmentId = ENVIRONMENTS[journey.worldIndex]?.id || "bosque";
     const area = normalizeArea(saved.area, journey);
-    const encounterModes = ["approach", "battle", "capture"];
-    const validEncounterMode = encounterModes.includes(saved.mode) && saved.enemy;
-    const allowedModes = ["exploring", "recovering"];
-    const mode = journey.complete
-      ? "exploring"
-      : encounterModes.includes(saved.mode)
-        ? (validEncounterMode ? saved.mode : "exploring")
-        : (allowedModes.includes(saved.mode) ? saved.mode : "exploring");
+    const { mode, validEncounterMode } = resolveSavedMode(saved, journey);
     const team = saved.team.map((pokemon) => normalizePokemon(pokemon, false, true, currentEnvironmentId));
     const storage = (saved.storage || []).map((pokemon) => normalizePokemon(pokemon, false, true, currentEnvironmentId));
     const pokedex = { ...(saved.pokedex || base.pokedex) };
@@ -361,7 +393,7 @@ export function loadGame() {
       storage,
       activeTeamIndex: Math.min(saved.activeTeamIndex || 0, team.length - 1),
       battleParticipants: saved.battleParticipants || [],
-      captureOffer: rebaseCaptureOffer(saved),
+      captureOffer: mode === "capture" ? rebaseCaptureOffer(saved) : null,
       pokedex,
       collection,
       approachProgress: saved.approachProgress || 0,
