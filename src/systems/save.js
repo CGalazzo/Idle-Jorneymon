@@ -1,6 +1,9 @@
 import { evolvePokemonIfReady, normalizePokemonInstance } from "../data/pokemon.js";
+import { normalizeShopState } from "../data/shop-data.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
+import { getMegaStone } from "../data/mega-data.js";
+import { restorePersistedMegaPokemon } from "./mega.js";
 import { updateApproach, updateExploration } from "./exploration.js";
 import { updateBattle, updateRecovery } from "./battle.js";
 import { updateCaptureDecision } from "./capture.js";
@@ -133,7 +136,8 @@ function evolutionContext(environmentId) {
 }
 
 function normalizePokemon(pokemon, refreshExperienceCurve = false, applyPendingEvolutions = true, environmentId = "bosque") {
-  const normalized = normalizePokemonInstance(pokemon, { refreshExperienceCurve });
+  const restored = restorePersistedMegaPokemon(pokemon);
+  const normalized = normalizePokemonInstance(restored, { refreshExperienceCurve });
   if (applyPendingEvolutions) {
     const context = evolutionContext(environmentId);
     while (evolvePokemonIfReady(normalized, context)) {
@@ -216,6 +220,21 @@ function registerRosterEntries(pokedex, collection, roster) {
   });
 }
 
+function normalizeMegaEquipment(shop, team) {
+  const stone = getMegaStone(shop.equippedMegaStoneId);
+  const pokemon = team.find((member) => member.uid === shop.equippedMegaPokemonUid);
+  const valid = stone
+    && pokemon
+    && shop.ownedMegaStones.includes(stone.id)
+    && Number(pokemon.id) === stone.baseSpeciesId;
+
+  if (!valid) {
+    shop.equippedMegaStoneId = null;
+    shop.equippedMegaPokemonUid = null;
+  }
+  return shop;
+}
+
 function rebaseCaptureOffer(saved = {}) {
   if (saved.mode !== "capture" || !saved.captureOffer) return null;
 
@@ -238,7 +257,8 @@ function migrateSave(saved) {
   const starterId = legacyPlayer?.id || 4;
   const base = createInitialState(starterId, true);
   const environmentId = resolveEnvironmentId(saved);
-  const journey = normalizeJourney(saved.journey, environmentId, true);
+  const legacyLayout = (Number(saved.saveVersion) || 0) < 8;
+  const journey = normalizeJourney(saved.journey, environmentId, legacyLayout);
   const currentEnvironmentId = ENVIRONMENTS[journey.worldIndex]?.id || "bosque";
   const area = normalizeArea(saved.area, journey);
   const migratedTeam = Array.isArray(saved.team) && saved.team.length
@@ -249,6 +269,7 @@ function migrateSave(saved) {
     : [];
   const pokedex = { ...(saved.pokedex || { [starterId]: { seen: 1, caught: 1 } }) };
   const collection = { ...(saved.collection || { [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() } }) };
+  const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), migratedTeam);
   registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);
 
   return {
@@ -265,7 +286,8 @@ function migrateSave(saved) {
       victories: Math.max(0, Number(saved.totals?.victories) || Number(saved.area?.victories) || 0)
     },
     pendingRouteAdvance: false,
-    pendingEvolutionChoices: [],
+    pendingEvolutionChoices: legacyLayout ? [] : (Array.isArray(saved.pendingEvolutionChoices) ? saved.pendingEvolutionChoices : []),
+    shop,
     team: migratedTeam,
     storage: migratedStorage,
     activeTeamIndex: Math.min(saved.activeTeamIndex || 0, migratedTeam.length - 1),
@@ -308,6 +330,7 @@ export function loadGame() {
     const storage = (saved.storage || []).map((pokemon) => normalizePokemon(pokemon, false, true, currentEnvironmentId));
     const pokedex = { ...(saved.pokedex || base.pokedex) };
     const collection = { ...(saved.collection || base.collection) };
+    const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), team);
     registerRosterEntries(pokedex, collection, [...team, ...storage]);
 
     return activateState({
@@ -325,6 +348,7 @@ export function loadGame() {
       },
       pendingRouteAdvance: Boolean(saved.pendingRouteAdvance),
       pendingEvolutionChoices: Array.isArray(saved.pendingEvolutionChoices) ? saved.pendingEvolutionChoices : [],
+      shop,
       team,
       storage,
       activeTeamIndex: Math.min(saved.activeTeamIndex || 0, team.length - 1),
