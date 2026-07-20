@@ -1,8 +1,13 @@
+import { getMegaStonesForSpecies } from "../data/mega-data.js";
 import { POKEDEX_SPECIES, STARTERS } from "../data/pokemon.js";
 import { getExplorationSpriteUrl } from "../data/exploration-sprites.js";
 import { getExplorationSpriteSize } from "../data/pokemon-metrics.js";
 import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
-import { CAPTURE_DECISION_MS } from "../systems/capture.js";
+import {
+  CAPTURE_DECISION_MS,
+  getCaptureBallOptions,
+  getCaptureChance
+} from "../systems/capture.js";
 
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
@@ -148,7 +153,12 @@ function updateBattleCard(card, pokemon) {
   hpBar.style.width = `${percent(pokemon.hp, pokemon.maxHp)}%`;
   hpBar.className = healthClass(pokemon.hp, pokemon.maxHp);
   card.querySelector(".pokemon-info small").textContent = `${pokemon.hp} / ${pokemon.maxHp} HP`;
+  card.querySelector(".name-line strong").textContent = pokemon.name;
   card.querySelector(".name-line span").textContent = `NV. ${pokemon.level}`;
+  const sprite = card.querySelector(".pokemon-sprite");
+  const expectedSprite = card.classList.contains("enemy-card") ? pokemon.sprite : pokemon.backSprite;
+  if (sprite.src !== expectedSprite) sprite.src = expectedSprite;
+  sprite.alt = pokemon.name;
 }
 
 function updateSceneMode(scene, mode) {
@@ -165,6 +175,25 @@ function updateCaptureTimer(state) {
   const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   document.querySelector("#capture-time-copy").textContent = `Não capturar automaticamente em ${remainingSeconds}s`;
   document.querySelector("#capture-time-bar").style.width = `${Math.min(100, (remainingMs / CAPTURE_DECISION_MS) * 100)}%`;
+}
+
+function renderCaptureOptions(state) {
+  const root = document.querySelector("#capture-ball-options");
+  if (!root || !state.enemy) return;
+  const baseChance = getCaptureChance(state.enemy);
+  const ballButtons = getCaptureBallOptions(state, state.enemy).map((ball) => {
+    const disabled = !ball.unlocked || ball.stock <= 0;
+    const status = !ball.unlocked ? "BLOQUEADA" : `x${ball.stock}`;
+    return `<button class="ball-capture" data-capture-ball="${ball.id}" ${disabled ? "disabled" : ""}>
+      ${ball.shortName} — ${ball.chance}%
+      <span>${status}${ball.stock > 0 && ball.unlocked ? ` · +${ball.bonus}%` : ""}</span>
+    </button>`;
+  }).join("");
+
+  root.innerHTML = `
+    <button id="try-capture" class="normal-capture">Captura normal — ${baseChance}%<span>GRÁTIS</span></button>
+    ${ballButtons}
+  `;
 }
 
 export function createAppMarkup() {
@@ -212,9 +241,10 @@ export function createAppMarkup() {
           <div id="capture-panel" class="capture-panel" hidden>
             <span id="shiny-label" class="shiny-label" hidden>✨ SHINY</span>
             <strong id="capture-title"></strong>
-            <p>Deseja tentar adicionar este Pokémon à sua equipe?</p>
+            <p>Escolha como tentar adicionar este Pokémon à sua equipe.</p>
             <div class="capture-time"><span id="capture-time-copy">Não capturar automaticamente em 5s</span><div class="capture-time-track"><i id="capture-time-bar"></i></div></div>
-            <div><button id="try-capture" class="capture-button"></button><button id="decline-capture" class="decline-button">Não capturar</button></div>
+            <div id="capture-ball-options" class="capture-ball-options"></div>
+            <div class="capture-decline-row"><button id="decline-capture" class="decline-button">Não capturar</button></div>
           </div>
         </section>
 
@@ -256,16 +286,31 @@ export function createAppMarkup() {
     </dialog>`;
 }
 
-function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull = false, activeIndex = 0) {
+function megaEquipmentMarkup(state, pokemon, inStorage) {
+  if (inStorage) return "";
+  const owned = new Set(state.shop?.ownedMegaStones || []);
+  const compatible = getMegaStonesForSpecies(pokemon.id).filter((stone) => owned.has(stone.id));
+  if (!compatible.length) return "";
+
+  const equippedStoneId = state.shop?.equippedMegaStoneId;
+  const equippedPokemonUid = state.shop?.equippedMegaPokemonUid;
+  return `<span class="mega-picker"><small>MEGA PEDRA</small>${compatible.map((stone) => {
+    const selected = equippedStoneId === stone.id && equippedPokemonUid === pokemon.uid;
+    return `<button class="mega-equip-button ${selected ? "selected" : ""}" data-equip-mega="${stone.id}" data-mega-pokemon="${pokemon.uid}">${selected ? "EQUIPADA" : stone.name}</button>`;
+  }).join("")}</span>`;
+}
+
+function teamPokemonCard(state, pokemon, index, teamLength, inStorage = false, teamFull = false, activeIndex = 0) {
   const hpPercent = percent(pokemon.hp, pokemon.maxHp);
   const isActive = !inStorage && index === activeIndex;
+  const isMegaEquipped = !inStorage && state.shop?.equippedMegaPokemonUid === pokemon.uid;
   const positionButtons = Array.from({ length: teamLength }, (_, position) => `<button class="position-button ${position === index ? "selected" : ""}" data-team-position="${pokemon.uid}" data-position="${position}" ${position === index ? "disabled" : ""}>${position + 1}</button>`).join("");
   return `<article class="team-card ${isActive ? "active-member" : ""}">
     <img src="${pokemon.sprite}" alt="${pokemon.name}" />
-    <div class="team-card-info"><strong>${pokemon.isShiny ? "✨ " : ""}${pokemon.name}${isActive ? " · ATIVO" : ""}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span></div>
+    <div class="team-card-info"><strong>${pokemon.isShiny ? "✨ " : ""}${pokemon.name}${isActive ? " · ATIVO" : ""}</strong><small>NV. ${pokemon.level} · ${pokemon.type}</small><div class="bar health"><i class="${healthClass(pokemon.hp, pokemon.maxHp)}" style="width:${hpPercent}%"></i></div><span>${pokemon.hp}/${pokemon.maxHp} HP · ${pokemon.xp}/${pokemon.xpToNext} XP</span>${isMegaEquipped ? `<span class="mega-ready-label">◇ MEGA EVOLUÇÃO EQUIPADA</span>` : ""}</div>
     <div class="team-card-actions">${inStorage
       ? `<button data-add-team="${pokemon.uid}" ${teamFull ? "disabled" : ""}>Adicionar</button>`
-      : `<span class="position-picker"><small>Posição</small>${positionButtons}</span><button class="activate-button ${isActive ? "selected" : ""}" data-set-active="${pokemon.uid}" ${isActive || pokemon.hp <= 0 ? "disabled" : ""}>${isActive ? "Ativo" : "Ativar"}</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>`}
+      : `<span class="position-picker"><small>Posição</small>${positionButtons}</span><button class="activate-button ${isActive ? "selected" : ""}" data-set-active="${pokemon.uid}" ${isActive || pokemon.hp <= 0 ? "disabled" : ""}>${isActive ? "Ativo" : "Ativar"}</button><button data-send-storage="${pokemon.uid}" ${teamLength === 1 ? "disabled" : ""}>Depósito</button>${megaEquipmentMarkup(state, pokemon, inStorage)}`}
     </div>
   </article>`;
 }
@@ -273,9 +318,9 @@ function teamPokemonCard(pokemon, index, teamLength, inStorage = false, teamFull
 export function renderTeam(state) {
   document.querySelector("#team-count").textContent = `${state.team.length}/${MAX_TEAM_SIZE}`;
   document.querySelector("#storage-count").textContent = state.storage.length;
-  document.querySelector("#team-list").innerHTML = state.team.map((pokemon, index) => teamPokemonCard(pokemon, index, state.team.length, false, false, state.activeTeamIndex)).join("");
+  document.querySelector("#team-list").innerHTML = state.team.map((pokemon, index) => teamPokemonCard(state, pokemon, index, state.team.length, false, false, state.activeTeamIndex)).join("");
   document.querySelector("#storage-list").innerHTML = state.storage.length
-    ? state.storage.map((pokemon, index) => teamPokemonCard(pokemon, index, state.storage.length, true, state.team.length >= MAX_TEAM_SIZE)).join("")
+    ? state.storage.map((pokemon, index) => teamPokemonCard(state, pokemon, index, state.storage.length, true, state.team.length >= MAX_TEAM_SIZE)).join("")
     : `<div class="empty-storage">O depósito está vazio. Capturas excedentes aparecerão aqui.</div>`;
 }
 
@@ -313,10 +358,12 @@ export function render(state) {
     capturePanel.hidden = true;
     hideExplorationPokemon(walker);
     hideExplorationPokemon(approachingEnemy);
-    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id) || battleStage.dataset.playerUid !== player.uid) {
+    const playerForm = String(player.megaFormId || player.id);
+    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id) || battleStage.dataset.playerUid !== player.uid || battleStage.dataset.playerForm !== playerForm) {
       battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
       battleStage.dataset.enemyId = String(state.enemy.id);
       battleStage.dataset.playerUid = player.uid;
+      battleStage.dataset.playerForm = playerForm;
     }
     updateBattleCard(battleStage.querySelector(".enemy-card"), state.enemy);
     updateBattleCard(battleStage.querySelector(".player-card"), player);
@@ -326,11 +373,12 @@ export function render(state) {
     if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
       battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
       battleStage.dataset.enemyId = String(state.enemy.id);
+      delete battleStage.dataset.playerForm;
     }
     capturePanel.hidden = false;
     document.querySelector("#capture-title").textContent = `${state.enemy.name} foi derrotado!`;
-    document.querySelector("#try-capture").textContent = `Tentar capturar — ${state.captureOffer.chance}% de chance`;
     document.querySelector("#shiny-label").hidden = !state.enemy.isShiny;
+    renderCaptureOptions(state);
     updateCaptureTimer(state);
   } else if (state.mode === "approach") {
     capturePanel.hidden = true;
@@ -338,6 +386,7 @@ export function render(state) {
       battleStage.replaceChildren();
       delete battleStage.dataset.enemyId;
       delete battleStage.dataset.playerUid;
+      delete battleStage.dataset.playerForm;
     }
     updateExplorationPokemon(walker, player, { facingLeft: true });
     updateExplorationPokemon(approachingEnemy, state.enemy);
@@ -348,6 +397,7 @@ export function render(state) {
       battleStage.replaceChildren();
       delete battleStage.dataset.enemyId;
       delete battleStage.dataset.playerUid;
+      delete battleStage.dataset.playerForm;
     }
     updateExplorationPokemon(walker, player, { facingLeft: true });
   }
