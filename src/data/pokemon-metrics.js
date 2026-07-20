@@ -16,6 +16,56 @@ const GLOBAL_EXPLORATION_SCALE = 1.3;
 const EXTRA_SPRITE_PIXELS = 30;
 const STAGE_BONUS_PIXELS = { 1: 0, 2: 12, 3: 24 };
 
+// Tamanhos finais dos Pokémon de primeiro estágio usados no jogo.
+// Mantêm cada espécie abaixo de 100 px, respeitando sua forma e porte visual.
+const FIRST_STAGE_SPRITE_SIZES = {
+  1: 92,    // Bulbasaur
+  4: 89,    // Charmander
+  7: 86,    // Squirtle
+  10: 78,   // Caterpie
+  13: 76,   // Weedle
+  16: 80,   // Pidgey
+  41: 94,   // Zubat
+  43: 84,   // Oddish
+  60: 88,   // Poliwag
+  63: 98,   // Abra
+  66: 96,   // Machop
+  74: 84,   // Geodude
+  92: 98,   // Gastly
+  111: 99,  // Rhyhorn
+  116: 82,  // Horsea
+  147: 89,  // Dratini
+  218: 91,  // Slugma
+  220: 84,  // Swinub
+  240: 92,  // Magby
+  246: 90,  // Larvitar
+  252: 86,  // Treecko
+  258: 84,  // Mudkip
+  265: 78,  // Wurmple
+  270: 86,  // Lotad
+  273: 84,  // Seedot
+  304: 86,  // Aron
+  322: 94,  // Numel
+  328: 92,  // Trapinch
+  353: 89,  // Shuppet
+  355: 95,  // Duskull
+  361: 91,  // Snorunt
+  363: 96,  // Spheal
+  371: 91,  // Bagon
+  374: 90,  // Beldum
+  390: 86,  // Chimchar
+  443: 93,  // Gible
+  524: 84,  // Roggenrola
+  540: 78,  // Sewaddle
+  543: 82,  // Venipede
+  562: 86,  // Yamask
+  582: 82,  // Vanillite
+  607: 78,  // Litwick
+  610: 90,  // Axew
+  613: 86,  // Cubchoo
+  633: 96   // Deino
+};
+
 // Ajustes apenas para compensar a área transparente e o enquadramento de alguns GIFs.
 // O tamanho principal continua vindo da altura oficial de cada espécie.
 const VISUAL_SCALE_OVERRIDES = {
@@ -111,8 +161,12 @@ function getEvolutionStage(pokemon) {
 
 export function getExplorationSpriteSize(pokemon) {
   const speciesId = Number(pokemon?.id);
-  const heightMeters = Math.max(0.1, (Number(pokemon?.heightDm) || getPokemonHeightDm(speciesId)) / 10);
   const stage = getEvolutionStage(pokemon);
+  const firstStageSize = FIRST_STAGE_SPRITE_SIZES[speciesId];
+
+  if (stage === 1 && firstStageSize) return firstStageSize;
+
+  const heightMeters = Math.max(0.1, (Number(pokemon?.heightDm) || getPokemonHeightDm(speciesId)) / 10);
   const heightBase = 36 + Math.sqrt(heightMeters) * 35;
   const giantScale = heightMeters > 2
     ? Math.min(1.38, 1 + (heightMeters - 2) * 0.055)
