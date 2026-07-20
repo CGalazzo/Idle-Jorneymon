@@ -1,6 +1,8 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
 import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
-import { createAreaState } from "../data/worlds.js";
+import { getHardBossTemplate } from "../data/hard-mode-data.js";
+import { POKEDEX_SPECIES } from "../data/pokemon.js";
+import { createAreaState, getRouteDefinition } from "../data/worlds.js";
 import { grantTeamExperience } from "./progression.js";
 import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
 import { grantBattleCoins } from "./shop.js";
@@ -77,6 +79,13 @@ function clearMegaTransformationPause(state) {
   state.megaEvolutionCooldown = 0;
 }
 
+function currentRouteBossName(state) {
+  const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
+  return state.campaignMode === "hard"
+    ? getHardBossTemplate(route, POKEDEX_SPECIES).name
+    : route.boss.name;
+}
+
 function activateHardBossSecondPhase(state, pokemon) {
   if (state.campaignMode !== "hard" || !pokemon?.isBoss || pokemon.bossType !== "final") return false;
   if (pokemon.hardSecondPhase || pokemon.hp <= 0 || pokemon.hp / Math.max(1, pokemon.maxHp) > HARD_SECOND_PHASE_THRESHOLD) return false;
@@ -106,7 +115,9 @@ function finishVictory(state, now = Date.now()) {
     addLog(state, `${defeatedName} foi derrotado!`);
     if (state.area.regularVictories >= state.area.requiredVictories) {
       const bossLabel = state.area.bossType === "final" ? "Boss Final" : "Mini Boss";
-      addLog(state, `${bossLabel} ${state.area.bossName} apareceu no fim da rota!`);
+      const bossName = currentRouteBossName(state);
+      state.area.bossName = bossName;
+      addLog(state, `${bossLabel} ${bossName} apareceu no fim da rota!`);
     }
   }
 
@@ -132,6 +143,7 @@ function restartCurrentRouteAfterDefeat(state) {
   clearMegaTransformationPause(state);
   deactivateAllMegaEvolutions(state);
   state.area = createAreaState(state.journey?.worldIndex, state.journey?.routeIndex);
+  if (state.campaignMode === "hard") state.area.bossName = currentRouteBossName(state);
   state.pendingRouteAdvance = false;
   state.captureOffer = null;
   state.approachProgress = 0;
