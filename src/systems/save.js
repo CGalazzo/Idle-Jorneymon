@@ -1,4 +1,4 @@
-import { normalizePokemonInstance } from "../data/pokemon.js";
+import { evolvePokemonIfReady, normalizePokemonInstance } from "../data/pokemon.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition } from "../data/worlds.js";
 
@@ -9,7 +9,11 @@ export function hasSavedGame() {
 }
 
 function normalizePokemon(pokemon, refreshExperienceCurve = false) {
-  return normalizePokemonInstance(pokemon, { refreshExperienceCurve });
+  const normalized = normalizePokemonInstance(pokemon, { refreshExperienceCurve });
+  while (evolvePokemonIfReady(normalized)) {
+    // Aplica evoluções pendentes em saves antigos sem interromper a jornada.
+  }
+  return normalized;
 }
 
 function normalizeJourney(savedJourney = {}) {
@@ -37,6 +41,31 @@ function normalizeArea(savedArea, journey) {
   };
 }
 
+function registerRosterEntries(pokedex, collection, roster) {
+  roster.forEach((pokemon) => {
+    const entry = pokedex[pokemon.id] || { seen: 0, caught: 0, shinyCaught: 0 };
+    pokedex[pokemon.id] = {
+      ...entry,
+      seen: Math.max(1, Number(entry.seen) || 0),
+      caught: Math.max(1, Number(entry.caught) || 0),
+      shinyCaught: Math.max(pokemon.isShiny ? 1 : 0, Number(entry.shinyCaught) || 0)
+    };
+
+    const owned = collection[pokemon.id];
+    collection[pokemon.id] = owned
+      ? {
+          ...owned,
+          count: Math.max(1, Number(owned.count) || 0),
+          shinyCount: Math.max(pokemon.isShiny ? 1 : 0, Number(owned.shinyCount) || 0)
+        }
+      : {
+          count: 1,
+          shinyCount: pokemon.isShiny ? 1 : 0,
+          firstCaughtAt: Date.now()
+        };
+  });
+}
+
 function migrateSave(saved) {
   const legacyPlayer = saved.player || saved.team?.[0];
   const starterId = legacyPlayer?.id || 4;
@@ -49,6 +78,9 @@ function migrateSave(saved) {
   const migratedStorage = Array.isArray(saved.storage)
     ? saved.storage.map((pokemon) => normalizePokemon(pokemon, true))
     : [];
+  const pokedex = { ...(saved.pokedex || { [starterId]: { seen: 1, caught: 1 } }) };
+  const collection = { ...(saved.collection || { [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() } }) };
+  registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);
 
   return {
     ...base,
@@ -70,8 +102,8 @@ function migrateSave(saved) {
     battleParticipants: [],
     captureOffer: null,
     approachProgress: 0,
-    pokedex: saved.pokedex || { [starterId]: { seen: 1, caught: 1 } },
-    collection: saved.collection || { [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() } },
+    pokedex,
+    collection,
     enemy: null,
     exploration: 0
   };
@@ -92,6 +124,11 @@ export function loadGame() {
     const validEncounterMode = ["approach", "battle", "capture"].includes(saved.mode) && saved.enemy;
     const allowedModes = ["exploring", "approach", "battle", "capture", "recovering"];
     const mode = journey.complete ? "exploring" : (allowedModes.includes(saved.mode) ? saved.mode : "exploring");
+    const team = saved.team.map((pokemon) => normalizePokemon(pokemon));
+    const storage = (saved.storage || []).map((pokemon) => normalizePokemon(pokemon));
+    const pokedex = { ...(saved.pokedex || base.pokedex) };
+    const collection = { ...(saved.collection || base.collection) };
+    registerRosterEntries(pokedex, collection, [...team, ...storage]);
 
     return {
       ...base,
@@ -106,13 +143,13 @@ export function loadGame() {
         victories: Math.max(0, Number(saved.totals?.victories) || area.victories)
       },
       pendingRouteAdvance: Boolean(saved.pendingRouteAdvance),
-      team: saved.team.map((pokemon) => normalizePokemon(pokemon)),
-      storage: (saved.storage || []).map((pokemon) => normalizePokemon(pokemon)),
-      activeTeamIndex: Math.min(saved.activeTeamIndex || 0, saved.team.length - 1),
+      team,
+      storage,
+      activeTeamIndex: Math.min(saved.activeTeamIndex || 0, team.length - 1),
       battleParticipants: saved.battleParticipants || [],
       captureOffer: saved.mode === "capture" ? saved.captureOffer : null,
-      pokedex: saved.pokedex || base.pokedex,
-      collection: saved.collection || base.collection,
+      pokedex,
+      collection,
       approachProgress: saved.approachProgress || 0,
       enemy: validEncounterMode ? normalizePokemon(saved.enemy) : null
     };
