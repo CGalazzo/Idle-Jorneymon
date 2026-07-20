@@ -25,49 +25,101 @@
 .route-hud.route-hud-inline .world-track { margin-top: 6px; }
 .route-hud.route-hud-inline .world-step { height: 15px; }
 
-/* O cenário não é reconstruído quando o modo muda; somente as classes de modo mudam. */
+/* O cenário e o fundo ficam em camadas próprias, sem recortar as sprites. */
 .scene,
 .scene::before { transform: translateZ(0); }
 .scene::before { backface-visibility: hidden; }
-.battle-stage { contain: layout paint style; }
+.battle-stage { contain: layout style; }
 
-/* Escala proporcional apenas na exploração e na aproximação. */
+/* O jogador permanece fixo; somente a imagem faz o movimento leve de caminhada. */
+.scene.exploring .walker,
+.scene.approach .walker,
+.scene.recovering .walker {
+  left: 34%;
+  animation: none;
+}
+
+/* Escala proporcional somente na exploração e na aproximação. */
 .scene .walker,
-.scene.approach .walker {
+.scene .approaching-enemy {
+  width: calc(var(--exploration-sprite-size, 72px) + 28px);
+  height: calc(var(--exploration-sprite-size, 72px) + 34px);
+  overflow: visible !important;
+  place-items: end center;
+  contain: layout style;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  isolation: auto;
+}
+
+.scene .walker {
+  bottom: calc(23% - 8px);
+  will-change: auto;
+}
+
+.scene .walker img,
+.scene .approaching-enemy img {
+  display: block;
   width: var(--exploration-sprite-size, 72px);
   height: var(--exploration-sprite-size, 72px);
-  place-items: end center;
-  contain: layout paint style;
-  will-change: transform;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  object-position: center bottom;
+  overflow: visible;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+  image-rendering: pixelated;
+  transform-origin: center bottom;
 }
 
 .scene .walker img {
-  width: var(--exploration-sprite-size, 72px);
-  height: var(--exploration-sprite-size, 72px);
-  max-height: none;
-  object-fit: contain;
+  filter: drop-shadow(0 9px 5px rgba(24, 42, 31, .22));
+}
+
+.scene .walker.facing-left img {
+  transform: scaleX(-1);
+  animation-name: walkingNoClip;
+}
+
+@keyframes walkingNoClip {
+  from { transform: translateY(0) scaleX(-1); }
+  to { transform: translateY(-6px) rotate(-2deg) scaleX(-1); }
 }
 
 .scene .walker .shadow,
 .scene .approaching-enemy .shadow {
   width: var(--exploration-shadow-width, 55px);
   max-width: 90%;
+  background: rgba(24, 42, 31, .27);
+  filter: none;
 }
 
+/* O inimigo já existe no DOM e usa apenas animação CSS durante a aproximação. */
 .scene .approaching-enemy {
   left: 88%;
-  width: var(--exploration-sprite-size, 78px);
-  height: var(--exploration-sprite-size, 78px);
-  place-items: end center;
-  contain: layout paint style;
+  bottom: calc(23% - 8px);
+  transform: translate3d(-50%, 0, 0);
   will-change: transform;
-  backface-visibility: hidden;
+  backface-visibility: visible;
 }
 
 .scene .approaching-enemy img {
-  width: var(--exploration-sprite-size, 78px);
-  height: var(--exploration-sprite-size, 78px);
-  object-fit: contain;
+  filter: drop-shadow(0 9px 5px rgba(24, 42, 31, .22));
+}
+
+.scene.approach .approaching-enemy:not([hidden]) {
+  animation: enemyApproachSlide 2.8s linear forwards;
+}
+
+@keyframes enemyApproachSlide {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(calc(-50% - var(--approach-distance, 320px)), 0, 0); }
 }
 
 /* Contagem regressiva sem mudar a posição atual da caixa de captura. */
@@ -120,4 +172,7 @@
   .route-hud.route-hud-inline { padding: 8px 9px 7px; }
   .route-hud.route-hud-inline .route-hud-copy { align-items: flex-start; }
   .route-hud.route-hud-inline .route-hud-copy strong { max-width: 60%; }
+
+  .scene .walker,
+  .scene.approach .walker { left: 28%; }
 }
