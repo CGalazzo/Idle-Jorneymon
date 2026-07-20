@@ -1,4 +1,5 @@
 import { ALL_SPECIES, getRouteDefinition, getRouteLevelRange } from "./worlds.js";
+import { HARD_SHINY_CHARM_CHANCE } from "./hard-endgame-data.js";
 import {
   HARD_MODE_SPECIES,
   HARD_SHINY_CHANCE,
@@ -327,7 +328,8 @@ export function createWildPokemon(state, playerLevel, random = Math.random) {
   const iv = hardMode
     ? (bossReady ? (isFinalBoss ? HARD_FINAL_BOSS_IV : HARD_MINI_BOSS_IV) : HARD_NORMAL_IV)
     : (bossReady ? (isFinalBoss ? FINAL_BOSS_IV : MINI_BOSS_IV) : NORMAL_IV);
-  const isShiny = random() < (hardMode ? HARD_SHINY_CHANCE : SHINY_CHANCE);
+  const hardShinyChance = state.hardEndgame?.shinyCharmOwned ? HARD_SHINY_CHARM_CHANCE : HARD_SHINY_CHANCE;
+  const isShiny = random() < (hardMode ? hardShinyChance : SHINY_CHANCE);
   const rarity = bossReady
     ? (isFinalBoss ? (template.rarity === "legendary" ? "legendary" : "epic") : "rare")
     : template.rarity;
