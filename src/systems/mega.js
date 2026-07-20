@@ -162,6 +162,8 @@ export function deactivateMegaEvolution(pokemon) {
   delete pokemon.megaOriginal;
   delete pokemon.bossMegaActivated;
   delete pokemon.hardBossMegaStoneId;
+  delete pokemon.hardSecondPhase;
+  delete pokemon.hardSecondPhaseMultiplier;
   return true;
 }
 
@@ -184,5 +186,7 @@ export function restorePersistedMegaPokemon(pokemon) {
   delete restored.megaOriginal;
   delete restored.bossMegaActivated;
   delete restored.hardBossMegaStoneId;
+  delete restored.hardSecondPhase;
+  delete restored.hardSecondPhaseMultiplier;
   return restored;
 }
