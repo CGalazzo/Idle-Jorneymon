@@ -2,6 +2,7 @@ import "./styles/base.css";
 import "./styles/start-menu.css";
 import "./styles/progression.css";
 import "./styles/quality-of-life.css";
+import "./styles/eevee-evolution.css";
 import { randomEncounterTarget, startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
 import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
@@ -10,11 +11,13 @@ import { POKEDEX_SPECIES } from "./data/pokemon.js";
 import { createAreaState, getRouteDefinition } from "./data/worlds.js";
 import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from "./ui/render.js";
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
+import { enhanceEeveeEvolutionMarkup, renderEeveeEvolutionChoice } from "./ui/eevee-evolution-ui.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
+import { acceptEeveeEvolution, declineEeveeEvolution } from "./systems/progression.js";
 
 const UI_RENDER_INTERVAL_MS = 50;
 
@@ -44,6 +47,7 @@ async function boot() {
   `);
 
   enhanceProgressionMarkup();
+  enhanceEeveeEvolutionMarkup();
 
   function memoizeInnerHTML(element) {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
@@ -130,7 +134,7 @@ async function boot() {
   let lastFrame = performance.now();
   let lastRender = 0;
   let lastSave = performance.now();
-  let isMenuOpen = false;
+  let isMenuOpen = true;
   let isTeamOpen = false;
 
   const welcomeScreen = document.querySelector("#welcome-screen");
@@ -142,6 +146,7 @@ async function boot() {
   const resetButton = document.querySelector("#reset-button");
   const environmentLabel = document.querySelector("#environment-label");
   const scene = document.querySelector("#scene");
+  const eeveeEvolutionDialog = document.querySelector("#eevee-evolution-dialog");
 
   document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
   starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
@@ -170,6 +175,7 @@ async function boot() {
     preloadRouteSprites(state);
     renderBase(state);
     renderProgression(state);
+    renderEeveeEvolutionChoice(state, !isMenuOpen);
   }
 
   function setWelcomeView(view) {
@@ -250,7 +256,8 @@ async function boot() {
     const delta = Math.min((now - lastFrame) / 1000, 0.25);
     lastFrame = now;
 
-    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen) {
+    const evolutionChoicePending = Boolean(state.pendingEvolutionChoices?.length);
+    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !evolutionChoicePending) {
       const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
@@ -267,7 +274,7 @@ async function boot() {
       }
 
       const modeChanged = previousMode !== state.mode;
-      if (modeChanged || now - lastRender >= UI_RENDER_INTERVAL_MS) {
+      if (modeChanged || state.pendingEvolutionChoices?.length || now - lastRender >= UI_RENDER_INTERVAL_MS) {
         renderGame();
         lastRender = now;
       }
@@ -358,6 +365,25 @@ async function boot() {
     saveGame(state);
     renderGame();
   });
+
+  document.querySelector("#accept-eevee-evolution").addEventListener("click", () => {
+    acceptEeveeEvolution(state);
+    preloadedRouteKey = "";
+    saveGame(state);
+    lastSave = performance.now();
+    lastFrame = performance.now();
+    renderGame();
+  });
+
+  document.querySelector("#decline-eevee-evolution").addEventListener("click", () => {
+    declineEeveeEvolution(state);
+    saveGame(state);
+    lastSave = performance.now();
+    lastFrame = performance.now();
+    renderGame();
+  });
+
+  eeveeEvolutionDialog.addEventListener("cancel", (event) => event.preventDefault());
 
   document.querySelector("#pokedex-dialog").addEventListener("click", (event) => {
     if (event.target.id === "pokedex-dialog") event.target.close();
