@@ -1,5 +1,6 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
 import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
+import { createAreaState } from "../data/worlds.js";
 import { grantTeamExperience } from "./progression.js";
 import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
 
@@ -93,6 +94,19 @@ function finishVictory(state) {
   state.battleParticipants = [];
 }
 
+function restartCurrentRouteAfterDefeat(state) {
+  const defeatedArea = state.area.name;
+  state.area = createAreaState(state.journey?.worldIndex, state.journey?.routeIndex);
+  state.pendingRouteAdvance = false;
+  state.captureOffer = null;
+  state.approachProgress = 0;
+  state.enemy = null;
+  state.exploration = 0;
+  state.battleParticipants = [];
+  state.activeTeamIndex = 0;
+  addLog(state, `Derrota em ${defeatedArea}: o progresso da rota voltou para 0/${state.area.requiredVictories}.`);
+}
+
 function handleFaintedPokemon(state) {
   const nextIndex = nextAvailablePokemon(state);
   if (nextIndex >= 0) {
@@ -104,7 +118,8 @@ function handleFaintedPokemon(state) {
     return;
   }
 
-  addLog(state, "Toda a equipe desmaiou e está se recuperando.");
+  addLog(state, "Toda a equipe desmaiou.");
+  restartCurrentRouteAfterDefeat(state);
   state.mode = "recovering";
   state.recoveryCooldown = 5;
 }
@@ -160,5 +175,5 @@ export function updateRecovery(state, deltaSeconds) {
   state.battleParticipants = [];
   state.exploration = 0;
   state.nextEncounterAt = randomEncounterTarget();
-  addLog(state, "A equipe se recuperou e voltou à jornada.");
+  addLog(state, "A equipe se recuperou e recomeçou a rota desde o início.");
 }
