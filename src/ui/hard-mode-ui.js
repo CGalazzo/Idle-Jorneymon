@@ -1,5 +1,6 @@
 import "../styles/hard-mode.css";
 import "../styles/hard-mode-phase2.css";
+import { getHardChallenge } from "../data/hard-endgame-data.js";
 import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
@@ -167,6 +168,7 @@ export function renderHardModeState(state) {
     const bossLabel = route.bossType === "final" ? "BOSS FINAL" : "MINI BOSS";
     const boss = hardBoss(route);
     const bossReady = state.area.regularVictories >= state.area.requiredVictories && !state.area.bossDefeated;
+    const activeChallenge = getHardChallenge(state.hardEndgame?.activeChallengeId);
     const environmentLabel = document.querySelector("#environment-label");
     const routeLevels = document.querySelector("#route-levels");
     const routeHudLabel = document.querySelector("#route-hud-label");
@@ -175,14 +177,23 @@ export function renderHardModeState(state) {
     const modeBadge = document.querySelector("#mode-badge");
 
     state.area.bossName = boss.name;
-    if (environmentLabel) environmentLabel.textContent = `MODO HARD · DIFICULDADE ${route.worldIndex + 1} · ${route.environment.name.toUpperCase()}`;
-    if (routeLevels) routeLevels.textContent = `NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
-    if (routeHudLabel && !state.journey?.complete) routeHudLabel.textContent = `HARD · ROTA ${route.routeNumber} · NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
-    if (routeHudBoss) routeHudBoss.textContent = `${bossLabel}: ${boss.name} · NV. ${levels.bossLevel}`;
-    if (bossStatus) bossStatus.textContent = state.area.bossDefeated
-      ? `${bossLabel} derrotado`
-      : bossReady ? `${bossLabel} disponível` : `${bossLabel}: ${boss.name}`;
-    if (modeBadge && !state.journey?.complete && !state.revisit?.active) modeBadge.textContent = `HARD · ${modeBadge.textContent.replace(/^HARD · /, "")}`;
+    if (activeChallenge) {
+      if (environmentLabel) environmentLabel.textContent = `DESAFIO HARD · ${activeChallenge.name.toUpperCase()}`;
+      if (routeLevels) routeLevels.textContent = "NV. 100";
+      if (routeHudLabel) routeHudLabel.textContent = "PÓS-JOGO · DESAFIO DE CAMPEÃO";
+      if (routeHudBoss) routeHudBoss.textContent = `${activeChallenge.subtitle} · NV. 100`;
+      if (bossStatus) bossStatus.textContent = "DESAFIO EM ANDAMENTO";
+      if (modeBadge) modeBadge.textContent = "DESAFIO HARD";
+    } else {
+      if (environmentLabel) environmentLabel.textContent = `MODO HARD · DIFICULDADE ${route.worldIndex + 1} · ${route.environment.name.toUpperCase()}`;
+      if (routeLevels) routeLevels.textContent = `NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
+      if (routeHudLabel && !state.journey?.complete) routeHudLabel.textContent = `HARD · ROTA ${route.routeNumber} · NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
+      if (routeHudBoss) routeHudBoss.textContent = `${bossLabel}: ${boss.name} · NV. ${levels.bossLevel}`;
+      if (bossStatus) bossStatus.textContent = state.area.bossDefeated
+        ? `${bossLabel} derrotado`
+        : bossReady ? `${bossLabel} disponível` : `${bossLabel}: ${boss.name}`;
+      if (modeBadge && !state.journey?.complete && !state.revisit?.active) modeBadge.textContent = `HARD · ${modeBadge.textContent.replace(/^HARD · /, "")}`;
+    }
   }
 
   decorateHardBattle(state);
