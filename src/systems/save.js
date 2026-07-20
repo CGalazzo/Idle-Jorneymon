@@ -1,8 +1,14 @@
 import { evolvePokemonIfReady, normalizePokemonInstance } from "../data/pokemon.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
+import { updateApproach, updateExploration } from "./exploration.js";
+import { updateBattle, updateRecovery } from "./battle.js";
+import { updateCaptureDecision } from "./capture.js";
 
 const SAVE_KEY = "idle-jorneymon-save";
+const CAPTURE_DECISION_MS = 5000;
+const BACKGROUND_STEP_SECONDS = 0.25;
+const BACKGROUND_TICK_MS = 1000;
 const LEGACY_ENVIRONMENT_IDS = [
   "bosque",
   "floresta",
@@ -15,6 +21,100 @@ const LEGACY_ENVIRONMENT_IDS = [
   "planalto-indigo",
   "elite-4"
 ];
+
+let activeState = null;
+let backgroundWasHidden = typeof document !== "undefined" && document.hidden;
+let backgroundLastWallTime = Date.now();
+let backgroundSimulationTime = backgroundLastWallTime;
+let pendingBackgroundSeconds = 0;
+let lastBackgroundPersistAt = 0;
+
+function resetBackgroundClock(now = Date.now()) {
+  backgroundLastWallTime = now;
+  backgroundSimulationTime = now;
+  pendingBackgroundSeconds = 0;
+}
+
+function activateState(state) {
+  activeState = state;
+  resetBackgroundClock();
+  return state;
+}
+
+function persistState(state) {
+  if (!state?.hasStarted) return;
+  state.lastSavedAt = Date.now();
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+
+function simulateBackgroundStep(state, deltaSeconds, simulatedNow) {
+  if (!state?.hasStarted || state.journey?.complete) return;
+
+  if (state.mode === "exploring") updateExploration(state, deltaSeconds);
+  if (state.mode === "approach") updateApproach(state, deltaSeconds);
+  if (state.mode === "battle") updateBattle(state, deltaSeconds, Math.random, simulatedNow);
+  if (state.mode === "recovering") updateRecovery(state, deltaSeconds);
+  if (state.mode === "capture") updateCaptureDecision(state, simulatedNow);
+}
+
+function persistBackgroundState(force = false) {
+  const now = Date.now();
+  if (!force && now - lastBackgroundPersistAt < 5000) return;
+  persistState(activeState);
+  lastBackgroundPersistAt = now;
+}
+
+function processPendingBackgroundTime() {
+  if (!activeState?.hasStarted || pendingBackgroundSeconds <= 0) return;
+
+  while (pendingBackgroundSeconds > 0) {
+    const step = Math.min(BACKGROUND_STEP_SECONDS, pendingBackgroundSeconds);
+    backgroundSimulationTime += step * 1000;
+    simulateBackgroundStep(activeState, step, backgroundSimulationTime);
+    pendingBackgroundSeconds -= step;
+  }
+
+  pendingBackgroundSeconds = 0;
+  persistBackgroundState();
+}
+
+function collectBackgroundElapsed(now = Date.now()) {
+  const elapsedSeconds = Math.max(0, (now - backgroundLastWallTime) / 1000);
+  backgroundLastWallTime = now;
+  pendingBackgroundSeconds += elapsedSeconds;
+  processPendingBackgroundTime();
+}
+
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  window.setInterval(() => {
+    const now = Date.now();
+    if (document.hidden && activeState?.hasStarted) {
+      collectBackgroundElapsed(now);
+      return;
+    }
+    resetBackgroundClock(now);
+  }, BACKGROUND_TICK_MS);
+
+  document.addEventListener("visibilitychange", () => {
+    const now = Date.now();
+    if (document.hidden) {
+      backgroundWasHidden = true;
+      resetBackgroundClock(now);
+      return;
+    }
+
+    if (backgroundWasHidden && activeState?.hasStarted) {
+      collectBackgroundElapsed(now);
+      backgroundWasHidden = false;
+      resetBackgroundClock(now);
+      persistBackgroundState(true);
+      return;
+    }
+
+    backgroundWasHidden = false;
+    resetBackgroundClock(now);
+  });
+}
 
 export function hasSavedGame() {
   return Boolean(localStorage.getItem(SAVE_KEY));
@@ -111,6 +211,23 @@ function registerRosterEntries(pokedex, collection, roster) {
   });
 }
 
+function rebaseCaptureOffer(saved = {}) {
+  if (saved.mode !== "capture" || !saved.captureOffer) return null;
+
+  const savedAt = Number(saved.lastSavedAt) || Date.now();
+  const originalExpiry = Number(saved.captureOffer.expiresAt);
+  const remaining = Number.isFinite(originalExpiry)
+    ? Math.max(0, Math.min(CAPTURE_DECISION_MS, originalExpiry - savedAt))
+    : CAPTURE_DECISION_MS;
+  const now = Date.now();
+
+  return {
+    ...saved.captureOffer,
+    startedAt: now - (CAPTURE_DECISION_MS - remaining),
+    expiresAt: now + remaining
+  };
+}
+
 function migrateSave(saved) {
   const legacyPlayer = saved.player || saved.team?.[0];
   const starterId = legacyPlayer?.id || 4;
@@ -159,28 +276,35 @@ function migrateSave(saved) {
 export function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return createInitialState();
+    if (!raw) return activateState(createInitialState());
 
     const saved = JSON.parse(raw);
     const savedVersion = Number(saved.saveVersion) || 0;
-    if (savedVersion < SAVE_VERSION) return migrateSave(saved);
-    if (savedVersion !== SAVE_VERSION || !Array.isArray(saved.team) || !saved.team.length) return createInitialState();
+    if (savedVersion < SAVE_VERSION) return activateState(migrateSave(saved));
+    if (savedVersion !== SAVE_VERSION || !Array.isArray(saved.team) || !saved.team.length) {
+      return activateState(createInitialState());
+    }
 
     const base = createInitialState(saved.team[0].id, true);
     const environmentId = resolveEnvironmentId(saved);
     const journey = normalizeJourney(saved.journey, environmentId, false);
     const currentEnvironmentId = ENVIRONMENTS[journey.worldIndex]?.id || "bosque";
     const area = normalizeArea(saved.area, journey);
-    const validEncounterMode = ["approach", "battle", "capture"].includes(saved.mode) && saved.enemy;
-    const allowedModes = ["exploring", "approach", "battle", "capture", "recovering"];
-    const mode = journey.complete ? "exploring" : (allowedModes.includes(saved.mode) ? saved.mode : "exploring");
+    const encounterModes = ["approach", "battle", "capture"];
+    const validEncounterMode = encounterModes.includes(saved.mode) && saved.enemy;
+    const allowedModes = ["exploring", "recovering"];
+    const mode = journey.complete
+      ? "exploring"
+      : encounterModes.includes(saved.mode)
+        ? (validEncounterMode ? saved.mode : "exploring")
+        : (allowedModes.includes(saved.mode) ? saved.mode : "exploring");
     const team = saved.team.map((pokemon) => normalizePokemon(pokemon, false, true, currentEnvironmentId));
     const storage = (saved.storage || []).map((pokemon) => normalizePokemon(pokemon, false, true, currentEnvironmentId));
     const pokedex = { ...(saved.pokedex || base.pokedex) };
     const collection = { ...(saved.collection || base.collection) };
     registerRosterEntries(pokedex, collection, [...team, ...storage]);
 
-    return {
+    return activateState({
       ...base,
       ...saved,
       saveVersion: SAVE_VERSION,
@@ -198,23 +322,24 @@ export function loadGame() {
       storage,
       activeTeamIndex: Math.min(saved.activeTeamIndex || 0, team.length - 1),
       battleParticipants: saved.battleParticipants || [],
-      captureOffer: saved.mode === "capture" ? saved.captureOffer : null,
+      captureOffer: rebaseCaptureOffer(saved),
       pokedex,
       collection,
       approachProgress: saved.approachProgress || 0,
       enemy: validEncounterMode ? normalizePokemon(saved.enemy, false, false, currentEnvironmentId) : null
-    };
+    });
   } catch {
-    return createInitialState();
+    return activateState(createInitialState());
   }
 }
 
 export function saveGame(state) {
-  if (!state.hasStarted) return;
-  state.lastSavedAt = Date.now();
-  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  activeState = state;
+  persistState(state);
 }
 
 export function resetGame() {
+  activeState = null;
+  resetBackgroundClock();
   localStorage.removeItem(SAVE_KEY);
 }
