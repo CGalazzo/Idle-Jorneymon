@@ -13,20 +13,44 @@
   white-space: nowrap;
 }
 .coin-balance span { color: #ffc93d; font-size: 15px; }
-.shop-button {
+.shop-button,
+.items-button {
   height: 39px;
   padding: 0 14px;
-  color: #ffe17c;
-  background: rgba(137, 92, 17, .2);
-  border: 1px solid rgba(255, 210, 70, .28);
   border-radius: 12px;
   font-size: 9px;
   font-weight: 900;
   letter-spacing: .11em;
   cursor: pointer;
 }
+.shop-button {
+  color: #ffe17c;
+  background: rgba(137, 92, 17, .2);
+  border: 1px solid rgba(255, 210, 70, .28);
+}
+.items-button {
+  position: relative;
+  color: #b9e8ff;
+  background: rgba(35, 105, 146, .2);
+  border: 1px solid rgba(100, 205, 255, .25);
+}
+.items-button span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 4px;
+  padding: 0 4px;
+  color: #062035;
+  background: #78d9ff;
+  border-radius: 999px;
+  font-size: 7px;
+  letter-spacing: 0;
+}
 .shop-button:hover:not(:disabled) { background: rgba(166, 112, 20, .34); }
-.shop-button:disabled { opacity: .35; cursor: not-allowed; }
+.items-button:hover:not(:disabled) { background: rgba(44, 127, 174, .34); }
+.shop-button:disabled,
+.items-button:disabled { opacity: .35; cursor: not-allowed; }
 
 .shop-dialog {
   width: min(900px, calc(100% - 24px));
@@ -55,6 +79,17 @@
 .shop-wallet strong { color: #fff1b0; font-size: 18px; }
 .shop-wallet strong i { color: #ffc83d; font-style: normal; }
 .shop-wallet small { color: #8da5b8; font-size: 9px; }
+.shop-feedback {
+  margin: -5px 0 12px;
+  padding: 10px 13px;
+  color: #bdf5d4;
+  background: rgba(29, 113, 77, .32);
+  border: 1px solid rgba(94, 224, 152, .28);
+  border-radius: 11px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
 .shop-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -164,25 +199,134 @@
 .shop-empty strong { color: #cbddea; font-size: 15px; }
 .shop-empty p { max-width: 430px; margin: 5px 0 0; font-size: 10px; }
 
+.items-dialog { width: min(820px, calc(100% - 24px)); }
+.inventory-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin: 16px 0 14px;
+}
+.inventory-summary > div {
+  padding: 12px 14px;
+  background: rgba(14, 41, 65, .72);
+  border: 1px solid rgba(102, 175, 218, .16);
+  border-radius: 12px;
+}
+.inventory-summary small,
+.inventory-summary strong { display: block; }
+.inventory-summary small { color: #7598b0; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.inventory-summary strong { margin-top: 3px; color: #dff2ff; font-size: 14px; }
+.inventory-scroll { display: grid; gap: 15px; overflow-y: auto; max-height: 610px; padding-right: 4px; }
+.inventory-section {
+  padding: 13px;
+  background: rgba(7, 26, 44, .58);
+  border: 1px solid rgba(104, 168, 207, .13);
+  border-radius: 15px;
+}
+.inventory-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.inventory-heading small { color: #7898ad; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.inventory-heading h3 { margin: 2px 0 0; font-size: 15px; }
+.inventory-icon,
+.inventory-item-icon {
+  display: grid;
+  place-items: center;
+  color: #0c263b;
+  background: linear-gradient(145deg, #f5d669, #c58a23);
+  font-weight: 900;
+}
+.inventory-icon { width: 38px; height: 38px; border-radius: 11px; font-size: 16px; }
+.inventory-icon.exp,
+.inventory-item-icon.exp { color: white; background: linear-gradient(145deg, #6fbcff, #4460c5); }
+.inventory-icon.mega,
+.inventory-item-icon.mega { color: white; background: conic-gradient(#ef6cb9, #6dc9ff, #ffe87e, #75e5a6, #ef6cb9); }
+.inventory-grid { display: grid; gap: 7px; }
+.inventory-item {
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 67px;
+  padding: 9px 11px;
+  background: rgba(22, 52, 79, .74);
+  border: 1px solid rgba(111, 175, 214, .14);
+  border-radius: 12px;
+}
+.inventory-item.featured { border-color: rgba(89, 222, 151, .38); background: linear-gradient(145deg, rgba(24, 77, 73, .75), rgba(18, 47, 73, .8)); }
+.inventory-item-icon { width: 42px; height: 42px; border-radius: 50%; font-size: 18px; }
+.inventory-item-icon.exp { border-radius: 10px; font-size: 11px; }
+.inventory-item-icon.mega { font-size: 24px; }
+.inventory-item small,
+.inventory-item strong,
+.inventory-item p { display: block; }
+.inventory-item small { color: #70dca0; font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.inventory-item strong { margin-top: 2px; font-size: 12px; }
+.inventory-item p { margin: 3px 0 0; color: #8da6b8; font-size: 9px; }
+.inventory-item em {
+  padding: 5px 8px;
+  color: #d9efff;
+  background: rgba(8, 28, 46, .7);
+  border-radius: 999px;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.inventory-empty {
+  display: grid;
+  place-items: center;
+  min-height: 100px;
+  padding: 18px;
+  color: #7895aa;
+  background: rgba(5, 21, 36, .5);
+  border: 1px dashed rgba(104, 168, 207, .18);
+  border-radius: 11px;
+  text-align: center;
+}
+.inventory-empty span { font-size: 22px; }
+.inventory-empty strong { color: #cbddea; font-size: 11px; }
+.inventory-empty p { margin: 3px 0 0; font-size: 9px; }
+
+/* Captura alinhada à esquerda para manter o Pokémon visível à direita. */
+.capture-pokemon {
+  left: auto;
+  right: 7%;
+  top: 27%;
+  transform: none;
+}
+.capture-pokemon img { width: 145px; height: 145px; }
+.capture-panel {
+  left: 16px;
+  bottom: 14px;
+  width: min(610px, 64%);
+  max-height: 285px;
+  padding: 16px 18px;
+  transform: none;
+  overflow-y: auto;
+  text-align: left;
+}
+.capture-panel > strong { font-size: 19px; line-height: 1.15; }
+.capture-panel > p { margin: 5px 0 10px; font-size: 11px; line-height: 1.35; }
+.capture-panel .shiny-label { font-size: 9px; }
+.capture-time { font-size: 9px; }
 .capture-ball-options {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  width: min(520px, 100%);
-  margin: 8px auto 0;
+  gap: 7px;
+  width: 100%;
+  margin: 10px 0 0;
 }
 .capture-ball-options button {
-  min-height: 39px;
-  padding: 6px 9px;
-  font-size: 8px;
+  min-height: 43px;
+  padding: 7px 10px;
+  font-size: 10px;
   line-height: 1.2;
 }
-.capture-ball-options button span { display: block; font-size: 7px; opacity: .75; }
+.capture-ball-options button span { display: block; font-size: 8px; opacity: .75; }
 .capture-ball-options .normal-capture { color: #d9efff; background: #1a4668; border: 0; }
 .capture-ball-options .ball-capture { color: #102638; background: linear-gradient(145deg, #f5d466, #d69a2d); border: 0; }
 .capture-ball-options .ball-capture:disabled { color: #708595; background: #20384b; cursor: not-allowed; }
-.capture-decline-row { margin-top: 6px; }
-.capture-decline-row .decline-button { min-width: 150px; }
+.capture-decline-row { justify-content: flex-start !important; margin-top: 7px; }
+.capture-decline-row .decline-button { min-width: 170px; font-size: 9px; }
 
 .mega-picker { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .mega-picker > small { width: 100%; color: #dc9fe9; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
@@ -192,9 +336,12 @@
 
 @media (max-width: 820px) {
   .coin-balance { padding: 0 8px; }
-  .shop-button { padding: 0 10px; }
+  .shop-button,
+  .items-button { padding: 0 10px; }
   .shop-item { grid-template-columns: 50px minmax(0, 1fr) 125px; }
   .shop-item-icon { width: 48px; height: 48px; }
+  .capture-panel { width: 66%; }
+  .capture-pokemon { right: 4%; }
 }
 
 @media (max-width: 700px) {
@@ -205,11 +352,28 @@
   .shop-item > button { grid-column: 1 / -1; min-height: 42px; }
   .shop-wallet { grid-template-columns: 1fr; }
   .shop-wallet > span { grid-row: auto; }
+  .inventory-scroll { max-height: 64vh; }
+  .capture-panel {
+    left: 7px;
+    bottom: 7px;
+    width: 68%;
+    max-height: 278px;
+    padding: 11px 10px;
+  }
+  .capture-panel > strong { font-size: 14px; }
+  .capture-panel > p { margin-bottom: 7px; font-size: 9px; }
+  .capture-pokemon { right: 1%; top: 29%; }
+  .capture-pokemon img { width: 98px; height: 98px; }
+  .capture-ball-options { gap: 4px; margin-top: 6px; }
+  .capture-ball-options button { min-height: 35px; padding: 4px 5px; font-size: 8px; }
+  .capture-ball-options button span { font-size: 7px; }
+  .capture-decline-row { margin-top: 4px; }
+  .capture-decline-row .decline-button { min-width: 120px; min-height: 32px; font-size: 8px; }
 }
 
 @media (max-width: 560px) {
   .header-actions { gap: 4px; }
-  .coin-balance, .shop-button, .menu-button, .team-button, .pokedex-button, .header-actions .icon-button {
+  .coin-balance, .shop-button, .items-button, .menu-button, .team-button, .pokedex-button, .header-actions .icon-button {
     width: 36px;
     min-width: 36px;
     height: 36px;
@@ -217,8 +381,8 @@
   }
   .coin-balance { justify-content: center; }
   .coin-balance strong { display: none; }
-  .shop-button, .menu-button, .team-button, .pokedex-button { overflow: hidden; color: transparent; }
-  .shop-button::after, .menu-button::after, .team-button::after, .pokedex-button::after {
+  .shop-button, .items-button, .menu-button, .team-button, .pokedex-button { overflow: hidden; color: transparent; }
+  .shop-button::after, .items-button::after, .menu-button::after, .team-button::after, .pokedex-button::after {
     display: grid;
     place-items: center;
     height: 100%;
@@ -227,16 +391,17 @@
     letter-spacing: 0;
   }
   .shop-button::after { content: "◉"; color: #ffe17c; font-size: 18px; }
+  .items-button::after { content: "□"; color: #8edfff; font-size: 17px; }
+  .items-button span { position: absolute; right: -2px; top: -3px; min-width: 14px; height: 14px; margin: 0; padding: 0 3px; font-size: 6px; }
   .menu-button::after { content: "☰"; color: #b4c9da; font-size: 17px; }
   .team-button::after { content: "●●●"; color: #75e8a7; font-size: 6px; }
   .pokedex-button::after { content: "DEX"; color: #76dfff; font-size: 8px; font-weight: 900; }
   .shop-tabs button { min-height: 36px; font-size: 7px; letter-spacing: .05em; }
-  .capture-panel { bottom: 7px; padding: 9px 10px; }
-  .capture-panel > p { margin-bottom: 6px; }
-  .capture-ball-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 5px; }
-  .capture-ball-options button { min-height: 34px; padding: 4px 5px; font-size: 7px; }
-  .capture-decline-row { margin-top: 4px; }
-  .capture-decline-row .decline-button { min-height: 31px; }
+  .inventory-summary { gap: 4px; }
+  .inventory-summary > div { padding: 9px 7px; }
+  .inventory-summary strong { font-size: 11px; }
+  .inventory-item { grid-template-columns: 39px minmax(0, 1fr); }
+  .inventory-item > em { grid-column: 1 / -1; justify-self: start; }
 }
 
 @media (max-width: 420px) {
@@ -246,4 +411,8 @@
   .shop-wallet { margin: 11px 0 10px; padding: 10px 12px; }
   .shop-wallet strong { font-size: 15px; }
   .shop-panel { max-height: 58vh; }
+  .inventory-summary small { font-size: 6px; letter-spacing: .06em; }
+  .capture-panel { width: 71%; max-height: 270px; }
+  .capture-pokemon { right: -2%; top: 31%; }
+  .capture-pokemon img { width: 84px; height: 84px; }
 }
