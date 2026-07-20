@@ -1,7 +1,7 @@
 import { customWorld, uniqueSpecies, world } from "./worlds-core.js";
 export { ROUTE_TARGETS } from "./worlds-core.js";
 import { bosqueLines, florestaLines, pantanoRoutes, cavernaLines, praiaLines } from "./worlds-data-early.js";
-import { usinaRoutes, montanhasLines, dojoRoutes, geloFinal, geloLines, fantasmaFinal, fantasmaLines } from "./worlds-data-middle.js";
+import { usinaRoutes, montanhasLines, dojoRoutes, geloFinal, geloLines, fantasmaRoutes } from "./worlds-data-middle.js";
 import { ilusoesRoutes, vulcaoLines, ilhaRoutes, planaltoLines, eliteRoutes } from "./worlds-data-late.js";
 
 export const ENVIRONMENTS = [
@@ -14,7 +14,7 @@ export const ENVIRONMENTS = [
   world("montanhas", "Montanhas", "env-montanhas", montanhasLines),
   customWorld("dojo-luta", "Dojo de Luta", "env-dojo", dojoRoutes),
   world("caverna-gelo", "Caverna de Gelo", "env-gelo", geloLines, geloFinal),
-  world("torre-fantasma", "Torre Fantasma", "env-fantasma", fantasmaLines, fantasmaFinal),
+  customWorld("torre-fantasma", "Torre Fantasma", "env-fantasma", fantasmaRoutes),
   customWorld("torre-ilusoes", "Torre das Ilusões", "env-ilusoes", ilusoesRoutes),
   world("vulcao", "Vulcão", "env-vulcao", vulcaoLines),
   customWorld("ilha-flutuante", "Ilha Flutuante", "env-ilha", ilhaRoutes),
@@ -58,35 +58,28 @@ export function getRouteLevelRange(worldIndex = 0, routeIndex = 0, bossType = "m
 }
 
 export function createAreaState(worldIndex = 0, routeIndex = 0) {
-  const currentRoute = getRouteDefinition(worldIndex, routeIndex);
-  const levels = getRouteLevelRange(currentRoute.worldIndex, currentRoute.routeIndex, currentRoute.bossType);
+  const route = getRouteDefinition(worldIndex, routeIndex);
   return {
-    id: `${currentRoute.environment.id}-route-${currentRoute.routeNumber}`,
-    name: `${currentRoute.environment.name} · Rota ${currentRoute.routeNumber}`,
-    environmentId: currentRoute.environment.id,
-    environmentName: currentRoute.environment.name,
-    difficulty: currentRoute.worldIndex + 1,
-    routeNumber: currentRoute.routeNumber,
+    environmentId: route.environment.id,
+    name: `${route.environment.name} · Rota ${route.routeNumber}`,
+    routeNumber: route.routeNumber,
+    requiredVictories: route.requiredVictories,
+    bossName: route.boss.name,
+    bossType: route.bossType,
     encounters: 0,
     victories: 0,
     regularVictories: 0,
-    requiredVictories: currentRoute.requiredVictories,
-    minLevel: levels.minLevel,
-    maxLevel: levels.maxLevel,
-    bossLevel: levels.bossLevel,
-    bossDefeated: false,
-    bossName: currentRoute.boss.name,
-    bossType: currentRoute.bossType
+    bossDefeated: false
   };
 }
 
-export function getNextRoutePosition(worldIndex, routeIndex) {
-  const currentRoute = getRouteDefinition(worldIndex, routeIndex);
-  if (currentRoute.routeIndex + 1 < currentRoute.environment.routes.length) {
-    return { worldIndex: currentRoute.worldIndex, routeIndex: currentRoute.routeIndex + 1 };
+export function getNextRoutePosition(worldIndex = 0, routeIndex = 0) {
+  const route = getRouteDefinition(worldIndex, routeIndex);
+  if (route.routeIndex + 1 < route.environment.routes.length) {
+    return { worldIndex: route.worldIndex, routeIndex: route.routeIndex + 1 };
   }
-  if (currentRoute.worldIndex + 1 < ENVIRONMENTS.length) {
-    return { worldIndex: currentRoute.worldIndex + 1, routeIndex: 0 };
+  if (route.worldIndex + 1 < ENVIRONMENTS.length) {
+    return { worldIndex: route.worldIndex + 1, routeIndex: 0 };
   }
   return null;
 }
