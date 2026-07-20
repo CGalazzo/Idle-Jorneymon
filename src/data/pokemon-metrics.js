@@ -12,8 +12,9 @@ const FALLBACK_HEIGHT_DM = {
   373: 15, 376: 16, 445: 19, 464: 24, 487: 45, 635: 18
 };
 
+const GLOBAL_EXPLORATION_SCALE = 1.3;
 const STAGE_SCALE = { 1: 1, 2: 1.35, 3: 1.65 };
-const STAGE_MINIMUM = { 1: 44, 2: 94, 3: 130 };
+const STAGE_MINIMUM = { 1: 70, 2: 122, 3: 169 };
 const VISUAL_SCALE_OVERRIDES = {
   2: 1.05,
   3: 1.05,
@@ -117,7 +118,7 @@ export function getExplorationSpriteSize(pokemon) {
     ? Math.min(1.38, 1 + (heightMeters - 2) * 0.055)
     : 1;
   const visualScale = VISUAL_SCALE_OVERRIDES[speciesId] || 1;
-  const calculated = heightBase * stageScale * giantScale * visualScale;
+  const calculated = heightBase * stageScale * giantScale * visualScale * GLOBAL_EXPLORATION_SCALE;
   const minimum = STAGE_MINIMUM[stage] || STAGE_MINIMUM[1];
-  return Math.round(Math.max(minimum, Math.min(210, calculated)));
+  return Math.round(Math.max(minimum, Math.min(240, calculated)));
 }
