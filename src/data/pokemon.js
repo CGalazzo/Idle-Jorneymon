@@ -57,7 +57,7 @@ export function createInstanceId(speciesId) {
   return `${speciesId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function getSpriteUrls(speciesId, isShiny = false) {
+export function getPokemonSpriteUrls(speciesId, isShiny = false) {
   const id = Math.max(1, Number(speciesId) || 1);
   if (id <= LAST_ANIMATED_SPECIES_ID) {
     const shinyPath = isShiny ? "shiny/" : "";
@@ -74,11 +74,11 @@ function getSpriteUrls(speciesId, isShiny = false) {
 }
 
 function withSprites(pokemon) {
-  return { ...pokemon, ...getSpriteUrls(pokemon.id, false) };
+  return { ...pokemon, ...getPokemonSpriteUrls(pokemon.id, false) };
 }
 
 function shinySprites(pokemon) {
-  return { ...pokemon, ...getSpriteUrls(pokemon.id, true) };
+  return { ...pokemon, ...getPokemonSpriteUrls(pokemon.id, true) };
 }
 
 function clampLevel(level) {
@@ -175,7 +175,7 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
   return {
     ...template,
     ...pokemon,
-    ...getSpriteUrls(pokemon.id, Boolean(pokemon.isShiny)),
+    ...getPokemonSpriteUrls(pokemon.id, Boolean(pokemon.isShiny)),
     id: Number(pokemon.id),
     uid: pokemon.uid || createInstanceId(pokemon.id),
     level,
