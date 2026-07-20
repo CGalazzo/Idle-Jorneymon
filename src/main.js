@@ -1,4 +1,5 @@
 import "./styles/base.css";
+import "./styles/start-menu.css";
 import "./styles/progression.css";
 import "./styles/quality-of-life.css";
 import { startNewJourney } from "./core/game-state.js";
@@ -26,6 +27,22 @@ async function boot() {
     loadOfficialPokemonMetrics(speciesIds)
   ]);
   app.innerHTML = createAppMarkup();
+
+  const welcomeRoot = document.querySelector("#welcome-screen");
+  welcomeRoot.insertAdjacentHTML("beforeend", `
+    <div id="journey-menu-screen" class="journey-menu-screen" hidden>
+      <div class="journey-menu-card">
+        <small>MENU DA JORNADA</small>
+        <h1>Escolha como continuar</h1>
+        <div class="journey-menu-actions">
+          <button id="journey-continue-button" class="journey-menu-action">CONTINUAR JORNADA</button>
+          <button id="new-journey-button" class="journey-menu-action secondary">COMEÇAR NOVA JORNADA</button>
+        </div>
+        <button id="back-to-splash" class="journey-menu-back">← Voltar à tela inicial</button>
+      </div>
+    </div>
+  `);
+
   enhanceProgressionMarkup();
 
   function memoizeInnerHTML(element) {
@@ -118,10 +135,14 @@ async function boot() {
 
   const welcomeScreen = document.querySelector("#welcome-screen");
   const splashScreen = document.querySelector("#splash-screen");
+  const journeyMenuScreen = document.querySelector("#journey-menu-screen");
   const starterCard = document.querySelector("#starter-card");
   const starterSelection = document.querySelector("#starter-selection");
-  const continueButton = document.querySelector("#continue-button");
+  const continueButton = document.querySelector("#journey-continue-button");
   const scene = document.querySelector("#scene");
+
+  document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
+  starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
 
   function updateSceneMetrics() {
     const width = scene.clientWidth || 1;
@@ -142,9 +163,18 @@ async function boot() {
     renderProgression(state);
   }
 
+  function setWelcomeView(view) {
+    splashScreen.hidden = view !== "splash";
+    journeyMenuScreen.hidden = view !== "menu";
+    starterCard.hidden = view !== "starters";
+    starterSelection.hidden = view !== "starters";
+    welcomeScreen.classList.toggle("showing-secondary", view !== "splash");
+  }
+
   function showGame() {
     isMenuOpen = false;
     welcomeScreen.classList.add("is-hidden");
+    welcomeScreen.classList.remove("showing-secondary");
     document.body.classList.remove("welcome-open");
     lastFrame = performance.now();
     updateSceneMetrics();
@@ -156,15 +186,22 @@ async function boot() {
     saveGame(state);
     welcomeScreen.classList.remove("is-hidden");
     document.body.classList.add("welcome-open");
-    splashScreen.hidden = false;
-    starterCard.hidden = true;
-    continueButton.hidden = !hasSavedGame();
+    setWelcomeView("splash");
+  }
+
+  function showJourneyMenu() {
+    isMenuOpen = true;
+    saveGame(state);
+    welcomeScreen.classList.remove("is-hidden");
+    document.body.classList.add("welcome-open");
+    continueButton.disabled = !hasSavedGame();
+    continueButton.title = continueButton.disabled ? "Nenhuma jornada salva" : "Continuar do último save";
+    setWelcomeView("menu");
   }
 
   function showStarterSelection() {
-    splashScreen.hidden = true;
-    starterCard.hidden = false;
-    starterSelection.hidden = false;
+    isMenuOpen = true;
+    setWelcomeView("starters");
   }
 
   function loop(now) {
@@ -197,9 +234,11 @@ async function boot() {
     requestAnimationFrame(loop);
   }
 
-  document.querySelector("#start-image-button").addEventListener("click", showStarterSelection);
-  document.querySelector("#back-to-welcome").addEventListener("click", showWelcome);
-  document.querySelector("#menu-button").addEventListener("click", showWelcome);
+  document.querySelector("#start-image-button").addEventListener("click", showJourneyMenu);
+  document.querySelector("#back-to-splash").addEventListener("click", showWelcome);
+  document.querySelector("#new-journey-button").addEventListener("click", showStarterSelection);
+  document.querySelector("#back-to-welcome").addEventListener("click", showJourneyMenu);
+  document.querySelector("#menu-button").addEventListener("click", showJourneyMenu);
 
   document.querySelectorAll("[data-starter-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -212,7 +251,12 @@ async function boot() {
     });
   });
 
-  continueButton.addEventListener("click", showGame);
+  continueButton.addEventListener("click", () => {
+    if (!hasSavedGame()) return;
+    state = loadGame();
+    preloadedRouteKey = "";
+    showGame();
+  });
 
   document.querySelector("#pokedex-button").addEventListener("click", () => {
     renderPokedex(state);
@@ -291,8 +335,7 @@ async function boot() {
 
   await preloadRouteSprites(state);
   renderGame();
-  if (state.hasStarted) showGame();
-  else showWelcome();
+  showWelcome();
   requestAnimationFrame(loop);
 }
 
