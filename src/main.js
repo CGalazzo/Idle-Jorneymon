@@ -9,17 +9,20 @@ import { loadOfficialPokemonData } from "./data/battle-data.js";
 import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
 import { MEGA_FORM_IDS } from "./data/mega-data.js";
 import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
-import { POKEDEX_SPECIES } from "./data/pokemon.js";
+import { POKEDEX_SPECIES, getPokemonSpriteUrls } from "./data/pokemon.js";
 import { createAreaState, getRouteDefinition } from "./data/worlds.js";
 import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from "./ui/render.js";
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { enhanceEeveeEvolutionMarkup, renderEeveeEvolutionChoice } from "./ui/eevee-evolution-ui.js";
 import {
   enhanceShopMarkup,
+  renderItems,
   renderShop,
   renderShopHud,
-  selectShopTab
+  selectShopTab,
+  showShopFeedback
 } from "./ui/shop-ui.js";
+import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
@@ -43,6 +46,7 @@ async function boot() {
     loadOfficialPokemonMetrics(POKEDEX_SPECIES.map((pokemon) => pokemon.id))
   ]);
   app.innerHTML = createAppMarkup();
+  installSpriteFallbacks();
 
   const welcomeRoot = document.querySelector("#welcome-screen");
   welcomeRoot.insertAdjacentHTML("beforeend", `
@@ -91,7 +95,10 @@ async function boot() {
     "#capture-ball-options",
     "#shop-ball-grid",
     "#shop-exp-grid",
-    "#shop-mega-grid"
+    "#shop-mega-grid",
+    "#inventory-ball-grid",
+    "#inventory-exp-grid",
+    "#inventory-mega-grid"
   ].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
 
   const spriteCache = new Map();
@@ -136,12 +143,12 @@ async function boot() {
     const urls = new Set();
 
     pokemon.forEach((entry) => {
-      if (entry.sprite) urls.add(entry.sprite);
-      if (entry.backSprite) urls.add(entry.backSprite);
-      if (entry.sprite) urls.add(entry.sprite.replace("/animated/", "/animated/shiny/"));
-      if (entry.backSprite) urls.add(entry.backSprite.replace("/animated/back/", "/animated/back/shiny/"));
-      urls.add(getExplorationSpriteUrl(entry, false));
-      urls.add(getExplorationSpriteUrl(entry, true));
+      [false, true].forEach((isShiny) => {
+        const sprites = getPokemonSpriteUrls(entry.megaFormId || entry.id, isShiny);
+        urls.add(sprites.sprite);
+        urls.add(sprites.backSprite);
+        urls.add(getExplorationSpriteUrl({ ...entry, isShiny }, isShiny));
+      });
     });
 
     preloadedRoutePromise = Promise.all([...urls].map(preloadSprite));
@@ -155,6 +162,7 @@ async function boot() {
   let isMenuOpen = true;
   let isTeamOpen = false;
   let isShopOpen = false;
+  let isItemsOpen = false;
 
   const welcomeScreen = document.querySelector("#welcome-screen");
   const splashScreen = document.querySelector("#splash-screen");
@@ -168,6 +176,7 @@ async function boot() {
   const eeveeEvolutionDialog = document.querySelector("#eevee-evolution-dialog");
   const teamDialog = document.querySelector("#team-dialog");
   const shopDialog = document.querySelector("#shop-dialog");
+  const itemsDialog = document.querySelector("#items-dialog");
 
   document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
   starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
@@ -197,7 +206,7 @@ async function boot() {
     renderBase(state);
     renderProgression(state);
     renderShopHud(state);
-    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen);
+    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen);
   }
 
   function setWelcomeView(view) {
@@ -279,7 +288,7 @@ async function boot() {
     lastFrame = now;
 
     const evolutionChoicePending = Boolean(state.pendingEvolutionChoices?.length);
-    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !evolutionChoicePending) {
+    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !evolutionChoicePending) {
       const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
@@ -397,6 +406,7 @@ async function boot() {
     isShopOpen = true;
     saveGame(state);
     selectShopTab("balls");
+    showShopFeedback("");
     renderShop(state);
     shopDialog.showModal();
   });
@@ -430,8 +440,29 @@ async function boot() {
     if (changed) {
       saveGame(state);
       renderShop(state);
+      showShopFeedback("Compra concluída! O item já aparece no botão ITENS.");
       renderGame();
     }
+  });
+
+  document.querySelector("#items-button").addEventListener("click", () => {
+    if (state.mode !== "exploring" || state.pendingEvolutionChoices?.length) return;
+    isItemsOpen = true;
+    saveGame(state);
+    renderItems(state);
+    itemsDialog.showModal();
+  });
+
+  document.querySelector("#close-items").addEventListener("click", () => itemsDialog.close());
+
+  itemsDialog.addEventListener("close", () => {
+    isItemsOpen = false;
+    lastFrame = performance.now();
+    renderGame();
+  });
+
+  itemsDialog.addEventListener("click", (event) => {
+    if (event.target === itemsDialog) itemsDialog.close();
   });
 
   document.querySelector("#accept-eevee-evolution").addEventListener("click", () => {
