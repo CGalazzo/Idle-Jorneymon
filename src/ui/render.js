@@ -1,5 +1,7 @@
 import { POKEDEX_SPECIES, STARTERS } from "../data/pokemon.js";
+import { getExplorationSpriteSize } from "../data/pokemon-metrics.js";
 import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
+import { CAPTURE_DECISION_MS } from "../systems/capture.js";
 
 const modeCopy = {
   exploring: ["EXPLORANDO", "Próximo encontro"],
@@ -8,6 +10,8 @@ const modeCopy = {
   capture: ["DECISÃO DE CAPTURA", "Pokémon derrotado"],
   recovering: ["RECUPERANDO", "Retornando à jornada"]
 };
+
+const SCENE_MODE_CLASSES = Object.keys(modeCopy);
 
 function percent(value, max) {
   return Math.max(0, Math.min(100, (value / max) * 100));
@@ -36,16 +40,29 @@ function pokemonCard(pokemon, enemy = false) {
     </article>`;
 }
 
+function applyExplorationSpriteSize(element, pokemon) {
+  const size = getExplorationSpriteSize(pokemon);
+  element.style.setProperty("--exploration-sprite-size", `${size}px`);
+  element.style.setProperty("--exploration-shadow-width", `${Math.max(30, Math.round(size * 0.66))}px`);
+}
+
 function ensureWalker(walker, pokemon) {
-  if (walker.dataset.pokemonUid === pokemon.uid && walker.querySelector("img")) return;
+  const spriteChanged = walker.dataset.pokemonSprite !== pokemon.sprite;
+  if (walker.dataset.pokemonUid === pokemon.uid && !spriteChanged && walker.querySelector("img")) {
+    applyExplorationSpriteSize(walker, pokemon);
+    return;
+  }
   walker.innerHTML = `<img src="${pokemon.sprite}" alt="${pokemon.name} caminhando" /><span class="shadow"></span>`;
   walker.dataset.pokemonUid = pokemon.uid;
+  walker.dataset.pokemonSprite = pokemon.sprite;
+  applyExplorationSpriteSize(walker, pokemon);
 }
 
 function clearWalker(walker) {
   if (!walker.childElementCount) return;
   walker.replaceChildren();
   delete walker.dataset.pokemonUid;
+  delete walker.dataset.pokemonSprite;
 }
 
 function updateBattleCard(card, pokemon) {
@@ -55,6 +72,22 @@ function updateBattleCard(card, pokemon) {
   hpBar.className = healthClass(pokemon.hp, pokemon.maxHp);
   card.querySelector(".pokemon-info small").textContent = `${pokemon.hp} / ${pokemon.maxHp} HP`;
   card.querySelector(".name-line span").textContent = `NV. ${pokemon.level}`;
+}
+
+function updateSceneMode(scene, mode) {
+  if (scene.dataset.renderMode === mode) return false;
+  scene.classList.remove(...SCENE_MODE_CLASSES);
+  scene.classList.add(mode);
+  scene.dataset.renderMode = mode;
+  return true;
+}
+
+function updateCaptureTimer(state) {
+  const expiresAt = Number(state.captureOffer?.expiresAt) || Date.now() + CAPTURE_DECISION_MS;
+  const remainingMs = Math.max(0, expiresAt - Date.now());
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  document.querySelector("#capture-time-copy").textContent = `Não capturar automaticamente em ${remainingSeconds}s`;
+  document.querySelector("#capture-time-bar").style.width = `${Math.min(100, (remainingMs / CAPTURE_DECISION_MS) * 100)}%`;
 }
 
 export function createAppMarkup() {
@@ -102,6 +135,7 @@ export function createAppMarkup() {
             <span id="shiny-label" class="shiny-label" hidden>✨ SHINY</span>
             <strong id="capture-title"></strong>
             <p>Deseja tentar adicionar este Pokémon à sua equipe?</p>
+            <div class="capture-time"><span id="capture-time-copy">Não capturar automaticamente em 5s</span><div class="capture-time-track"><i id="capture-time-bar"></i></div></div>
             <div><button id="try-capture" class="capture-button"></button><button id="decline-capture" class="decline-button">Não capturar</button></div>
           </div>
         </section>
@@ -124,7 +158,7 @@ export function createAppMarkup() {
           <div><small>VITÓRIAS</small><strong id="wins-stat">0</strong></div>
         </section>
       </main>
-      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.2.0</span></footer>
+      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.6.0</span></footer>
     </div>
     <dialog id="pokedex-dialog" class="pokedex-dialog">
       <div class="dialog-heading"><div><small>REGISTRO DA ROTA 1</small><h2>Pokédex</h2></div><button id="close-pokedex" class="icon-button" aria-label="Fechar Pokédex">×</button></div>
@@ -188,9 +222,7 @@ export function render(state) {
   const player = getActivePokemon(state);
   const [modeLabel] = modeCopy[state.mode];
   const scene = document.querySelector("#scene");
-  const modeChanged = scene.dataset.renderMode !== state.mode;
-  scene.className = `scene ${state.mode}`;
-  scene.dataset.renderMode = state.mode;
+  const modeChanged = updateSceneMode(scene, state.mode);
   document.querySelector("#mode-badge").textContent = modeLabel;
   document.querySelector("#area-name").textContent = state.area.name;
 
@@ -209,20 +241,27 @@ export function render(state) {
     updateBattleCard(battleStage.querySelector(".player-card"), player);
   } else if (state.mode === "capture") {
     clearWalker(walker);
-    if (modeChanged) battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
+    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
+      battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
+      battleStage.dataset.enemyId = String(state.enemy.id);
+    }
     capturePanel.hidden = false;
     document.querySelector("#capture-title").textContent = `${state.enemy.name} foi derrotado!`;
     document.querySelector("#try-capture").textContent = `Tentar capturar — ${state.captureOffer.chance}% de chance`;
     document.querySelector("#shiny-label").hidden = !state.enemy.isShiny;
+    updateCaptureTimer(state);
   } else if (state.mode === "approach") {
     capturePanel.hidden = true;
     ensureWalker(walker, player);
     if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
       battleStage.innerHTML = `<div class="approaching-enemy ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name} se aproximando" /><span class="shadow"></span></div>`;
       battleStage.dataset.enemyId = String(state.enemy.id);
+      scene.dataset.approachDistance = String(Math.max(1, scene.getBoundingClientRect().width * 0.42));
     }
     const approachingEnemy = battleStage.querySelector(".approaching-enemy");
-    approachingEnemy.style.left = `${88 - state.approachProgress * 42}%`;
+    applyExplorationSpriteSize(approachingEnemy, state.enemy);
+    const distance = Number(scene.dataset.approachDistance) * state.approachProgress;
+    approachingEnemy.style.transform = `translate3d(calc(-50% - ${distance}px), 0, 0)`;
   } else {
     capturePanel.hidden = true;
     if (modeChanged) {
@@ -245,7 +284,5 @@ export function render(state) {
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
-  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.3.2";
-  renderPokedex(state);
-  renderTeam(state);
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.6.0";
 }
