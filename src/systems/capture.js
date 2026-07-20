@@ -31,8 +31,24 @@ function resetEncounter(state) {
   state.nextEncounterAt = randomEncounterTarget();
 }
 
+function repeatRevisitedRoute(state, previousRoute) {
+  state.pendingRouteAdvance = false;
+  resetEncounter(state);
+  state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
+  state.activeTeamIndex = Math.max(0, state.team.findIndex((pokemon) => pokemon.hp > 0));
+  state.area = createAreaState(previousRoute.worldIndex, previousRoute.routeIndex);
+  state.mode = "exploring";
+  addLog(state, `${previousRoute.environment.name} · Rota ${previousRoute.routeNumber} foi reiniciada para continuar a busca.`);
+}
+
 function advanceJourney(state) {
   const previousRoute = getRouteDefinition(state.journey.worldIndex, state.journey.routeIndex);
+
+  if (state.revisit?.active) {
+    repeatRevisitedRoute(state, previousRoute);
+    return;
+  }
+
   const nextPosition = getNextRoutePosition(state.journey.worldIndex, state.journey.routeIndex);
   const completedEnvironment = previousRoute.routeIndex === previousRoute.environment.routes.length - 1;
 
