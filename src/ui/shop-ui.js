@@ -1,3 +1,4 @@
+import "../styles/shop-repair.css";
 import { MEGA_STONES } from "../data/mega-data.js";
 import { BALL_DEFINITIONS, EXP_SHARE_UPGRADES, getExpShareMultiplier } from "../data/shop-data.js";
 import {
@@ -284,6 +285,7 @@ export function renderShop(state) {
   renderBallShop(state);
   renderExpShareShop(state);
   renderMegaShop(state);
+  renderItems(state);
 }
 
 export function getMegaCatalogSize() {
