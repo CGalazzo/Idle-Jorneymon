@@ -65,12 +65,16 @@ async function boot() {
   }
 
   function preloadRouteSprites(currentState) {
-    const routeKey = `${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}`;
+    const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.isShiny ? 1 : 0}`).join(",");
+    const routeKey = `${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}:${teamKey}`;
     if (routeKey === preloadedRouteKey) return;
     preloadedRouteKey = routeKey;
 
     const route = getRouteDefinition(currentState.journey?.worldIndex, currentState.journey?.routeIndex);
-    const pokemon = [...route.encounters, route.boss, ...currentState.team];
+    const routePokemon = [...route.encounters, route.boss].map((entry) => {
+      return POKEDEX_SPECIES.find((pokemon) => pokemon.id === Number(entry.id)) || entry;
+    });
+    const pokemon = [...routePokemon, ...currentState.team];
     pokemon.forEach((entry) => {
       preloadSprite(entry.sprite);
       preloadSprite(entry.backSprite);
