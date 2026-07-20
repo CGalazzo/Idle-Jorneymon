@@ -18,6 +18,9 @@ export const NORMAL_IV = 12;
 export const STARTER_IV = 20;
 export const MINI_BOSS_IV = 20;
 export const FINAL_BOSS_IV = 31;
+export const HARD_NORMAL_IV = 18;
+export const HARD_MINI_BOSS_IV = 24;
+export const HARD_FINAL_BOSS_IV = 31;
 
 export const STARTERS = [
   { id: 1, name: "Bulbasaur", type: "Planta/Veneno", level: 5, rarity: "starter" },
@@ -148,13 +151,28 @@ export function createStarter(starterId) {
 }
 
 export function createCapturedPokemon(wildPokemon) {
+  const capturedInHard = Boolean(wildPokemon.hardModeEncounter);
+  const source = capturedInHard
+    ? normalizePokemonInstance({
+        ...wildPokemon,
+        hardModeEncounter: false,
+        hardStatMultiplier: undefined
+      }, { heal: true })
+    : { ...wildPokemon };
+
+  delete source.xpReward;
+  delete source.playerLevelAtEncounter;
+  delete source.hardModeEncounter;
+  delete source.hardStatMultiplier;
+
   return {
-    ...wildPokemon,
+    ...source,
     uid: createInstanceId(wildPokemon.id),
     isBoss: false,
     bossType: null,
     encounterRole: "captured",
-    hp: wildPokemon.maxHp,
+    capturedInHard,
+    hp: source.maxHp,
     xp: 0,
     xpToNext: experienceToNextLevel(wildPokemon.level)
   };
@@ -254,9 +272,28 @@ function baseExperienceFromStats(baseStats) {
   return Math.max(8, Math.round(total / 30));
 }
 
+function applyHardEncounterStats(pokemon, multiplier) {
+  const statKeys = ["maxHp", "attack", "defense", "specialAttack", "specialDefense", "speed"];
+  statKeys.forEach((key) => {
+    pokemon[key] = Math.max(1, Math.round((Number(pokemon[key]) || 1) * multiplier));
+  });
+  pokemon.hp = pokemon.maxHp;
+  pokemon.hardModeEncounter = true;
+  pokemon.hardStatMultiplier = multiplier;
+  return pokemon;
+}
+
 export function createWildPokemon(state, playerLevel, random = Math.random) {
   const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
-  const levels = getRouteLevelRange(route.worldIndex, route.routeIndex, route.bossType);
+  const hardMode = state.campaignMode === "hard";
+  const strongestTeamLevel = Math.max(1, ...(state.team || []).map((pokemon) => Number(pokemon.level) || 1));
+  const levels = getRouteLevelRange(
+    route.worldIndex,
+    route.routeIndex,
+    route.bossType,
+    hardMode ? "hard" : "normal",
+    strongestTeamLevel
+  );
   const bossReady = state.area.regularVictories >= route.requiredVictories && !state.area.bossDefeated;
   const template = bossReady
     ? route.boss
@@ -265,7 +302,9 @@ export function createWildPokemon(state, playerLevel, random = Math.random) {
   const level = bossReady
     ? levels.bossLevel
     : levels.minLevel + Math.floor(random() * (levels.maxLevel - levels.minLevel + 1));
-  const iv = bossReady ? (isFinalBoss ? FINAL_BOSS_IV : MINI_BOSS_IV) : NORMAL_IV;
+  const iv = hardMode
+    ? (bossReady ? (isFinalBoss ? HARD_FINAL_BOSS_IV : HARD_MINI_BOSS_IV) : HARD_NORMAL_IV)
+    : (bossReady ? (isFinalBoss ? FINAL_BOSS_IV : MINI_BOSS_IV) : NORMAL_IV);
   const isShiny = random() < SHINY_CHANCE;
   const rarity = bossReady
     ? (isFinalBoss ? (template.rarity === "legendary" ? "legendary" : "epic") : "rare")
@@ -277,11 +316,17 @@ export function createWildPokemon(state, playerLevel, random = Math.random) {
     bossType: bossReady ? route.bossType : null,
     encounterRole: bossReady ? (isFinalBoss ? "final-boss" : "mini-boss") : "wild"
   });
+
+  if (hardMode) {
+    applyHardEncounterStats(pokemon, bossReady ? (isFinalBoss ? 1.6 : 1.4) : 1.25);
+  }
+
   const bossXpMultiplier = bossReady ? (isFinalBoss ? 2.8 : 2) : 1;
+  const hardXpMultiplier = hardMode ? 1.5 : 1;
 
   return {
     ...pokemon,
-    xpReward: Math.round(baseExperienceFromStats(pokemon.baseStats) * (1 + level * 0.12) * bossXpMultiplier),
+    xpReward: Math.round(baseExperienceFromStats(pokemon.baseStats) * (1 + level * 0.12) * bossXpMultiplier * hardXpMultiplier),
     playerLevelAtEncounter: Number(playerLevel) || 1
   };
 }
