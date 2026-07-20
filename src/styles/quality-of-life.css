@@ -56,10 +56,10 @@
   isolation: auto;
 }
 
-/* Esta base representa o ponto de contato dos pés com a estrada. */
+/* Uma única linha de contato, elevada para o centro visual da estrada. */
 .scene .walker,
 .scene .approaching-enemy {
-  bottom: 13%;
+  bottom: calc(13% + 12px);
 }
 
 .scene .walker { will-change: auto; }
@@ -99,10 +99,16 @@
   to { transform: translateY(calc(var(--exploration-ground-offset) - 7px)) scaleX(-1) rotate(-3deg); }
 }
 
+/* Jogador e inimigo compartilham exatamente a mesma base e a mesma sombra. */
 .scene .walker .shadow,
 .scene .approaching-enemy .shadow {
+  position: absolute;
+  z-index: 1;
+  bottom: 4px;
   width: var(--exploration-shadow-width, 55px);
   max-width: 90%;
+  height: 12px;
+  border-radius: 50%;
   background: rgba(24, 42, 31, .3);
   filter: none;
   transform-origin: center;
@@ -255,7 +261,7 @@ footer { font-size: 9px; }
   .scene .walker,
   .scene .approaching-enemy {
     --rendered-exploration-size: min(var(--exploration-sprite-size, 82px), 190px);
-    bottom: 11%;
+    bottom: calc(11% + 9px);
   }
 
   .activity-log li { font-size: 11px; }
