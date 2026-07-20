@@ -22,6 +22,12 @@ import {
   renderHardModeState
 } from "./ui/hard-mode-ui.js";
 import {
+  enhanceHardEndgameMarkup,
+  isHardEndgameScreenOpen,
+  renderHardEndgame,
+  showHardShopFeedback
+} from "./ui/hard-endgame-ui.js";
+import {
   enhanceShopMarkup,
   renderItems,
   renderShop,
@@ -33,6 +39,11 @@ import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { acknowledgeHardUnlock, switchCampaign } from "./systems/campaign.js";
+import {
+  buyHardShopItem,
+  clearHardChallengeResult,
+  startHardChallenge
+} from "./systems/hard-endgame.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
@@ -84,6 +95,7 @@ async function boot() {
   enhanceEeveeEvolutionMarkup();
   enhanceShopMarkup();
   enhanceHardModeMarkup();
+  enhanceHardEndgameMarkup();
 
   function memoizeInnerHTML(element) {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
@@ -116,7 +128,9 @@ async function boot() {
     "#shop-mega-grid",
     "#inventory-ball-grid",
     "#inventory-exp-grid",
-    "#inventory-mega-grid"
+    "#inventory-mega-grid",
+    "#hard-shop-grid",
+    "#hard-challenge-grid"
   ].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
 
   const spriteCache = new Map();
@@ -157,7 +171,7 @@ async function boot() {
     const routePokemon = [...route.encounters, route.boss].map((entry) => {
       return POKEDEX_SPECIES.find((pokemon) => pokemon.id === Number(entry.id)) || entry;
     });
-    const pokemon = [...routePokemon, ...currentState.team];
+    const pokemon = [...routePokemon, ...currentState.team, ...(currentState.enemy ? [currentState.enemy] : [])];
     const urls = new Set();
 
     pokemon.forEach((entry) => {
@@ -197,6 +211,9 @@ async function boot() {
   const teamDialog = document.querySelector("#team-dialog");
   const shopDialog = document.querySelector("#shop-dialog");
   const itemsDialog = document.querySelector("#items-dialog");
+  const hardShopDialog = document.querySelector("#hard-shop-dialog");
+  const hardChallengesDialog = document.querySelector("#hard-challenges-dialog");
+  const hardChallengeResultDialog = document.querySelector("#hard-challenge-result-dialog");
 
   document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
   starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
@@ -227,8 +244,9 @@ async function boot() {
     renderProgression(state);
     renderShopHud(state);
     renderHardModeState(state);
+    renderHardEndgame(state);
     if (teamDialog.open) decorateHardCapturedRoster(state);
-    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen());
+    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen() && !isHardEndgameScreenOpen());
   }
 
   function setWelcomeView(view) {
@@ -263,6 +281,7 @@ async function boot() {
     welcomeScreen.classList.remove("is-hidden");
     document.body.classList.add("welcome-open");
     renderCampaignMenu(state);
+    renderHardEndgame(state);
     setWelcomeView("menu");
   }
 
@@ -304,12 +323,23 @@ async function boot() {
     renderGame();
   }
 
+  function openHardShop() {
+    showHardShopFeedback("");
+    renderHardEndgame(state);
+    if (!hardShopDialog.open) hardShopDialog.showModal();
+  }
+
+  function openHardChallenges() {
+    renderHardEndgame(state);
+    if (!hardChallengesDialog.open) hardChallengesDialog.showModal();
+  }
+
   function loop(now) {
     const delta = Math.min((now - lastFrame) / 1000, 0.25);
     lastFrame = now;
 
     const evolutionChoicePending = Boolean(state.pendingEvolutionChoices?.length);
-    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen() && !evolutionChoicePending) {
+    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen() && !isHardEndgameScreenOpen() && !evolutionChoicePending) {
       const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
@@ -326,7 +356,7 @@ async function boot() {
       }
 
       const modeChanged = previousMode !== state.mode;
-      if (modeChanged || state.pendingEvolutionChoices?.length || state.hardUnlockCelebrationPending || now - lastRender >= UI_RENDER_INTERVAL_MS) {
+      if (modeChanged || state.pendingEvolutionChoices?.length || state.hardUnlockCelebrationPending || state.hardEndgame?.challengeResult || now - lastRender >= UI_RENDER_INTERVAL_MS) {
         renderGame();
         lastRender = now;
       }
@@ -504,6 +534,51 @@ async function boot() {
   itemsDialog.addEventListener("click", (event) => {
     if (event.target === itemsDialog) itemsDialog.close();
   });
+
+  document.querySelector("#hard-shop-button").addEventListener("click", openHardShop);
+  document.querySelector("#hard-menu-shop-button").addEventListener("click", openHardShop);
+  document.querySelector("#hard-challenges-button").addEventListener("click", openHardChallenges);
+  document.querySelector("#close-hard-shop").addEventListener("click", () => hardShopDialog.close());
+  document.querySelector("#close-hard-challenges").addEventListener("click", () => hardChallengesDialog.close());
+
+  hardShopDialog.addEventListener("click", (event) => {
+    if (event.target === hardShopDialog) {
+      hardShopDialog.close();
+      return;
+    }
+    const button = event.target.closest("[data-buy-hard-item]");
+    if (!button || button.disabled) return;
+    if (buyHardShopItem(state, button.dataset.buyHardItem)) {
+      saveGame(state);
+      renderHardEndgame(state);
+      renderItems(state);
+      showHardShopFeedback("Compra concluída! A recompensa foi aplicada e salva.");
+      renderGame();
+    }
+  });
+
+  hardChallengesDialog.addEventListener("click", (event) => {
+    if (event.target === hardChallengesDialog) {
+      hardChallengesDialog.close();
+      return;
+    }
+    const button = event.target.closest("[data-start-hard-challenge]");
+    if (!button || button.disabled) return;
+    if (state.campaignMode !== "hard" && !switchCampaign(state, "hard")) return;
+    if (!startHardChallenge(state, button.dataset.startHardChallenge)) return;
+    hardChallengesDialog.close();
+    preloadedRouteKey = "";
+    saveGame(state);
+    showGame();
+  });
+
+  document.querySelector("#hard-result-menu-button").addEventListener("click", () => {
+    clearHardChallengeResult(state);
+    saveGame(state);
+    if (hardChallengeResultDialog.open) hardChallengeResultDialog.close();
+    showJourneyMenu();
+  });
+  hardChallengeResultDialog.addEventListener("cancel", (event) => event.preventDefault());
 
   document.querySelector("#accept-eevee-evolution").addEventListener("click", () => {
     acceptEeveeEvolution(state);
