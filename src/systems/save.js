@@ -48,7 +48,7 @@ function persistState(state) {
 }
 
 function simulateBackgroundStep(state, deltaSeconds, simulatedNow) {
-  if (!state?.hasStarted || state.journey?.complete) return;
+  if (!state?.hasStarted || state.journey?.complete || state.pendingEvolutionChoices?.length) return;
 
   if (state.mode === "exploring") updateExploration(state, deltaSeconds);
   if (state.mode === "approach") updateApproach(state, deltaSeconds);
@@ -72,6 +72,11 @@ function processPendingBackgroundTime() {
     backgroundSimulationTime += step * 1000;
     simulateBackgroundStep(activeState, step, backgroundSimulationTime);
     pendingBackgroundSeconds -= step;
+
+    if (activeState.pendingEvolutionChoices?.length) {
+      pendingBackgroundSeconds = 0;
+      break;
+    }
   }
 
   pendingBackgroundSeconds = 0;
@@ -132,7 +137,7 @@ function normalizePokemon(pokemon, refreshExperienceCurve = false, applyPendingE
   if (applyPendingEvolutions) {
     const context = evolutionContext(environmentId);
     while (evolvePokemonIfReady(normalized, context)) {
-      // Aplica evoluções pendentes por nível. Eevee só evolui ao subir de nível no ambiente correto.
+      // Aplica evoluções pendentes por nível. Eevee depende de uma escolha explícita do jogador.
     }
   }
   return normalized;
@@ -260,6 +265,7 @@ function migrateSave(saved) {
       victories: Math.max(0, Number(saved.totals?.victories) || Number(saved.area?.victories) || 0)
     },
     pendingRouteAdvance: false,
+    pendingEvolutionChoices: [],
     team: migratedTeam,
     storage: migratedStorage,
     activeTeamIndex: Math.min(saved.activeTeamIndex || 0, migratedTeam.length - 1),
@@ -318,6 +324,7 @@ export function loadGame() {
         victories: Math.max(0, Number(saved.totals?.victories) || area.victories)
       },
       pendingRouteAdvance: Boolean(saved.pendingRouteAdvance),
+      pendingEvolutionChoices: Array.isArray(saved.pendingEvolutionChoices) ? saved.pendingEvolutionChoices : [],
       team,
       storage,
       activeTeamIndex: Math.min(saved.activeTeamIndex || 0, team.length - 1),
