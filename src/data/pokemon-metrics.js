@@ -1,3 +1,5 @@
+import { EVOLUTION_RULES } from "./evolutions.js";
+
 const OFFICIAL_POKEMON_URL = "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon.csv";
 const METRICS_CACHE_KEY = "idle-jorneymon-official-metrics-v1";
 
@@ -9,6 +11,41 @@ const FALLBACK_HEIGHT_DM = {
   43: 5, 44: 8, 45: 12, 95: 88, 130: 65, 144: 17, 150: 20, 248: 20,
   373: 15, 376: 16, 445: 19, 464: 24, 487: 45, 635: 18
 };
+
+const STAGE_SCALE = { 1: 1, 2: 1.35, 3: 1.65 };
+const STAGE_MINIMUM = { 1: 44, 2: 94, 3: 130 };
+const VISUAL_SCALE_OVERRIDES = {
+  2: 1.05,
+  3: 1.05,
+  5: 1.05,
+  6: 1.06,
+  8: 1.05,
+  9: 1.05,
+  17: 1.08,
+  18: 1.08
+};
+
+function buildEvolutionStages() {
+  const stages = new Map();
+  const targets = new Set(Object.values(EVOLUTION_RULES).map((rule) => Number(rule.to)));
+
+  Object.keys(EVOLUTION_RULES).map(Number).forEach((speciesId) => {
+    if (!targets.has(speciesId)) stages.set(speciesId, 1);
+  });
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    Object.entries(EVOLUTION_RULES).forEach(([fromText, rule]) => {
+      const from = Number(fromText);
+      const currentStage = stages.get(from);
+      if (!currentStage) return;
+      stages.set(Number(rule.to), Math.min(3, currentStage + 1));
+    });
+  }
+
+  return stages;
+}
+
+const evolutionStages = buildEvolutionStages();
 
 function restoreCachedMetrics() {
   if (typeof localStorage === "undefined") return;
@@ -64,8 +101,23 @@ export function getPokemonHeightDm(speciesId) {
   return Number(officialMetrics.get(id)?.heightDm) || FALLBACK_HEIGHT_DM[id] || 10;
 }
 
+function getEvolutionStage(pokemon) {
+  const explicitStage = Number(pokemon?.stage);
+  if (explicitStage >= 1 && explicitStage <= 3) return explicitStage;
+  return evolutionStages.get(Number(pokemon?.id)) || 1;
+}
+
 export function getExplorationSpriteSize(pokemon) {
-  const heightMeters = Math.max(0.1, (Number(pokemon?.heightDm) || getPokemonHeightDm(pokemon?.id)) / 10);
-  const calculated = 36 + Math.sqrt(heightMeters) * 35;
-  return Math.round(Math.max(44, Math.min(148, calculated)));
+  const speciesId = Number(pokemon?.id);
+  const heightMeters = Math.max(0.1, (Number(pokemon?.heightDm) || getPokemonHeightDm(speciesId)) / 10);
+  const stage = getEvolutionStage(pokemon);
+  const heightBase = 36 + Math.sqrt(heightMeters) * 35;
+  const stageScale = STAGE_SCALE[stage] || 1;
+  const giantScale = heightMeters > 2
+    ? Math.min(1.38, 1 + (heightMeters - 2) * 0.055)
+    : 1;
+  const visualScale = VISUAL_SCALE_OVERRIDES[speciesId] || 1;
+  const calculated = heightBase * stageScale * giantScale * visualScale;
+  const minimum = STAGE_MINIMUM[stage] || STAGE_MINIMUM[1];
+  return Math.round(Math.max(minimum, Math.min(210, calculated)));
 }
