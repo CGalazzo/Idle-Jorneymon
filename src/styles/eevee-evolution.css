@@ -1,0 +1,125 @@
+.eevee-evolution-dialog {
+  width: min(560px, calc(100% - 24px));
+  padding: 0;
+  color: #edf8ff;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+
+.eevee-evolution-dialog::backdrop {
+  background: rgba(2, 8, 18, .86);
+  backdrop-filter: blur(7px);
+}
+
+.eevee-evolution-card {
+  padding: 30px;
+  text-align: center;
+  background: linear-gradient(145deg, #153759, #081b31);
+  border: 1px solid rgba(113, 211, 247, .4);
+  border-radius: 24px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .62), inset 0 0 28px rgba(106, 221, 255, .05);
+}
+
+.eevee-evolution-card > small {
+  color: #78dfff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .18em;
+}
+
+.eevee-evolution-card h2 {
+  margin: 9px 0 18px;
+  font-size: clamp(25px, 5vw, 38px);
+}
+
+.eevee-evolution-pokemon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 4px 0 18px;
+}
+
+.eevee-evolution-pokemon span {
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  background: rgba(8, 27, 47, .72);
+  border: 1px solid rgba(105, 194, 233, .25);
+  border-radius: 22px;
+}
+
+.eevee-evolution-pokemon span.target {
+  background: radial-gradient(circle, rgba(123, 224, 255, .2), rgba(8, 27, 47, .78) 65%);
+  border-color: rgba(125, 224, 255, .48);
+}
+
+.eevee-evolution-pokemon img {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.eevee-evolution-pokemon b {
+  color: #77ddff;
+  font-size: 30px;
+}
+
+.eevee-evolution-card p {
+  max-width: 430px;
+  margin: 0 auto 22px;
+  color: #b9d1e1;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.eevee-evolution-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.eevee-evolution-actions button {
+  min-height: 48px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.accept-eevee-evolution {
+  color: #06261a;
+  background: linear-gradient(135deg, #7eeab1, #49cf86);
+  border: 0;
+}
+
+.decline-eevee-evolution {
+  color: #d6ebf8;
+  background: rgba(8, 25, 43, .75);
+  border: 1px solid rgba(127, 187, 223, .28);
+}
+
+.eevee-evolution-actions button:hover { filter: brightness(1.08); }
+
+.eevee-evolution-card em {
+  display: block;
+  margin-top: 14px;
+  color: #718fa4;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 520px) {
+  .eevee-evolution-card { padding: 22px 16px; }
+  .eevee-evolution-pokemon { gap: 10px; }
+  .eevee-evolution-pokemon span { width: 104px; height: 104px; }
+  .eevee-evolution-pokemon img { width: 84px; height: 84px; }
+  .eevee-evolution-card p { font-size: 12px; }
+  .eevee-evolution-actions button { min-height: 45px; font-size: 9px; }
+}
