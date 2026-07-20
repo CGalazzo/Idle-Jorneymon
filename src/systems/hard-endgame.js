@@ -7,10 +7,60 @@ import {
 } from "../data/hard-endgame-data.js";
 import { POKEDEX_SPECIES, createInstanceId, normalizePokemonInstance } from "../data/pokemon.js";
 import { normalizeShopState } from "../data/shop-data.js";
+import { ENVIRONMENTS, TOTAL_ROUTES } from "../data/worlds.js";
 
 const MASTER_BALL_STOCK_LIMIT = 1;
 const CHALLENGE_LEVEL = 100;
 const CHALLENGE_IV = 31;
+
+function hardJourney(state) {
+  if (state.campaignMode === "hard") return state.journey;
+  return state.campaigns?.hard?.journey;
+}
+
+function routeEmblemReward(route, campaignComplete = false) {
+  let reward = 1 + (route.bossType === "final" ? 5 : 2);
+  if (route.routeIndex === route.environment.routes.length - 1) reward += 5;
+  if (campaignComplete) reward += 25;
+  return reward;
+}
+
+function backfillHardRouteRewards(state, hardEndgame) {
+  const journey = hardJourney(state);
+  const completedRoutes = Math.max(0, Math.min(TOTAL_ROUTES, Number(journey?.completedRoutes) || 0));
+  if (!completedRoutes) return 0;
+
+  let globalIndex = 0;
+  let reward = 0;
+  for (let worldIndex = 0; worldIndex < ENVIRONMENTS.length; worldIndex += 1) {
+    const environment = ENVIRONMENTS[worldIndex];
+    for (let routeIndex = 0; routeIndex < environment.routes.length; routeIndex += 1) {
+      if (globalIndex >= completedRoutes) break;
+      const route = {
+        ...environment.routes[routeIndex],
+        environment,
+        worldIndex,
+        routeIndex
+      };
+      const routeKey = `${worldIndex}:${routeIndex}`;
+      if (!hardEndgame.rewardedRouteKeys.includes(routeKey)) {
+        hardEndgame.rewardedRouteKeys.push(routeKey);
+        const finalCompletion = Boolean(journey?.complete && globalIndex === TOTAL_ROUTES - 1);
+        reward += routeEmblemReward(route, finalCompletion);
+      }
+      globalIndex += 1;
+    }
+    if (globalIndex >= completedRoutes) break;
+  }
+
+  if (reward > 0) {
+    hardEndgame.emblems += reward;
+    hardEndgame.totalEmblemsEarned += reward;
+    if (journey?.complete) hardEndgame.postGameUnlocked = true;
+    addLog(state, `Recompensa retroativa: +${reward} Emblemas Hard pelas rotas já concluídas.`);
+  }
+  return reward;
+}
 
 function ensureHardEndgameState(state) {
   const target = state.hardEndgame && typeof state.hardEndgame === "object"
@@ -18,6 +68,7 @@ function ensureHardEndgameState(state) {
     : {};
   Object.assign(target, normalizeHardEndgameState(target));
   state.hardEndgame = target;
+  backfillHardRouteRewards(state, target);
   return target;
 }
 
