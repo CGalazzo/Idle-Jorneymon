@@ -3,7 +3,7 @@ import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
 
 export const GAME_VERSION = "0.6.1";
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 export const MAX_TEAM_SIZE = 3;
 
 export function createInitialState(starterId = 4, hasStarted = false) {
@@ -14,6 +14,11 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     lastSavedAt: Date.now(),
     hasStarted,
     mode: "exploring",
+    campaignMode: "normal",
+    campaigns: null,
+    hardModeUnlocked: false,
+    hardUnlockCelebrationPending: false,
+    hardUnlockAcknowledged: false,
     journey: {
       worldIndex: 0,
       routeIndex: 0,
