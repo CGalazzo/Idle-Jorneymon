@@ -5,6 +5,7 @@ import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { createAreaState, getRouteDefinition } from "../data/worlds.js";
 import { grantTeamExperience } from "./progression.js";
 import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
+import { completeHardChallenge } from "./hard-endgame.js";
 import { grantBattleCoins } from "./shop.js";
 import {
   activateEquippedMega,
@@ -99,8 +100,25 @@ function activateHardBossSecondPhase(state, pokemon) {
   return true;
 }
 
+function finishHardChallenge(state, defeated) {
+  const defeatedName = defeated.name;
+  clearMegaTransformationPause(state);
+  deactivateAllMegaEvolutions(state);
+  if (defeated.isMega) deactivateMegaEvolution(defeated);
+  grantTeamExperience(state, defeated.xpReward);
+  if (completeHardChallenge(state, defeated)) {
+    addLog(state, `${defeatedName} foi derrotado no Desafio Hard!`);
+  }
+}
+
 function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
+  if (defeated?.hardChallengeBoss) {
+    state.totals.victories += 1;
+    finishHardChallenge(state, defeated);
+    return;
+  }
+
   const defeatedName = defeated.name;
   state.area.victories += 1;
   state.totals.victories += 1;
@@ -166,6 +184,18 @@ function handleFaintedPokemon(state) {
   }
 
   addLog(state, "Toda a equipe desmaiou.");
+  if (state.enemy?.hardChallengeBoss) {
+    const challengeName = state.hardEndgame?.activeChallengeId || "Desafio Hard";
+    state.hardEndgame.activeChallengeId = null;
+    state.mode = "exploring";
+    state.enemy = null;
+    state.captureOffer = null;
+    state.pendingRouteAdvance = false;
+    state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
+    state.activeTeamIndex = 0;
+    addLog(state, `${challengeName} encerrado. A equipe foi recuperada sem perder progresso.`);
+    return;
+  }
   restartCurrentRouteAfterDefeat(state);
   state.mode = "recovering";
   state.recoveryCooldown = 5;
