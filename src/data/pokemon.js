@@ -147,17 +147,17 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
   const hpRatio = previousHp / previousMaxHp;
 
   return {
+    ...template,
     ...pokemon,
-    ...withSprites(template),
     id: Number(pokemon.id),
-    name: pokemon.name || template.name,
-    type,
-    types: parseTypes(type),
+    uid: pokemon.uid || createInstanceId(pokemon.id),
     level,
     iv,
     heightDm: getPokemonHeightDm(pokemon.id),
-    nature: pokemon.nature || "Neutra",
-    evs: pokemon.evs || { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+    nature: "Neutra",
+    evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+    type,
+    types: parseTypes(type),
     baseStats,
     ...calculated,
     hp: heal ? calculated.maxHp : Math.max(0, Math.min(calculated.maxHp, Math.round(calculated.maxHp * hpRatio))),
@@ -166,5 +166,93 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
     xpToNext: refreshExperienceCurve
       ? experienceToNextLevel(level)
       : Math.max(1, Number(pokemon.xpToNext) || experienceToNextLevel(level))
+  };
+}
+
+export function recalculatePokemonForLevel(pokemon, heal = true) {
+  const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
+  const previousHp = Math.max(0, Number(pokemon.hp) || 0);
+  const baseStats = getOfficialBaseStats(pokemon.id, pokemon);
+  const calculated = applyShinyStatBonus(
+    calculatePokemonStats(baseStats, pokemon.level, pokemon.iv ?? NORMAL_IV),
+    Boolean(pokemon.isShiny)
+  );
+  pokemon.baseStats = baseStats;
+  pokemon.heightDm = getPokemonHeightDm(pokemon.id);
+  pokemon.types = parseTypes(pokemon.type);
+  pokemon.moves = buildMoveSet(pokemon.type, baseStats);
+  Object.assign(pokemon, calculated);
+  pokemon.hp = heal
+    ? calculated.maxHp
+    : Math.max(0, Math.min(calculated.maxHp, previousHp + calculated.maxHp - previousMaxHp));
+  return pokemon;
+}
+
+export function evolvePokemonIfReady(pokemon) {
+  const rule = getEvolutionRule(pokemon.id, pokemon.level);
+  if (!rule) return null;
+
+  const target = POKEDEX_SPECIES.find((entry) => entry.id === rule.to);
+  if (!target) return null;
+
+  const fromId = pokemon.id;
+  const fromName = pokemon.name;
+  const evolved = createPokemonFromTemplate(target, pokemon.level, pokemon.iv ?? NORMAL_IV, {
+    rarity: target.rarity || pokemon.rarity,
+    isShiny: Boolean(pokemon.isShiny),
+    isBoss: Boolean(pokemon.isBoss),
+    bossType: pokemon.bossType || null,
+    encounterRole: pokemon.encounterRole || "captured"
+  });
+
+  Object.assign(pokemon, evolved, {
+    uid: pokemon.uid,
+    xp: pokemon.xp,
+    xpToNext: pokemon.xpToNext,
+    hp: evolved.maxHp
+  });
+
+  return {
+    fromId,
+    fromName,
+    toId: pokemon.id,
+    toName: pokemon.name
+  };
+}
+
+function baseExperienceFromStats(baseStats) {
+  const total = Object.values(baseStats).reduce((sum, value) => sum + value, 0);
+  return Math.max(8, Math.round(total / 30));
+}
+
+export function createWildPokemon(state, playerLevel, random = Math.random) {
+  const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
+  const levels = getRouteLevelRange(route.worldIndex, route.routeIndex, route.bossType);
+  const bossReady = state.area.regularVictories >= route.requiredVictories && !state.area.bossDefeated;
+  const template = bossReady
+    ? route.boss
+    : route.encounters[Math.floor(random() * route.encounters.length)];
+  const isFinalBoss = bossReady && route.bossType === "final";
+  const level = bossReady
+    ? levels.bossLevel
+    : levels.minLevel + Math.floor(random() * (levels.maxLevel - levels.minLevel + 1));
+  const iv = bossReady ? (isFinalBoss ? FINAL_BOSS_IV : MINI_BOSS_IV) : NORMAL_IV;
+  const isShiny = random() < SHINY_CHANCE;
+  const rarity = bossReady
+    ? (isFinalBoss ? (template.rarity === "legendary" ? "legendary" : "epic") : "rare")
+    : template.rarity;
+  const pokemon = createPokemonFromTemplate(template, level, iv, {
+    rarity,
+    isShiny,
+    isBoss: bossReady,
+    bossType: bossReady ? route.bossType : null,
+    encounterRole: bossReady ? (isFinalBoss ? "final-boss" : "mini-boss") : "wild"
+  });
+  const bossXpMultiplier = bossReady ? (isFinalBoss ? 2.8 : 2) : 1;
+
+  return {
+    ...pokemon,
+    xpReward: Math.round(baseExperienceFromStats(pokemon.baseStats) * (1 + level * 0.12) * bossXpMultiplier),
+    playerLevelAtEncounter: Number(playerLevel) || 1
   };
 }
