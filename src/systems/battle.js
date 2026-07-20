@@ -1,7 +1,7 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
 import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
 import { grantTeamExperience } from "./progression.js";
-import { getCaptureChance } from "./capture.js";
+import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
 
 function offensiveStat(pokemon, move) {
   return move.category === "special" ? pokemon.specialAttack : pokemon.attack;
@@ -85,7 +85,11 @@ function finishVictory(state) {
   });
   state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
   state.mode = "capture";
-  state.captureOffer = { chance: getCaptureChance(defeated) };
+  state.captureOffer = {
+    chance: getCaptureChance(defeated),
+    startedAt: Date.now(),
+    expiresAt: Date.now() + CAPTURE_DECISION_MS
+  };
   state.battleParticipants = [];
 }
 
