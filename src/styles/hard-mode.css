@@ -50,6 +50,10 @@ body.hard-mode #route-hud-label {
   gap: 10px;
 }
 
+.campaign-mode-actions + .journey-menu-actions {
+  margin-top: 12px;
+}
+
 .campaign-mode-button {
   display: flex;
   flex-direction: column;
