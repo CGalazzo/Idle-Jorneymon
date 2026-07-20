@@ -6,6 +6,7 @@ import {
   experienceToNextLevel,
   recalculatePokemonForLevel
 } from "../data/pokemon.js";
+import { getExpShareMultiplier } from "../data/shop-data.js";
 import { ENVIRONMENTS } from "../data/worlds.js";
 import { CAPTURE_DECISION_MS } from "./capture.js";
 
@@ -178,11 +179,12 @@ export function declineEeveeEvolution(state) {
 
 export function grantTeamExperience(state, amount) {
   const participants = new Set(state.battleParticipants);
+  const passiveMultiplier = getExpShareMultiplier(state.shop?.expShareLevel);
   state.team.forEach((pokemon) => {
     if (participants.has(pokemon.uid)) {
       grantPokemonExperience(state, pokemon, amount);
     } else if (pokemon.hp > 0) {
-      grantPokemonExperience(state, pokemon, Math.max(1, Math.round(amount * 0.5)));
+      grantPokemonExperience(state, pokemon, Math.max(1, Math.round(amount * passiveMultiplier)));
     }
   });
 }
