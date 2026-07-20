@@ -1,8 +1,8 @@
 import { createStarter } from "../data/pokemon.js";
 import { createAreaState } from "../data/worlds.js";
 
-export const GAME_VERSION = "0.5.1";
-export const SAVE_VERSION = 6;
+export const GAME_VERSION = "0.6.0";
+export const SAVE_VERSION = 7;
 export const MAX_TEAM_SIZE = 3;
 
 export function createInitialState(starterId = 4, hasStarted = false) {
