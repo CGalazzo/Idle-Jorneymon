@@ -104,24 +104,25 @@ export const EVOLUTION_RULES = {
 };
 
 const EEVEE_ENVIRONMENT_EVOLUTIONS = {
-  floresta: 470,
-  praia: 134,
-  "usina-eletrica": 135,
-  "caverna-gelo": 471,
-  "torre-fantasma": 197,
-  vulcao: 136,
-  "ilha-flutuante": 700
+  floresta: [470],
+  praia: [134],
+  "usina-eletrica": [135],
+  "caverna-gelo": [471],
+  "torre-fantasma": [197],
+  "torre-ilusoes": [196, 700],
+  vulcao: [136]
 };
 
+export function getEeveeEvolutionTargets(environmentId) {
+  return [...(EEVEE_ENVIRONMENT_EVOLUTIONS[String(environmentId || "")] || [])];
+}
+
 function getEeveeEvolution(level, context) {
-  if (Number(level) < 20 || !context.allowEnvironmentEvolution) return null;
-  const environmentId = String(context.environmentId || "");
-  if (environmentId === "torre-ilusoes") {
-    const random = typeof context.random === "function" ? context.random : Math.random;
-    return { to: random() < 0.5 ? 196 : 700, level: 20 };
-  }
-  const target = EEVEE_ENVIRONMENT_EVOLUTIONS[environmentId];
-  return target ? { to: target, level: 20 } : null;
+  if (Number(level) < 20) return null;
+  const forcedTarget = Number(context.forceEeveeEvolutionTarget);
+  if (!forcedTarget) return null;
+  const allowedTargets = getEeveeEvolutionTargets(context.environmentId);
+  return allowedTargets.includes(forcedTarget) ? { to: forcedTarget, level: 20 } : null;
 }
 
 function getKirliaEvolution(level, context) {
