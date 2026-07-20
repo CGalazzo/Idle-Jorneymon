@@ -3,6 +3,7 @@ import { normalizeShopState } from "../data/shop-data.js";
 import { createInitialState, GAME_VERSION, SAVE_VERSION } from "../core/game-state.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
 import { getMegaStone } from "../data/mega-data.js";
+import { ensureCampaignState, syncActiveCampaign } from "./campaign.js";
 import { restorePersistedMegaPokemon } from "./mega.js";
 import { updateApproach, updateExploration } from "./exploration.js";
 import { updateBattle, updateRecovery } from "./battle.js";
@@ -46,6 +47,7 @@ function activateState(state) {
 
 function persistState(state) {
   if (!state?.hasStarted) return;
+  syncActiveCampaign(state);
   state.lastSavedAt = Date.now();
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 }
@@ -76,7 +78,7 @@ function processPendingBackgroundTime() {
     simulateBackgroundStep(activeState, step, backgroundSimulationTime);
     pendingBackgroundSeconds -= step;
 
-    if (activeState.pendingEvolutionChoices?.length) {
+    if (activeState.pendingEvolutionChoices?.length || activeState.hardUnlockCelebrationPending) {
       pendingBackgroundSeconds = 0;
       break;
     }
@@ -272,13 +274,18 @@ function migrateSave(saved) {
   const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), migratedTeam);
   registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);
 
-  return {
+  const migrated = {
     ...base,
     ...saved,
     saveVersion: SAVE_VERSION,
     gameVersion: GAME_VERSION,
     hasStarted: true,
     mode: "exploring",
+    campaignMode: "normal",
+    campaigns: null,
+    hardModeUnlocked: Boolean(saved.hardModeUnlocked || journey.complete),
+    hardUnlockCelebrationPending: Boolean(saved.hardUnlockCelebrationPending || (journey.complete && !saved.hardUnlockAcknowledged)),
+    hardUnlockAcknowledged: Boolean(saved.hardUnlockAcknowledged),
     journey,
     area,
     totals: {
@@ -299,18 +306,19 @@ function migrateSave(saved) {
     enemy: null,
     exploration: 0
   };
+  return ensureCampaignState(migrated);
 }
 
 export function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return activateState(createInitialState());
+    if (!raw) return activateState(ensureCampaignState(createInitialState()));
 
     const saved = JSON.parse(raw);
     const savedVersion = Number(saved.saveVersion) || 0;
     if (savedVersion < SAVE_VERSION) return activateState(migrateSave(saved));
     if (savedVersion !== SAVE_VERSION || !Array.isArray(saved.team) || !saved.team.length) {
-      return activateState(createInitialState());
+      return activateState(ensureCampaignState(createInitialState()));
     }
 
     const base = createInitialState(saved.team[0].id, true);
@@ -333,7 +341,7 @@ export function loadGame() {
     const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), team);
     registerRosterEntries(pokedex, collection, [...team, ...storage]);
 
-    return activateState({
+    const loaded = {
       ...base,
       ...saved,
       saveVersion: SAVE_VERSION,
@@ -358,9 +366,10 @@ export function loadGame() {
       collection,
       approachProgress: saved.approachProgress || 0,
       enemy: validEncounterMode ? normalizePokemon(saved.enemy, false, false, currentEnvironmentId) : null
-    });
+    };
+    return activateState(ensureCampaignState(loaded));
   } catch {
-    return activateState(createInitialState());
+    return activateState(ensureCampaignState(createInitialState()));
   }
 }
 
