@@ -13,6 +13,13 @@ export function installSpriteFallbacks() {
     const image = event.target;
     if (!(image instanceof HTMLImageElement)) return;
 
+    const customFallback = image.dataset.fallbackSrc;
+    if (customFallback && image.dataset.customFallbackApplied !== "true") {
+      image.dataset.customFallbackApplied = "true";
+      image.src = customFallback;
+      return;
+    }
+
     const currentUrl = image.currentSrc || image.src || "";
     const showdownMatch = currentUrl.match(SHOWDOWN_PATTERN);
     if (showdownMatch) {
