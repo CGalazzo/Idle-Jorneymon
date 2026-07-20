@@ -178,9 +178,11 @@
   line-height: 1.2;
 }
 .capture-ball-options button span { display: block; font-size: 7px; opacity: .75; }
-.capture-ball-options .normal-capture { color: #d9efff; background: #1a4668; }
-.capture-ball-options .ball-capture { color: #102638; background: linear-gradient(145deg, #f5d466, #d69a2d); }
-.capture-ball-options .ball-capture:disabled { color: #708595; background: #20384b; }
+.capture-ball-options .normal-capture { color: #d9efff; background: #1a4668; border: 0; }
+.capture-ball-options .ball-capture { color: #102638; background: linear-gradient(145deg, #f5d466, #d69a2d); border: 0; }
+.capture-ball-options .ball-capture:disabled { color: #708595; background: #20384b; cursor: not-allowed; }
+.capture-decline-row { margin-top: 6px; }
+.capture-decline-row .decline-button { min-width: 150px; }
 
 .mega-picker { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .mega-picker > small { width: 100%; color: #dc9fe9; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
@@ -205,11 +207,43 @@
   .shop-wallet > span { grid-row: auto; }
 }
 
-@media (max-width: 520px) {
-  .coin-balance { min-width: 39px; width: 39px; padding: 0; justify-content: center; }
+@media (max-width: 560px) {
+  .header-actions { gap: 4px; }
+  .coin-balance, .shop-button, .menu-button, .team-button, .pokedex-button, .header-actions .icon-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+  .coin-balance { justify-content: center; }
   .coin-balance strong { display: none; }
-  .shop-button { width: 39px; padding: 0; overflow: hidden; color: transparent; }
-  .shop-button::after { content: "◉"; display: grid; place-items: center; height: 100%; color: #ffe17c; font-size: 18px; }
+  .shop-button, .menu-button, .team-button, .pokedex-button { overflow: hidden; color: transparent; }
+  .shop-button::after, .menu-button::after, .team-button::after, .pokedex-button::after {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: #d9efff;
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+  .shop-button::after { content: "◉"; color: #ffe17c; font-size: 18px; }
+  .menu-button::after { content: "☰"; color: #b4c9da; font-size: 17px; }
+  .team-button::after { content: "●●●"; color: #75e8a7; font-size: 6px; }
+  .pokedex-button::after { content: "DEX"; color: #76dfff; font-size: 8px; font-weight: 900; }
   .shop-tabs button { min-height: 36px; font-size: 7px; letter-spacing: .05em; }
-  .capture-ball-options { grid-template-columns: 1fr; max-height: 150px; overflow-y: auto; }
+  .capture-panel { bottom: 7px; padding: 9px 10px; }
+  .capture-panel > p { margin-bottom: 6px; }
+  .capture-ball-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 5px; }
+  .capture-ball-options button { min-height: 34px; padding: 4px 5px; font-size: 7px; }
+  .capture-decline-row { margin-top: 4px; }
+  .capture-decline-row .decline-button { min-height: 31px; }
+}
+
+@media (max-width: 420px) {
+  .brand > div { display: none; }
+  .brand-mark { width: 32px; height: 32px; }
+  .shop-dialog { width: calc(100% - 12px); max-height: calc(100vh - 12px); padding: 13px; }
+  .shop-wallet { margin: 11px 0 10px; padding: 10px 12px; }
+  .shop-wallet strong { font-size: 15px; }
+  .shop-panel { max-height: 58vh; }
 }
