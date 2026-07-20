@@ -54,11 +54,14 @@ function buildRoutes(lines, finalBoss = null) {
 }
 
 function world(id, name, theme, lines, finalBoss = null) {
+  const routes = buildRoutes(lines, finalBoss);
+  if (id === "bosque") routes[0].boss = lines[2][1];
+
   return {
     id,
     name,
     theme,
-    routes: buildRoutes(lines, finalBoss)
+    routes
   };
 }
 
