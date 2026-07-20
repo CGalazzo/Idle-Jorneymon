@@ -1,5 +1,3 @@
-import "../features/machamp-face-overlay.js";
-
 const ANIMATED_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
 
 export function getExplorationSpriteUrl(pokemon, forceShiny = Boolean(pokemon?.isShiny)) {
