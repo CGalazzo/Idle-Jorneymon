@@ -44,17 +44,28 @@ export function getRouteDefinition(worldIndex = 0, routeIndex = 0) {
   };
 }
 
-export function getRouteLevelRange(worldIndex = 0, routeIndex = 0, bossType = "mini") {
+export function getRouteLevelRange(worldIndex = 0, routeIndex = 0, bossType = "mini", campaignMode = "normal", strongestTeamLevel = 1) {
   const currentRoute = getRouteDefinition(worldIndex, routeIndex);
   const completedBefore = ENVIRONMENTS
     .slice(0, currentRoute.worldIndex)
     .reduce((total, environment) => total + environment.routes.length, 0);
   const globalRouteNumber = completedBefore + currentRoute.routeIndex + 1;
   const progress = TOTAL_ROUTES <= 1 ? 0 : (globalRouteNumber - 1) / (TOTAL_ROUTES - 1);
+
+  if (campaignMode === "hard") {
+    const baselineMin = Math.round(65 + progress * 27);
+    const adaptiveTarget = Math.max(1, Number(strongestTeamLevel) || 1) - 8;
+    const routeCap = Math.round(88 + progress * 9);
+    const minLevel = Math.max(baselineMin, Math.min(routeCap, adaptiveTarget));
+    const maxLevel = Math.min(99, minLevel + 2);
+    const bossLevel = globalRouteNumber === TOTAL_ROUTES ? 100 : Math.min(100, maxLevel + 1);
+    return { globalRouteNumber, minLevel, maxLevel, bossLevel, bossType, campaignMode: "hard" };
+  }
+
   const minLevel = Math.max(1, Math.min(97, Math.round(3 + progress * 94)));
   const maxLevel = Math.min(99, minLevel + 2);
   const bossLevel = Math.min(100, maxLevel + 1);
-  return { globalRouteNumber, minLevel, maxLevel, bossLevel, bossType };
+  return { globalRouteNumber, minLevel, maxLevel, bossLevel, bossType, campaignMode: "normal" };
 }
 
 export function createAreaState(worldIndex = 0, routeIndex = 0) {
