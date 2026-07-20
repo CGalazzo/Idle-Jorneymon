@@ -95,12 +95,23 @@ export const EVOLUTION_RULES = {
   684: { to: 685, level: 32 },
   690: { to: 691, level: 48 },
   714: { to: 715, level: 48 },
+  728: { to: 729, level: 17 }, 729: { to: 730, level: 34 },
   731: { to: 732, level: 14 }, 732: { to: 733, level: 28 },
+  744: { to: 745, level: 25 },
   747: { to: 748, level: 38 },
   757: { to: 758, level: 33 },
   759: { to: 760, level: 27 },
+  810: { to: 811, level: 16 }, 811: { to: 812, level: 35 },
   821: { to: 822, level: 18 }, 822: { to: 823, level: 38 },
-  856: { to: 857, level: 32 }, 857: { to: 858, level: 42 }
+  848: { to: 849, level: 30 },
+  856: { to: 857, level: 32 }, 857: { to: 858, level: 42 },
+  859: { to: 860, level: 32 }, 860: { to: 861, level: 42 },
+  885: { to: 886, level: 25 }, 886: { to: 887, level: 50 },
+  891: { to: 892, level: 50 },
+  909: { to: 910, level: 16 }, 910: { to: 911, level: 36 },
+  940: { to: 941, level: 25 },
+  974: { to: 975, level: 34 },
+  996: { to: 997, level: 35 }, 997: { to: 998, level: 54 }
 };
 
 const EEVEE_ENVIRONMENT_EVOLUTIONS = {
