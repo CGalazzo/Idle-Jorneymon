@@ -3,6 +3,7 @@ import { createCapturedPokemon } from "../data/pokemon.js";
 import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
 import { completeActiveCampaign } from "./campaign.js";
+import { grantHardRouteEmblems } from "./hard-endgame.js";
 import { consumeBall, getBallDefinition, isBallUnlocked } from "./shop.js";
 
 export const CAPTURE_DECISION_MS = 5000;
@@ -68,6 +69,10 @@ function advanceJourney(state) {
 
   const nextPosition = getNextRoutePosition(state.journey.worldIndex, state.journey.routeIndex);
   const completedEnvironment = previousRoute.routeIndex === previousRoute.environment.routes.length - 1;
+  grantHardRouteEmblems(state, previousRoute, {
+    completedEnvironment,
+    campaignComplete: !nextPosition
+  });
 
   state.journey.completedRoutes += 1;
   if (completedEnvironment) state.journey.completedWorlds += 1;
@@ -82,7 +87,7 @@ function advanceJourney(state) {
     if (state.campaignMode === "normal") {
       addLog(state, `Jornada Normal concluída! Você venceu as ${TOTAL_ROUTES} rotas e desbloqueou o Modo Hard.`);
     } else {
-      addLog(state, `Modo Hard concluído! Você venceu novamente as ${TOTAL_ROUTES} rotas.`);
+      addLog(state, `Modo Hard concluído! Você venceu novamente as ${TOTAL_ROUTES} rotas e liberou os Desafios Hard.`);
     }
     return;
   }
