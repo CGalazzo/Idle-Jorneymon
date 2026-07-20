@@ -1,5 +1,8 @@
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 
+let latestState = null;
+let latestCanOpen = false;
+
 function findOwnedPokemon(state, uid) {
   return [...(state.team || []), ...(state.storage || [])].find((pokemon) => pokemon.uid === uid) || null;
 }
@@ -19,7 +22,7 @@ export function enhanceEeveeEvolutionMarkup() {
         <p id="eevee-evolution-copy"></p>
         <div class="eevee-evolution-actions">
           <button id="accept-eevee-evolution" class="accept-eevee-evolution"></button>
-          <button id="decline-eevee-evolution" class="decline-eevee-evolution">NÃO EVOLUIR</button>
+          <button id="decline-eevee-evolution" class="decline-eevee-evolution">NÃO</button>
         </div>
         <em>A jornada ficará pausada até você escolher.</em>
       </div>
@@ -28,6 +31,9 @@ export function enhanceEeveeEvolutionMarkup() {
 }
 
 export function renderEeveeEvolutionChoice(state, canOpen = true) {
+  latestState = state;
+  latestCanOpen = canOpen;
+
   const dialog = document.querySelector("#eevee-evolution-dialog");
   if (!dialog) return;
   const choice = state.pendingEvolutionChoices?.[0];
@@ -49,4 +55,10 @@ export function renderEeveeEvolutionChoice(state, canOpen = true) {
   document.querySelector("#accept-eevee-evolution").textContent = `SIM, EVOLUIR PARA ${target.name.toUpperCase()}`;
 
   if (canOpen && !dialog.open) dialog.showModal();
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && latestState) renderEeveeEvolutionChoice(latestState, latestCanOpen);
+  });
 }
