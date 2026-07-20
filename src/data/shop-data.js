@@ -83,7 +83,9 @@ export function createInitialShopState() {
     expShareLevel: 0,
     ownedMegaStones: [],
     equippedMegaStoneId: null,
-    equippedMegaPokemonUid: null
+    equippedMegaPokemonUid: null,
+    purchaseRepairApplied: true,
+    legacyRefundCoins: 0
   };
 }
 
@@ -96,16 +98,24 @@ export function normalizeShopState(saved = {}) {
     balls[ball.id] = ball.maxStock ? Math.min(ball.maxStock, amount) : amount;
   });
 
+  const normalizedCoins = Math.max(0, Math.floor(Number(saved.coins) || 0));
+  const normalizedSpent = Math.max(0, Math.floor(Number(saved.totalCoinsSpent) || 0));
+  const hasRepairMarker = Object.prototype.hasOwnProperty.call(saved, "purchaseRepairApplied");
+  const repairAlreadyApplied = hasRepairMarker && saved.purchaseRepairApplied === true;
+  const legacyRefund = repairAlreadyApplied ? 0 : normalizedSpent;
+
   return {
     ...base,
     ...saved,
-    coins: Math.max(0, Math.floor(Number(saved.coins) || 0)),
+    coins: normalizedCoins + legacyRefund,
     totalCoinsEarned: Math.max(0, Math.floor(Number(saved.totalCoinsEarned) || 0)),
-    totalCoinsSpent: Math.max(0, Math.floor(Number(saved.totalCoinsSpent) || 0)),
+    totalCoinsSpent: repairAlreadyApplied ? normalizedSpent : 0,
     balls,
     expShareLevel: Math.max(0, Math.min(3, Math.floor(Number(saved.expShareLevel) || 0))),
     ownedMegaStones: [...new Set(Array.isArray(saved.ownedMegaStones) ? saved.ownedMegaStones.map(String) : [])],
     equippedMegaStoneId: saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null,
-    equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null
+    equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null,
+    purchaseRepairApplied: true,
+    legacyRefundCoins: Math.max(0, Math.floor(Number(saved.legacyRefundCoins) || 0)) + legacyRefund
   };
 }
