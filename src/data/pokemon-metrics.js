@@ -13,17 +13,18 @@ const FALLBACK_HEIGHT_DM = {
 };
 
 const GLOBAL_EXPLORATION_SCALE = 1.3;
-const STAGE_SCALE = { 1: 1, 2: 1.35, 3: 1.65 };
-const STAGE_MINIMUM = { 1: 70, 2: 122, 3: 169 };
+const EXTRA_SPRITE_PIXELS = 30;
+const STAGE_BONUS_PIXELS = { 1: 0, 2: 12, 3: 24 };
+
+// Ajustes apenas para compensar a área transparente e o enquadramento de alguns GIFs.
+// O tamanho principal continua vindo da altura oficial de cada espécie.
 const VISUAL_SCALE_OVERRIDES = {
-  2: 1.05,
-  3: 1.05,
-  5: 1.05,
-  6: 1.06,
-  8: 1.05,
-  9: 1.05,
-  17: 1.08,
-  18: 1.08
+  12: 0.88,  // Butterfree ocupa muita área visual no GIF
+  15: 0.92,  // Beedrill possui asas largas
+  17: 1.02,  // Pidgeotto
+  18: 1.03,  // Pidgeot
+  42: 1.08,  // Golbat precisa refletir melhor seus 1,6 m
+  169: 1.08 // Crobat
 };
 
 function buildEvolutionStages() {
@@ -113,12 +114,12 @@ export function getExplorationSpriteSize(pokemon) {
   const heightMeters = Math.max(0.1, (Number(pokemon?.heightDm) || getPokemonHeightDm(speciesId)) / 10);
   const stage = getEvolutionStage(pokemon);
   const heightBase = 36 + Math.sqrt(heightMeters) * 35;
-  const stageScale = STAGE_SCALE[stage] || 1;
   const giantScale = heightMeters > 2
     ? Math.min(1.38, 1 + (heightMeters - 2) * 0.055)
     : 1;
   const visualScale = VISUAL_SCALE_OVERRIDES[speciesId] || 1;
-  const calculated = heightBase * stageScale * giantScale * visualScale * GLOBAL_EXPLORATION_SCALE;
-  const minimum = STAGE_MINIMUM[stage] || STAGE_MINIMUM[1];
-  return Math.round(Math.max(minimum, Math.min(240, calculated)));
+  const stageBonus = STAGE_BONUS_PIXELS[stage] || 0;
+  const calculated = heightBase * GLOBAL_EXPLORATION_SCALE * giantScale * visualScale;
+
+  return Math.round(Math.max(74, Math.min(270, calculated + stageBonus + EXTRA_SPRITE_PIXELS)));
 }
