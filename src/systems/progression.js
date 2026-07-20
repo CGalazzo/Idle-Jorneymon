@@ -1,5 +1,42 @@
 import { addLog } from "../core/game-state.js";
-import { experienceToNextLevel, recalculatePokemonForLevel } from "../data/pokemon.js";
+import {
+  evolvePokemonIfReady,
+  experienceToNextLevel,
+  recalculatePokemonForLevel
+} from "../data/pokemon.js";
+
+function registerEvolution(state, pokemon, evolution) {
+  const entry = state.pokedex[evolution.toId] || { seen: 0, caught: 0, shinyCaught: 0 };
+  state.pokedex[evolution.toId] = {
+    ...entry,
+    seen: Math.max(1, entry.seen || 0),
+    caught: (entry.caught || 0) + 1,
+    shinyCaught: (entry.shinyCaught || 0) + (pokemon.isShiny ? 1 : 0)
+  };
+
+  const collectionEntry = state.collection[evolution.toId];
+  state.collection[evolution.toId] = collectionEntry
+    ? {
+        ...collectionEntry,
+        count: (collectionEntry.count || 0) + 1,
+        shinyCount: (collectionEntry.shinyCount || 0) + (pokemon.isShiny ? 1 : 0)
+      }
+    : {
+        count: 1,
+        shinyCount: pokemon.isShiny ? 1 : 0,
+        firstCaughtAt: Date.now()
+      };
+
+  addLog(state, `${evolution.fromName} evoluiu para ${evolution.toName}!`);
+}
+
+function resolveEvolutions(state, pokemon) {
+  let evolution = evolvePokemonIfReady(pokemon);
+  while (evolution) {
+    registerEvolution(state, pokemon, evolution);
+    evolution = evolvePokemonIfReady(pokemon);
+  }
+}
 
 function grantPokemonExperience(state, pokemon, amount) {
   pokemon.xp += amount;
@@ -11,6 +48,7 @@ function grantPokemonExperience(state, pokemon, amount) {
     pokemon.xpToNext = experienceToNextLevel(pokemon.level);
     recalculatePokemonForLevel(pokemon, true);
     addLog(state, `${pokemon.name} subiu para o nível ${pokemon.level}!`);
+    resolveEvolutions(state, pokemon);
   }
 
   if (pokemon.level >= 100) {
