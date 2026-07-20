@@ -1,0 +1,211 @@
+.hard-endgame-button {
+  height: 39px;
+  padding: 0 12px;
+  color: #ffe0e3;
+  background: linear-gradient(145deg, rgba(132, 21, 35, .9), rgba(68, 10, 20, .92));
+  border: 1px solid rgba(255, 113, 126, .34);
+  border-radius: 12px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.hard-endgame-button:hover:not(:disabled) { filter: brightness(1.12); }
+.hard-endgame-button:disabled { opacity: .4; cursor: not-allowed; }
+
+.hard-menu-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.hard-menu-action {
+  min-height: 46px;
+  padding: 10px 14px;
+  color: #ffe8ea;
+  background: linear-gradient(145deg, #861827, #3e0a13);
+  border: 1px solid rgba(255, 116, 130, .36);
+  border-radius: 12px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.hard-endgame-dialog {
+  width: min(820px, calc(100% - 24px));
+  max-height: min(760px, calc(100vh - 24px));
+  padding: 22px;
+  color: #f8f1f2;
+  background: linear-gradient(145deg, #25111a, #0b1725 70%);
+  border: 1px solid rgba(255, 105, 121, .34);
+  border-radius: 22px;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, .68);
+}
+
+.hard-endgame-dialog::backdrop {
+  background: rgba(2, 7, 14, .84);
+  backdrop-filter: blur(6px);
+}
+
+.hard-endgame-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hard-endgame-heading small {
+  color: #ff8f9b;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.hard-endgame-heading h2 { margin: 3px 0 0; font-size: 26px; }
+
+.hard-emblem-wallet {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 14px 16px;
+  background: linear-gradient(145deg, rgba(143, 23, 38, .38), rgba(24, 49, 72, .5));
+  border: 1px solid rgba(255, 119, 132, .25);
+  border-radius: 14px;
+}
+
+.hard-emblem-wallet span {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: #3e0b14;
+  background: radial-gradient(circle, #ffd2d7, #ef6575 65%, #8d1d2b);
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.hard-emblem-wallet strong { font-size: 19px; }
+.hard-emblem-wallet small { color: #c49198; font-size: 9px; }
+
+.hard-shop-grid,
+.hard-challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 520px;
+  padding: 2px;
+}
+
+.hard-shop-card,
+.hard-challenge-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+  padding: 17px;
+  background: linear-gradient(145deg, rgba(83, 20, 32, .86), rgba(18, 39, 59, .92));
+  border: 1px solid rgba(255, 117, 131, .2);
+  border-radius: 16px;
+}
+
+.hard-shop-card.purchased,
+.hard-challenge-card.completed {
+  border-color: rgba(255, 214, 101, .45);
+  box-shadow: inset 0 0 24px rgba(255, 202, 71, .05);
+}
+
+.hard-item-sprite,
+.hard-challenge-sprite {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 12px;
+  background: radial-gradient(circle, rgba(255, 151, 164, .18), transparent 68%);
+}
+
+.hard-item-sprite img,
+.hard-challenge-sprite img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 8px 7px rgba(0, 0, 0, .32));
+}
+
+.hard-shop-card small,
+.hard-challenge-card small {
+  color: #f39ba5;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.hard-shop-card h3,
+.hard-challenge-card h3 { margin: 5px 0 7px; font-size: 15px; }
+.hard-shop-card p,
+.hard-challenge-card p { flex: 1; margin: 0 0 14px; color: #bda8ae; font-size: 10px; line-height: 1.45; }
+
+.hard-shop-card button,
+.hard-challenge-card button {
+  min-height: 40px;
+  padding: 8px 10px;
+  color: #351019;
+  background: linear-gradient(145deg, #ffd4d9, #ee7080);
+  border: 0;
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+
+.hard-shop-card button:disabled,
+.hard-challenge-card button:disabled {
+  color: #9a7b80;
+  background: #382932;
+  cursor: not-allowed;
+}
+
+.hard-shop-feedback {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  color: #ffe1e4;
+  background: rgba(139, 25, 39, .34);
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.hard-result-dialog { width: min(520px, calc(100% - 24px)); text-align: center; }
+.hard-result-trophy { font-size: 70px; filter: drop-shadow(0 0 24px rgba(255, 187, 65, .32)); }
+.hard-result-dialog h2 { margin: 8px 0; font-size: 27px; }
+.hard-result-dialog p { color: #d6afb5; font-size: 12px; }
+.hard-result-reward { display: block; margin: 18px 0; color: #ffb6c0; font-size: 21px; font-weight: 900; }
+.hard-result-dialog button { min-height: 46px; padding: 10px 20px; color: #351019; background: linear-gradient(145deg, #ffd4d9, #ee7080); border: 0; border-radius: 11px; font-size: 9px; font-weight: 900; cursor: pointer; }
+
+/* A Master Ball pertence apenas à Loja Hard. */
+.shop-panel[data-shop-panel="balls"] .shop-item:has(.shop-item-icon.master-ball) { display: none; }
+
+@media (max-width: 760px) {
+  .hard-shop-grid,
+  .hard-challenge-grid { grid-template-columns: 1fr; }
+  .hard-shop-card,
+  .hard-challenge-card { min-height: 0; }
+}
+
+@media (max-width: 560px) {
+  .hard-menu-actions { grid-template-columns: 1fr; }
+  .hard-endgame-dialog { padding: 16px; border-radius: 17px; }
+  .hard-endgame-heading h2 { font-size: 22px; }
+  .hard-endgame-button { width: 39px; padding: 0; font-size: 0; }
+  .hard-endgame-button::before { content: "◆"; font-size: 13px; }
+}
