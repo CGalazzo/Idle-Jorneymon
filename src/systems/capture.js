@@ -1,6 +1,8 @@
 import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state.js";
 import { createCapturedPokemon } from "../data/pokemon.js";
+import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
+import { consumeBall, getBallDefinition, isBallUnlocked } from "./shop.js";
 
 export const CAPTURE_DECISION_MS = 5000;
 
@@ -13,9 +15,23 @@ export const CAPTURE_RATES = {
   mythical: 5
 };
 
-export function getCaptureChance(pokemon) {
+export function getCaptureChance(pokemon, ballId = null) {
   const baseChance = CAPTURE_RATES[pokemon.rarity] ?? CAPTURE_RATES.common;
-  return pokemon.isShiny ? baseChance / 2 : baseChance;
+  const shinyAdjusted = pokemon.isShiny ? baseChance / 2 : baseChance;
+  const ball = getBallDefinition(ballId);
+  if (ball?.guaranteed) return 100;
+  return Math.min(95, shinyAdjusted + (Number(ball?.bonus) || 0));
+}
+
+export function getCaptureBallOptions(state, pokemon) {
+  return BALL_DEFINITIONS
+    .filter((ball) => ball.available !== false)
+    .map((ball) => ({
+      ...ball,
+      stock: Math.max(0, Number(state.shop?.balls?.[ball.id]) || 0),
+      unlocked: isBallUnlocked(state, ball.id),
+      chance: getCaptureChance(pokemon, ball.id)
+    }));
 }
 
 export function registerSeen(state, pokemon) {
@@ -113,13 +129,22 @@ export function declineCapture(state) {
   return true;
 }
 
-export function attemptCapture(state, random = Math.random) {
+export function attemptCapture(state, ballId = null, random = Math.random) {
   if (state.mode !== "capture" || !state.enemy) return false;
   const pokemon = state.enemy;
-  const chance = getCaptureChance(pokemon);
+  const ball = getBallDefinition(ballId);
 
+  if (ballId) {
+    if (!ball || ball.available === false || !isBallUnlocked(state, ball.id) || !consumeBall(state, ball.id)) {
+      addLog(state, "Essa Poké Bola não está disponível no inventário.");
+      return false;
+    }
+  }
+
+  const chance = getCaptureChance(pokemon, ballId);
+  const ballCopy = ball ? ` usando ${ball.name}` : "";
   if (random() * 100 >= chance) {
-    addLog(state, `${pokemon.name} escapou da captura.`);
+    addLog(state, `${pokemon.name} escapou da captura${ballCopy}.`);
     returnToExploration(state);
     return false;
   }
@@ -140,10 +165,10 @@ export function attemptCapture(state, random = Math.random) {
   const shinyLabel = pokemon.isShiny ? " shiny" : "";
   if (state.team.length < MAX_TEAM_SIZE) {
     state.team.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel} foi capturado e entrou na equipe!`);
+    addLog(state, `${pokemon.name}${shinyLabel} foi capturado${ballCopy} e entrou na equipe!`);
   } else {
     state.storage.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel} foi capturado e enviado ao depósito.`);
+    addLog(state, `${pokemon.name}${shinyLabel} foi capturado${ballCopy} e enviado ao depósito.`);
   }
   returnToExploration(state);
   return true;
