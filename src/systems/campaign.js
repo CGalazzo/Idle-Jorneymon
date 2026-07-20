@@ -91,6 +91,10 @@ function returnFromRevisit(state) {
 function prepareForCampaignSwitch(state) {
   returnFromRevisit(state);
   deactivateAllMegaEvolutions(state);
+  if (state.hardEndgame) {
+    state.hardEndgame.activeChallengeId = null;
+    state.hardEndgame.challengeResult = null;
+  }
   state.mode = "exploring";
   state.pendingRouteAdvance = false;
   state.captureOffer = null;
@@ -125,9 +129,15 @@ export function ensureCampaignState(state) {
       ? state.journey?.complete
       : state.campaigns.normal?.journey?.complete
   );
+  const hardComplete = Boolean(
+    activeMode === "hard"
+      ? state.journey?.complete
+      : state.campaigns.hard?.journey?.complete
+  );
   state.hardModeUnlocked = Boolean(state.hardModeUnlocked || normalComplete);
   state.hardUnlockCelebrationPending = Boolean(state.hardUnlockCelebrationPending);
   state.hardUnlockAcknowledged = Boolean(state.hardUnlockAcknowledged);
+  if (state.hardEndgame && hardComplete) state.hardEndgame.postGameUnlocked = true;
   return state;
 }
 
@@ -173,6 +183,8 @@ export function completeActiveCampaign(state) {
     state.hardModeUnlocked = true;
     state.hardUnlockCelebrationPending = true;
     state.hardUnlockAcknowledged = false;
+  } else if (state.hardEndgame) {
+    state.hardEndgame.postGameUnlocked = true;
   }
 
   syncActiveCampaign(state);
