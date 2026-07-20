@@ -13,6 +13,9 @@ const modeCopy = {
 };
 
 const SCENE_MODE_CLASSES = Object.keys(modeCopy);
+const GROUND_CONTACT_INSET_PX = 4;
+const DEFAULT_BOTTOM_PADDING_RATIO = 0.08;
+const groundPaddingCache = new Map();
 
 function percent(value, max) {
   return Math.max(0, Math.min(100, (value / max) * 100));
@@ -41,10 +44,76 @@ function pokemonCard(pokemon, enemy = false) {
     </article>`;
 }
 
-function applyExplorationSpriteSize(element, pokemon) {
+function applyGroundOffset(element, size, bottomPaddingRatio = DEFAULT_BOTTOM_PADDING_RATIO) {
+  const scaledBottomPadding = size * Math.max(0, bottomPaddingRatio);
+  const offset = Math.max(-GROUND_CONTACT_INSET_PX, Math.min(size * 0.24, scaledBottomPadding - GROUND_CONTACT_INSET_PX));
+  element.style.setProperty("--exploration-ground-offset", `${Math.round(offset)}px`);
+}
+
+function measureBottomPaddingRatio(image) {
+  if (!image.naturalWidth || !image.naturalHeight) return DEFAULT_BOTTOM_PADDING_RATIO;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return DEFAULT_BOTTOM_PADDING_RATIO;
+
+  try {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let bottomVisibleY = -1;
+
+    for (let y = canvas.height - 1; y >= 0 && bottomVisibleY < 0; y -= 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+        if (alpha > 12) {
+          bottomVisibleY = y;
+          break;
+        }
+      }
+    }
+
+    if (bottomVisibleY < 0) return DEFAULT_BOTTOM_PADDING_RATIO;
+    return Math.max(0, (canvas.height - 1 - bottomVisibleY) / canvas.height);
+  } catch (error) {
+    console.warn("Idle Jorneymon: não foi possível calibrar o contato da sprite com o chão.", error);
+    return DEFAULT_BOTTOM_PADDING_RATIO;
+  }
+}
+
+function calibrateSpriteGround(element, image, sprite, size) {
+  const cachedRatio = groundPaddingCache.get(sprite);
+  if (Number.isFinite(cachedRatio)) {
+    applyGroundOffset(element, size, cachedRatio);
+    return;
+  }
+
+  if (element.dataset.groundCalibrationSprite === sprite) return;
+  element.dataset.groundCalibrationSprite = sprite;
+
+  const calibrate = () => {
+    requestAnimationFrame(() => {
+      if (element.dataset.pokemonSprite !== sprite) return;
+      const ratio = measureBottomPaddingRatio(image);
+      groundPaddingCache.set(sprite, ratio);
+      applyGroundOffset(element, getComputedStyle(element).getPropertyValue("--exploration-sprite-size")
+        ? Number.parseFloat(getComputedStyle(element).getPropertyValue("--exploration-sprite-size")) || size
+        : size, ratio);
+    });
+  };
+
+  if (image.complete && image.naturalWidth) calibrate();
+  else image.addEventListener("load", calibrate, { once: true });
+}
+
+function applyExplorationSpriteSize(element, pokemon, image, sprite) {
   const size = getExplorationSpriteSize(pokemon);
   element.style.setProperty("--exploration-sprite-size", `${size}px`);
   element.style.setProperty("--exploration-shadow-width", `${Math.max(30, Math.round(size * 0.66))}px`);
+  applyGroundOffset(element, size, groundPaddingCache.get(sprite));
+  calibrateSpriteGround(element, image, sprite, size);
 }
 
 function updateExplorationPokemon(element, pokemon, { facingLeft = false } = {}) {
@@ -54,16 +123,18 @@ function updateExplorationPokemon(element, pokemon, { facingLeft = false } = {})
   const spriteChanged = element.dataset.pokemonSprite !== sprite;
 
   if (spriteChanged) {
+    image.crossOrigin = "anonymous";
+    image.decoding = "async";
     image.src = sprite;
     image.alt = `${pokemon.name} ${element.id === "walker" ? "caminhando" : "se aproximando"}`;
-    image.decoding = "async";
     element.dataset.pokemonSprite = sprite;
     element.dataset.pokemonId = String(pokemon.id);
+    delete element.dataset.groundCalibrationSprite;
   }
 
   element.classList.toggle("shiny", Boolean(pokemon.isShiny));
   element.classList.toggle("facing-left", facingLeft);
-  applyExplorationSpriteSize(element, pokemon);
+  applyExplorationSpriteSize(element, pokemon, image, sprite);
   element.hidden = false;
 }
 
