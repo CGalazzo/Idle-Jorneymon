@@ -68,7 +68,6 @@ export const EXP_SHARE_UPGRADES = [
 ];
 
 export const BASE_PASSIVE_XP_MULTIPLIER = 0.5;
-const TEST_COIN_GRANT = 50000;
 
 export function getExpShareMultiplier(level = 0) {
   const upgrade = EXP_SHARE_UPGRADES.find((entry) => entry.level === Number(level));
@@ -77,7 +76,7 @@ export function getExpShareMultiplier(level = 0) {
 
 export function createInitialShopState() {
   return {
-    coins: TEST_COIN_GRANT,
+    coins: 0,
     totalCoinsEarned: 0,
     totalCoinsSpent: 0,
     balls: Object.fromEntries(BALL_DEFINITIONS.map((ball) => [ball.id, 0])),
@@ -105,13 +104,11 @@ export function normalizeShopState(saved = {}) {
   const hasRepairMarker = Object.prototype.hasOwnProperty.call(saved, "purchaseRepairApplied");
   const repairAlreadyApplied = hasRepairMarker && saved.purchaseRepairApplied === true;
   const legacyRefund = repairAlreadyApplied ? 0 : normalizedSpent;
-  const testGrantAlreadyApplied = saved.testCoinGrantApplied === true;
-  const testGrant = testGrantAlreadyApplied ? 0 : TEST_COIN_GRANT;
 
   return {
     ...base,
     ...saved,
-    coins: normalizedCoins + legacyRefund + testGrant,
+    coins: normalizedCoins + legacyRefund,
     totalCoinsEarned: Math.max(0, Math.floor(Number(saved.totalCoinsEarned) || 0)),
     totalCoinsSpent: repairAlreadyApplied ? normalizedSpent : 0,
     balls,
