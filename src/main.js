@@ -1,20 +1,27 @@
 import "./styles/base.css";
 import "./styles/progression.css";
+import "./styles/quality-of-life.css";
 import { startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
+import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
 import { POKEDEX_SPECIES } from "./data/pokemon.js";
-import { createAppMarkup, render as renderBase, renderTeam } from "./ui/render.js";
+import { getRouteDefinition } from "./data/worlds.js";
+import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from "./ui/render.js";
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
-import { attemptCapture, declineCapture } from "./systems/capture.js";
+import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
 
 async function boot() {
   const app = document.querySelector("#app");
-  app.innerHTML = '<div class="game-loading"><strong>Preparando a jornada...</strong><span>Carregando atributos oficiais dos Pokémon</span></div>';
-  await loadOfficialPokemonData(POKEDEX_SPECIES.map((pokemon) => pokemon.id));
+  app.innerHTML = '<div class="game-loading"><strong>Preparando a jornada...</strong><span>Carregando atributos e tamanhos oficiais dos Pokémon</span></div>';
+  const speciesIds = POKEDEX_SPECIES.map((pokemon) => pokemon.id);
+  await Promise.all([
+    loadOfficialPokemonData(speciesIds),
+    loadOfficialPokemonMetrics(speciesIds)
+  ]);
   app.innerHTML = createAppMarkup();
   enhanceProgressionMarkup();
 
@@ -45,6 +52,33 @@ async function boot() {
     "#activity-log"
   ].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
 
+  const spriteCache = new Map();
+  let preloadedRouteKey = "";
+
+  function preloadSprite(url) {
+    if (!url || spriteCache.has(url)) return;
+    const image = new Image();
+    image.decoding = "async";
+    image.src = url;
+    spriteCache.set(url, image);
+    if (typeof image.decode === "function") image.decode().catch(() => {});
+  }
+
+  function preloadRouteSprites(currentState) {
+    const routeKey = `${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}`;
+    if (routeKey === preloadedRouteKey) return;
+    preloadedRouteKey = routeKey;
+
+    const route = getRouteDefinition(currentState.journey?.worldIndex, currentState.journey?.routeIndex);
+    const pokemon = [...route.encounters, route.boss, ...currentState.team];
+    pokemon.forEach((entry) => {
+      preloadSprite(entry.sprite);
+      preloadSprite(entry.backSprite);
+      if (entry.sprite) preloadSprite(entry.sprite.replace("/animated/", "/animated/shiny/"));
+      if (entry.backSprite) preloadSprite(entry.backSprite.replace("/animated/back/", "/animated/back/shiny/"));
+    });
+  }
+
   let state = loadGame();
   let lastFrame = performance.now();
   let lastSave = performance.now();
@@ -58,6 +92,7 @@ async function boot() {
   const continueButton = document.querySelector("#continue-button");
 
   function renderGame() {
+    preloadRouteSprites(state);
     renderBase(state);
     renderProgression(state);
   }
@@ -95,6 +130,10 @@ async function boot() {
       if (state.mode === "approach") updateApproach(state, delta);
       if (state.mode === "battle") updateBattle(state, delta);
       if (state.mode === "recovering") updateRecovery(state, delta);
+      if (state.mode === "capture" && updateCaptureDecision(state, Date.now())) {
+        saveGame(state);
+        lastSave = now;
+      }
 
       if (now - lastSave >= 5000) {
         saveGame(state);
@@ -115,6 +154,7 @@ async function boot() {
       if (hasSavedGame() && !window.confirm("Começar uma nova jornada apagará o progresso atual. Deseja continuar?")) return;
       resetGame();
       state = startNewJourney(button.dataset.starterId);
+      preloadedRouteKey = "";
       saveGame(state);
       showGame();
     });
@@ -123,6 +163,7 @@ async function boot() {
   continueButton.addEventListener("click", showGame);
 
   document.querySelector("#pokedex-button").addEventListener("click", () => {
+    renderPokedex(state);
     document.querySelector("#pokedex-dialog").showModal();
   });
 
