@@ -1,4 +1,5 @@
 import "../styles/shop-repair.css";
+import "../styles/item-sprites.css";
 import { MEGA_STONES } from "../data/mega-data.js";
 import { BALL_DEFINITIONS, EXP_SHARE_UPGRADES, getExpShareMultiplier } from "../data/shop-data.js";
 import {
@@ -9,8 +10,33 @@ import {
   isMegaShopUnlocked
 } from "../systems/shop.js";
 
+const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
+const GENERIC_MEGA_STONE_ID = "mega-stone";
+let selectedMegaStoneId = null;
+let megaSelectionListenersInstalled = false;
+
 function formatCoins(value) {
   return Math.max(0, Math.floor(Number(value) || 0)).toLocaleString("pt-BR");
+}
+
+function itemSpriteUrl(itemId) {
+  return `${ITEM_SPRITE_BASE}/${itemId}.png`;
+}
+
+function itemSprite(itemId, alt, fallbackId = "poke-ball") {
+  return `<img class="item-sprite" src="${itemSpriteUrl(itemId)}" data-fallback-src="${itemSpriteUrl(fallbackId)}" alt="${alt}" loading="lazy" decoding="async" />`;
+}
+
+function ballSprite(ball) {
+  return itemSprite(ball.id, ball.name, "poke-ball");
+}
+
+function expShareSprite() {
+  return itemSprite("exp-share", "Exp. Share", "exp-share");
+}
+
+function megaStoneSprite(stone) {
+  return itemSprite(stone?.id || GENERIC_MEGA_STONE_ID, stone?.name || "Mega Stone", GENERIC_MEGA_STONE_ID);
 }
 
 function priceButton(label, price, disabled, dataAttribute, dataValue) {
@@ -19,6 +45,98 @@ function priceButton(label, price, disabled, dataAttribute, dataValue) {
 
 function inventoryEmpty(title, copy) {
   return `<div class="inventory-empty"><span>□</span><strong>${title}</strong><p>${copy}</p></div>`;
+}
+
+function clearMegaTeamSelection() {
+  selectedMegaStoneId = null;
+  document.querySelector("#mega-selection-banner")?.remove();
+  const teamList = document.querySelector("#team-list");
+  teamList?.classList.remove("mega-selection-active");
+  teamList?.querySelectorAll(".team-card").forEach((card) => {
+    card.classList.remove("mega-selection-compatible", "mega-selection-blocked");
+  });
+}
+
+function decorateMegaTeamSelection(stoneId) {
+  const stone = MEGA_STONES.find((entry) => entry.id === stoneId);
+  const teamDialog = document.querySelector("#team-dialog");
+  const teamList = document.querySelector("#team-list");
+  if (!stone || !teamDialog?.open || !teamList) return;
+
+  document.querySelector("#mega-selection-banner")?.remove();
+  const banner = document.createElement("div");
+  banner.id = "mega-selection-banner";
+  banner.className = "mega-selection-banner";
+
+  teamList.classList.add("mega-selection-active");
+  let compatibleCount = 0;
+  teamList.querySelectorAll(".team-card").forEach((card) => {
+    const compatibleButton = [...card.querySelectorAll("[data-equip-mega]")]
+      .find((button) => button.dataset.equipMega === stone.id);
+    const compatible = Boolean(compatibleButton);
+    card.classList.toggle("mega-selection-compatible", compatible);
+    card.classList.toggle("mega-selection-blocked", !compatible);
+
+    if (compatibleButton) {
+      compatibleCount += 1;
+      compatibleButton.classList.add("mega-selection-action");
+      if (!compatibleButton.classList.contains("selected")) {
+        compatibleButton.textContent = `EQUIPAR ${stone.name.toUpperCase()}`;
+      }
+    }
+  });
+
+  banner.innerHTML = compatibleCount
+    ? `Você está usando <strong>${stone.name}</strong>. Escolha o ${stone.baseName} correto abaixo para equipar a Mega Stone.`
+    : `<strong>${stone.baseName}</strong> não está na equipe. Adicione-o pelo depósito e então equipe a ${stone.name}.`;
+
+  const teamHelp = teamDialog.querySelector(".team-help");
+  if (teamHelp) teamHelp.insertAdjacentElement("afterend", banner);
+  else teamDialog.querySelector(".dialog-heading")?.insertAdjacentElement("afterend", banner);
+}
+
+function openMegaStoneTeamSelection(stoneId) {
+  const stone = MEGA_STONES.find((entry) => entry.id === stoneId);
+  if (!stone) return;
+
+  selectedMegaStoneId = stone.id;
+  const itemsDialog = document.querySelector("#items-dialog");
+  if (itemsDialog?.open) itemsDialog.close();
+
+  const teamButton = document.querySelector("#team-button");
+  teamButton?.click();
+  requestAnimationFrame(() => decorateMegaTeamSelection(stone.id));
+}
+
+function installMegaStoneUseFlow() {
+  if (megaSelectionListenersInstalled) return;
+  megaSelectionListenersInstalled = true;
+
+  const itemsDialog = document.querySelector("#items-dialog");
+  const teamDialog = document.querySelector("#team-dialog");
+
+  itemsDialog?.addEventListener("click", (event) => {
+    const useButton = event.target.closest("[data-use-mega-stone]");
+    if (!useButton || useButton.disabled) return;
+    openMegaStoneTeamSelection(useButton.dataset.useMegaStone);
+  });
+
+  teamDialog?.addEventListener("click", (event) => {
+    if (!selectedMegaStoneId) return;
+    const actionButton = event.target.closest("button");
+    if (!actionButton) return;
+
+    const selectedStone = selectedMegaStoneId;
+    window.setTimeout(() => {
+      if (actionButton.dataset.equipMega === selectedStone) {
+        clearMegaTeamSelection();
+        return;
+      }
+      decorateMegaTeamSelection(selectedStone);
+    }, 0);
+  });
+
+  teamDialog?.addEventListener("close", clearMegaTeamSelection);
 }
 
 export function enhanceShopMarkup() {
@@ -80,21 +198,23 @@ export function enhanceShopMarkup() {
         </div>
         <div class="inventory-scroll">
           <section class="inventory-section">
-            <div class="inventory-heading"><span class="inventory-icon ball">◓</span><div><small>CONSUMÍVEIS</small><h3>Poké Bolas</h3></div></div>
+            <div class="inventory-heading"><span class="inventory-icon ball">${itemSprite("poke-ball", "Poké Bola")}</span><div><small>CONSUMÍVEIS</small><h3>Poké Bolas</h3></div></div>
             <div id="inventory-ball-grid" class="inventory-grid"></div>
           </section>
           <section class="inventory-section">
-            <div class="inventory-heading"><span class="inventory-icon exp">XP</span><div><small>MELHORIA PERMANENTE</small><h3>Exp. Share</h3></div></div>
+            <div class="inventory-heading"><span class="inventory-icon exp">${expShareSprite()}</span><div><small>MELHORIA PERMANENTE</small><h3>Exp. Share</h3></div></div>
             <div id="inventory-exp-grid" class="inventory-grid"></div>
           </section>
           <section class="inventory-section">
-            <div class="inventory-heading"><span class="inventory-icon mega">◇</span><div><small>MEGA EVOLUÇÃO</small><h3>Mega Pedras</h3></div></div>
+            <div class="inventory-heading"><span class="inventory-icon mega">${megaStoneSprite()}</span><div><small>MEGA EVOLUÇÃO</small><h3>Mega Pedras</h3></div></div>
             <div id="inventory-mega-grid" class="inventory-grid"></div>
           </section>
         </div>
       </dialog>
     `);
   }
+
+  installMegaStoneUseFlow();
 }
 
 export function selectShopTab(tabId) {
@@ -135,7 +255,7 @@ function renderBallShop(state) {
           : "BLOQUEADA";
 
     return `<article class="shop-item ${unlocked && !comingSoon ? "unlocked" : "locked"}">
-      <span class="shop-item-icon ball-icon ${ball.id}">◓</span>
+      <span class="shop-item-icon ball-icon ${ball.id}">${ballSprite(ball)}</span>
       <div class="shop-item-copy"><small>${status}</small><h4>${ball.name}</h4><p>${effect}. Chance máxima de 95%, exceto captura garantida.</p><em>${ball.unlockLabel}</em></div>
       ${comingSoon
         ? `<button disabled><span>ATUALIZAÇÃO FUTURA</span><b>—</b></button>`
@@ -158,7 +278,7 @@ function renderExpShareShop(state) {
     const status = purchased ? "COMPRADO" : unlocked ? (next ? "DISPONÍVEL" : "COMPRE O NÍVEL ANTERIOR") : "BLOQUEADO";
 
     return `<article class="shop-item ${unlocked ? "unlocked" : "locked"} ${purchased ? "purchased" : ""}">
-      <span class="shop-item-icon exp-icon">XP</span>
+      <span class="shop-item-icon exp-icon">${expShareSprite()}</span>
       <div class="shop-item-copy"><small>${status}</small><h4>${upgrade.name}</h4><p>Pokémon que não lutaram recebem ${Math.round(upgrade.multiplier * 100)}% do XP da batalha.</p><em>${upgrade.unlockLabel}</em></div>
       ${purchased
         ? `<button disabled><span>ADQUIRIDO</span><b>✓</b></button>`
@@ -172,13 +292,13 @@ function renderMegaShop(state) {
   if (!root) return;
 
   if (!isMegaShopUnlocked(state)) {
-    root.innerHTML = `<div class="shop-empty"><span>◇</span><strong>Mega Pedras ainda bloqueadas</strong><p>Chegue ao Planalto Índigo para liberar esta categoria.</p></div>`;
+    root.innerHTML = `<div class="shop-empty"><span>${megaStoneSprite()}</span><strong>Mega Pedras ainda bloqueadas</strong><p>Chegue ao Planalto Índigo para liberar esta categoria.</p></div>`;
     return;
   }
 
   const visible = getVisibleMegaStones(state);
   if (!visible.length) {
-    root.innerHTML = `<div class="shop-empty"><span>◇</span><strong>Nenhuma Mega Pedra descoberta</strong><p>Capture ou evolua um Pokémon que possua Mega Evolução. A pedra correspondente aparecerá aqui.</p></div>`;
+    root.innerHTML = `<div class="shop-empty"><span>${megaStoneSprite()}</span><strong>Nenhuma Mega Pedra descoberta</strong><p>Capture ou evolua um Pokémon que possua Mega Evolução. A pedra correspondente aparecerá aqui.</p></div>`;
     return;
   }
 
@@ -191,7 +311,7 @@ function renderMegaShop(state) {
     const status = purchased ? "COMPRADA" : legendaryLocked ? "LIBERA NA ELITE 4" : "DISPONÍVEL";
 
     return `<article class="shop-item mega-item ${purchased ? "purchased" : ""} ${legendaryLocked ? "locked" : "unlocked"}">
-      <span class="shop-item-icon mega-icon">◇</span>
+      <span class="shop-item-icon mega-icon">${megaStoneSprite(stone)}</span>
       <div class="shop-item-copy"><small>${status}</small><h4>${stone.name}</h4><p>${stone.baseName} poderá se transformar em ${stone.megaName} durante as batalhas.</p><em>${stone.legendary ? "Mega Pedra lendária" : "Desbloqueio permanente"}</em></div>
       ${purchased
         ? `<button disabled><span>ADQUIRIDA</span><b>✓</b></button>`
@@ -208,7 +328,7 @@ function renderBallInventory(state) {
     .filter((ball) => ball.stock > 0);
 
   root.innerHTML = owned.length
-    ? owned.map((ball) => `<article class="inventory-item"><span class="inventory-item-icon ball ${ball.id}">◓</span><div><small>QUANTIDADE</small><strong>${ball.name}</strong><p>Você possui <b>${ball.stock}</b>. Cada uso acrescenta ${ball.guaranteed ? "captura garantida" : `+${ball.bonus}% à chance`}.</p></div><em>x${ball.stock}</em></article>`).join("")
+    ? owned.map((ball) => `<article class="inventory-item"><span class="inventory-item-icon ball ${ball.id}">${ballSprite(ball)}</span><div><small>QUANTIDADE</small><strong>${ball.name}</strong><p>Você possui <b>${ball.stock}</b>. Cada uso acrescenta ${ball.guaranteed ? "captura garantida" : `+${ball.bonus}% à chance`}.</p></div><em>x${ball.stock}</em></article>`).join("")
     : inventoryEmpty("Nenhuma Poké Bola comprada", "As Poké Bolas adquiridas na loja aparecerão aqui.");
 }
 
@@ -219,7 +339,7 @@ function renderExpInventory(state) {
   const upgrade = EXP_SHARE_UPGRADES.find((entry) => entry.level === currentLevel);
 
   root.innerHTML = upgrade
-    ? `<article class="inventory-item featured"><span class="inventory-item-icon exp">XP</span><div><small>ATIVO AUTOMATICAMENTE</small><strong>${upgrade.name}</strong><p>Pokémon conscientes que não participaram recebem <b>${Math.round(upgrade.multiplier * 100)}% do XP</b>. Esta melhoria é permanente.</p></div><em>NÍVEL ${upgrade.level}</em></article>`
+    ? `<article class="inventory-item featured"><span class="inventory-item-icon exp">${expShareSprite()}</span><div><small>ATIVO AUTOMATICAMENTE</small><strong>${upgrade.name}</strong><p>Pokémon conscientes que não participaram recebem <b>${Math.round(upgrade.multiplier * 100)}% do XP</b>. Esta melhoria é permanente.</p></div><em>NÍVEL ${upgrade.level}</em></article>`
     : inventoryEmpty("Exp. Share não adquirido", "Compre o Exp. Share na aba Treinamento da loja.");
 }
 
@@ -234,7 +354,12 @@ function renderMegaInventory(state) {
   root.innerHTML = owned.length
     ? owned.map((stone) => {
         const equipped = stone.id === equippedStoneId && equippedPokemon;
-        return `<article class="inventory-item ${equipped ? "featured" : ""}"><span class="inventory-item-icon mega">◇</span><div><small>${equipped ? "EQUIPADA" : "DESBLOQUEIO PERMANENTE"}</small><strong>${stone.name}</strong><p>${stone.baseName} → ${stone.megaName}${equipped ? ` · equipada em <b>${equippedPokemon.name}</b>` : ""}.</p></div><em>${equipped ? "ATIVA" : "GUARDADA"}</em></article>`;
+        return `<article class="inventory-item has-action ${equipped ? "featured" : ""}">
+          <span class="inventory-item-icon mega">${megaStoneSprite(stone)}</span>
+          <div><small>${equipped ? "EQUIPADA" : "DESBLOQUEIO PERMANENTE"}</small><strong>${stone.name}</strong><p>${stone.baseName} → ${stone.megaName}${equipped ? ` · equipada em <b>${equippedPokemon.name}</b>` : ""}.</p></div>
+          <em>${equipped ? "ATIVA" : "GUARDADA"}</em>
+          <button class="inventory-use-button" data-use-mega-stone="${stone.id}" ${equipped ? "disabled" : ""}>${equipped ? "EQUIPADA" : "USAR"}</button>
+        </article>`;
       }).join("")
     : inventoryEmpty("Nenhuma Mega Pedra comprada", "As Mega Pedras adquiridas na loja aparecerão aqui.");
 }
