@@ -13,8 +13,12 @@ const CHALLENGE_LEVEL = 100;
 const CHALLENGE_IV = 31;
 
 function ensureHardEndgameState(state) {
-  state.hardEndgame = normalizeHardEndgameState(state.hardEndgame);
-  return state.hardEndgame;
+  const target = state.hardEndgame && typeof state.hardEndgame === "object"
+    ? state.hardEndgame
+    : {};
+  Object.assign(target, normalizeHardEndgameState(target));
+  state.hardEndgame = target;
+  return target;
 }
 
 function ensureShopState(state) {
