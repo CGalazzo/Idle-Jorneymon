@@ -1,0 +1,75 @@
+/* Ajustes finais da tela de captura. Mantém a caixa à esquerda e o Pokémon à direita. */
+.capture-panel > strong {
+  font-size: 21px;
+  line-height: 1.18;
+}
+
+.capture-panel > p {
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.capture-panel .shiny-label {
+  font-size: 10px;
+}
+
+.capture-time {
+  font-size: 10px;
+}
+
+.capture-ball-options button {
+  min-height: 45px;
+  font-size: 11px;
+}
+
+.capture-ball-options button span {
+  font-size: 9px;
+}
+
+.capture-decline-row {
+  justify-content: center !important;
+}
+
+.capture-decline-row .decline-button {
+  min-width: 185px;
+  font-size: 10px;
+}
+
+@media (max-width: 700px) {
+  .capture-panel > strong {
+    font-size: 16px;
+  }
+
+  .capture-panel > p {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .capture-time {
+    font-size: 8px;
+  }
+
+  .capture-ball-options button {
+    min-height: 37px;
+    font-size: 9px;
+  }
+
+  .capture-ball-options button span {
+    font-size: 7px;
+  }
+
+  .capture-decline-row .decline-button {
+    min-width: 135px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 420px) {
+  .capture-panel > strong {
+    font-size: 15px;
+  }
+
+  .capture-panel > p {
+    font-size: 9px;
+  }
+}
