@@ -43,6 +43,7 @@
 .scene .walker,
 .scene .approaching-enemy {
   --rendered-exploration-size: var(--exploration-sprite-size, 82px);
+  --exploration-ground-offset: 0px;
   width: calc(var(--rendered-exploration-size) + 38px);
   height: calc(var(--rendered-exploration-size) + 48px);
   overflow: visible !important;
@@ -55,6 +56,7 @@
   isolation: auto;
 }
 
+/* Esta base representa o ponto de contato dos pés com a estrada. */
 .scene .walker,
 .scene .approaching-enemy {
   bottom: 13%;
@@ -81,20 +83,20 @@
   transform-origin: center bottom;
 }
 
-/* Restaura o movimento completo: GIF animado + passo, balanço e sombra. */
+/* Mantém o GIF e o passo completos usando a calibração automática do chão. */
 .scene .walker img {
   filter: drop-shadow(0 9px 5px rgba(24, 42, 31, .22));
   animation: walkingGrounded .52s ease-in-out infinite alternate;
 }
 
 .scene .walker.facing-left img {
-  transform: translateY(10%) scaleX(-1);
+  transform: translateY(var(--exploration-ground-offset)) scaleX(-1);
   animation-name: walkingGrounded;
 }
 
 @keyframes walkingGrounded {
-  from { transform: translateY(10%) scaleX(-1) rotate(1deg); }
-  to { transform: translateY(calc(10% - 7px)) scaleX(-1) rotate(-3deg); }
+  from { transform: translateY(var(--exploration-ground-offset)) scaleX(-1) rotate(1deg); }
+  to { transform: translateY(calc(var(--exploration-ground-offset) - 7px)) scaleX(-1) rotate(-3deg); }
 }
 
 .scene .walker .shadow,
@@ -116,7 +118,7 @@
   to { transform: scaleX(.82); opacity: .55; }
 }
 
-/* O inimigo já existe no DOM e usa apenas animação CSS durante a aproximação. */
+/* O inimigo usa a mesma linha de estrada e calibração de contato do jogador. */
 .scene .approaching-enemy {
   left: 88%;
   transform: translate3d(-50%, 0, 0);
@@ -134,8 +136,8 @@
 }
 
 @keyframes enemyWalkGrounded {
-  from { transform: translateY(10%) rotate(2deg); }
-  to { transform: translateY(calc(10% - 7px)) rotate(-3deg); }
+  from { transform: translateY(var(--exploration-ground-offset)) rotate(2deg); }
+  to { transform: translateY(calc(var(--exploration-ground-offset) - 7px)) rotate(-3deg); }
 }
 
 @keyframes enemyShadow {
