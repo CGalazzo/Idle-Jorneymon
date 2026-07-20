@@ -109,9 +109,16 @@ function customizeRoutes(id, routes, lines) {
 
   if (id === "vulcao") {
     const flareon = species(136, "Flareon", "Fogo", 3, "rare");
+    const charmeleon = species(5, "Charmeleon", "Fogo", 2);
+    const charizard = species(6, "Charizard", "Fogo/Voador", 3, "epic");
+
     routes[1].boss = flareon;
     addEncounters(routes[2], species(58, "Growlithe", "Fogo"));
     routes[2].boss = species(59, "Arcanine", "Fogo", 2, "rare");
+    replaceEncounter(routes[8], 4, charmeleon);
+    routes[8].boss = charizard;
+    replaceEncounter(routes[9], 4, charizard);
+    routes[9].boss = species(146, "Moltres", "Fogo/Voador", 3, "legendary");
     [5, 7, 9].forEach((index) => addEncounters(routes[index], flareon));
   }
 }
