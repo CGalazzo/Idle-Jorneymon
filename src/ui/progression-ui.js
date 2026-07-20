@@ -123,5 +123,5 @@ export function renderProgression(state) {
   if (state.journey?.complete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA";
 
   const footerVersion = document.querySelector("footer span:last-child");
-  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.6.0";
+  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.6.1";
 }
