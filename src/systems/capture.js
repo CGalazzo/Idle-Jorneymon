@@ -1,6 +1,6 @@
 import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state.js";
 import { createCapturedPokemon } from "../data/pokemon.js";
-import { createAreaState, getNextRoutePosition, getRouteDefinition } from "../data/worlds.js";
+import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
 
 export const CAPTURE_DECISION_MS = 5000;
 
@@ -47,7 +47,7 @@ function advanceJourney(state) {
   if (!nextPosition) {
     state.journey.complete = true;
     state.mode = "exploring";
-    addLog(state, "Jornada concluída! Você venceu as 100 rotas e se tornou o grande campeão!");
+    addLog(state, `Jornada concluída! Você venceu as ${TOTAL_ROUTES} rotas e se tornou o grande campeão!`);
     return;
   }
 

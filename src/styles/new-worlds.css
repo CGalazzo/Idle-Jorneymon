@@ -1,0 +1,22 @@
+/* Extensão da jornada para 15 dificuldades e cinco novos cenários. */
+.world-track {
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.world-step { min-width: 0; }
+
+.scene.env-pantano { background: linear-gradient(#15515a 0 50%, #263c25 50%); }
+.scene.env-usina { background: linear-gradient(#293039 0 50%, #404b55 50%); }
+.scene.env-dojo { background: linear-gradient(#8e6540 0 50%, #d5aa69 50%); }
+.scene.env-ilusoes { background: linear-gradient(#4a2c71 0 50%, #33234f 50%); }
+.scene.env-ilha { background: linear-gradient(#56bdf2 0 55%, #71bd48 55%); }
+
+@media (max-width: 700px) {
+  .world-track { gap: 2px; }
+  .world-step { height: 15px; font-size: 5px; }
+}
+
+@media (max-width: 420px) {
+  .world-step { height: 13px; font-size: 4px; border-radius: 4px; }
+}

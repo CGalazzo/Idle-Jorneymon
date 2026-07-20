@@ -42,7 +42,7 @@ export function enhanceProgressionMarkup() {
       <div id="journey-complete-panel" class="journey-complete-panel" hidden>
         <span>🏆</span>
         <strong>JORNADA CONCLUÍDA!</strong>
-        <p>Você venceu as 100 rotas e derrotou o chefe final.</p>
+        <p>Você venceu as ${TOTAL_ROUTES} rotas e derrotou o chefe final.</p>
       </div>`);
   }
 

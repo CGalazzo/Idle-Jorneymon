@@ -4,6 +4,7 @@ import {
   experienceToNextLevel,
   recalculatePokemonForLevel
 } from "../data/pokemon.js";
+import { ENVIRONMENTS } from "../data/worlds.js";
 
 function registerEvolution(state, pokemon, evolution) {
   const entry = state.pokedex[evolution.toId] || { seen: 0, caught: 0, shinyCaught: 0 };
@@ -30,11 +31,22 @@ function registerEvolution(state, pokemon, evolution) {
   addLog(state, `${evolution.fromName} evoluiu para ${evolution.toName}!`);
 }
 
+function currentEnvironmentId(state) {
+  return state.area?.environmentId
+    || ENVIRONMENTS[state.journey?.worldIndex || 0]?.id
+    || "bosque";
+}
+
 function resolveEvolutions(state, pokemon) {
-  let evolution = evolvePokemonIfReady(pokemon);
+  const context = {
+    environmentId: currentEnvironmentId(state),
+    allowEnvironmentEvolution: true,
+    random: Math.random
+  };
+  let evolution = evolvePokemonIfReady(pokemon, context);
   while (evolution) {
     registerEvolution(state, pokemon, evolution);
-    evolution = evolvePokemonIfReady(pokemon);
+    evolution = evolvePokemonIfReady(pokemon, context);
   }
 }
 

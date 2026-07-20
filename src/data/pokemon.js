@@ -8,7 +8,10 @@ import {
 import { getEvolutionRule } from "./evolutions.js";
 import { getPokemonHeightDm } from "./pokemon-metrics.js";
 
-const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
+const ANIMATED_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
+const STATIC_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
+const LAST_ANIMATED_SPECIES_ID = 649;
+
 export const SHINY_CHANCE = 1 / 256;
 export const SHINY_STAT_MULTIPLIER = 1.2;
 export const NORMAL_IV = 12;
@@ -54,20 +57,28 @@ export function createInstanceId(speciesId) {
   return `${speciesId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getSpriteUrls(speciesId, isShiny = false) {
+  const id = Math.max(1, Number(speciesId) || 1);
+  if (id <= LAST_ANIMATED_SPECIES_ID) {
+    const shinyPath = isShiny ? "shiny/" : "";
+    const backShinyPath = isShiny ? "back/shiny/" : "back/";
+    return {
+      sprite: `${ANIMATED_SPRITE_BASE}/${shinyPath}${id}.gif`,
+      backSprite: `${ANIMATED_SPRITE_BASE}/${backShinyPath}${id}.gif`
+    };
+  }
+
+  const shinyPath = isShiny ? "shiny/" : "";
+  const sprite = `${STATIC_SPRITE_BASE}/${shinyPath}${id}.png`;
+  return { sprite, backSprite: sprite };
+}
+
 function withSprites(pokemon) {
-  return {
-    ...pokemon,
-    sprite: `${SPRITE_BASE}/${pokemon.id}.gif`,
-    backSprite: `${SPRITE_BASE}/back/${pokemon.id}.gif`
-  };
+  return { ...pokemon, ...getSpriteUrls(pokemon.id, false) };
 }
 
 function shinySprites(pokemon) {
-  return {
-    ...pokemon,
-    sprite: `${SPRITE_BASE}/shiny/${pokemon.id}.gif`,
-    backSprite: `${SPRITE_BASE}/back/shiny/${pokemon.id}.gif`
-  };
+  return { ...pokemon, ...getSpriteUrls(pokemon.id, true) };
 }
 
 function clampLevel(level) {
@@ -164,6 +175,7 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
   return {
     ...template,
     ...pokemon,
+    ...getSpriteUrls(pokemon.id, Boolean(pokemon.isShiny)),
     id: Number(pokemon.id),
     uid: pokemon.uid || createInstanceId(pokemon.id),
     level,
@@ -203,8 +215,8 @@ export function recalculatePokemonForLevel(pokemon, heal = true) {
   return pokemon;
 }
 
-export function evolvePokemonIfReady(pokemon) {
-  const rule = getEvolutionRule(pokemon.id, pokemon.level);
+export function evolvePokemonIfReady(pokemon, context = {}) {
+  const rule = getEvolutionRule(pokemon.id, pokemon.level, { ...context, pokemon });
   if (!rule) return null;
 
   const target = POKEDEX_SPECIES.find((entry) => entry.id === rule.to);
