@@ -120,7 +120,7 @@ function grantPokemonExperience(state, pokemon, amount) {
     pokemon.xp -= pokemon.xpToNext;
     pokemon.level += 1;
     pokemon.xpToNext = experienceToNextLevel(pokemon.level);
-    recalculatePokemonForLevel(pokemon, false);
+    recalculatePokemonForLevel(pokemon, true);
     addLog(state, `${pokemon.name} subiu para o nível ${pokemon.level}!`);
 
     if (queueEeveeEvolutionChoice(state, pokemon)) break;
