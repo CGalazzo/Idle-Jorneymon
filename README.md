@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.5.1` — cenários ilustrados próprios para os 10 ambientes, com movimento contínuo de esteira durante a exploração, parceiro fixo na tela e Pokémon selvagens surgindo pela direita.
+`v0.6.0` — encontros pré-carregados e mais fluidos, tamanhos proporcionais das sprites na exploração, evolução automática por nível, decisão de captura com limite de 5 segundos e painel de progresso reposicionado ao lado das informações do chefe.
