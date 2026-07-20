@@ -1,5 +1,11 @@
 import { ALL_SPECIES, getRouteDefinition, getRouteLevelRange } from "./worlds.js";
 import {
+  HARD_MODE_SPECIES,
+  HARD_SHINY_CHANCE,
+  getHardBossTemplate,
+  getHardEncounterPool
+} from "./hard-mode-data.js";
+import {
   buildMoveSet,
   calculatePokemonStats,
   getOfficialBaseStats,
@@ -53,7 +59,12 @@ const STARTER_EVOLUTION_SPECIES = [
 ].map(withSprites);
 
 export const POKEDEX_SPECIES = [...new Map(
-  [...STARTERS, ...STARTER_EVOLUTION_SPECIES, ...ALL_SPECIES.map(withSprites)].map((pokemon) => [pokemon.id, pokemon])
+  [
+    ...STARTERS,
+    ...STARTER_EVOLUTION_SPECIES,
+    ...ALL_SPECIES.map(withSprites),
+    ...HARD_MODE_SPECIES.map(withSprites)
+  ].map((pokemon) => [pokemon.id, pokemon])
 ).values()].sort((a, b) => a.id - b.id);
 
 export function createInstanceId(speciesId) {
@@ -156,7 +167,9 @@ export function createCapturedPokemon(wildPokemon) {
     ? normalizePokemonInstance({
         ...wildPokemon,
         hardModeEncounter: false,
-        hardStatMultiplier: undefined
+        hardStatMultiplier: undefined,
+        hardSecondPhase: false,
+        bossMegaActivated: false
       }, { heal: true })
     : { ...wildPokemon };
 
@@ -164,6 +177,13 @@ export function createCapturedPokemon(wildPokemon) {
   delete source.playerLevelAtEncounter;
   delete source.hardModeEncounter;
   delete source.hardStatMultiplier;
+  delete source.hardSecondPhase;
+  delete source.bossMegaActivated;
+  delete source.hardBossMegaStoneId;
+  delete source.megaOriginal;
+  delete source.isMega;
+  delete source.megaFormId;
+  delete source.activeMegaStoneId;
 
   return {
     ...source,
@@ -295,9 +315,11 @@ export function createWildPokemon(state, playerLevel, random = Math.random) {
     strongestTeamLevel
   );
   const bossReady = state.area.regularVictories >= route.requiredVictories && !state.area.bossDefeated;
+  const encounterPool = hardMode ? getHardEncounterPool(route) : route.encounters;
+  const bossTemplate = hardMode ? getHardBossTemplate(route, POKEDEX_SPECIES) : route.boss;
   const template = bossReady
-    ? route.boss
-    : route.encounters[Math.floor(random() * route.encounters.length)];
+    ? bossTemplate
+    : encounterPool[Math.floor(random() * encounterPool.length)];
   const isFinalBoss = bossReady && route.bossType === "final";
   const level = bossReady
     ? levels.bossLevel
@@ -305,7 +327,7 @@ export function createWildPokemon(state, playerLevel, random = Math.random) {
   const iv = hardMode
     ? (bossReady ? (isFinalBoss ? HARD_FINAL_BOSS_IV : HARD_MINI_BOSS_IV) : HARD_NORMAL_IV)
     : (bossReady ? (isFinalBoss ? FINAL_BOSS_IV : MINI_BOSS_IV) : NORMAL_IV);
-  const isShiny = random() < SHINY_CHANCE;
+  const isShiny = random() < (hardMode ? HARD_SHINY_CHANCE : SHINY_CHANCE);
   const rarity = bossReady
     ? (isFinalBoss ? (template.rarity === "legendary" ? "legendary" : "epic") : "rare")
     : template.rarity;
