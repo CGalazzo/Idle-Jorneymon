@@ -5,6 +5,8 @@ import {
   getOfficialBaseStats,
   parseTypes
 } from "./battle-data.js";
+import { getEvolutionRule } from "./evolutions.js";
+import { getPokemonHeightDm } from "./pokemon-metrics.js";
 
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
 export const SHINY_CHANCE = 1 / 256;
@@ -69,6 +71,7 @@ function createPokemonFromTemplate(template, level, iv, extra = {}) {
     rarity: extra.rarity || template.rarity || "common",
     level: safeLevel,
     iv: safeIv,
+    heightDm: getPokemonHeightDm(template.id),
     nature: "Neutra",
     evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
     baseStats,
@@ -124,6 +127,7 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
     uid: pokemon.uid || createInstanceId(pokemon.id),
     level,
     iv,
+    heightDm: getPokemonHeightDm(pokemon.id),
     nature: "Neutra",
     evs: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
     type,
@@ -145,6 +149,7 @@ export function recalculatePokemonForLevel(pokemon, heal = true) {
   const baseStats = getOfficialBaseStats(pokemon.id, pokemon);
   const calculated = calculatePokemonStats(baseStats, pokemon.level, pokemon.iv ?? NORMAL_IV);
   pokemon.baseStats = baseStats;
+  pokemon.heightDm = getPokemonHeightDm(pokemon.id);
   pokemon.types = parseTypes(pokemon.type);
   pokemon.moves = buildMoveSet(pokemon.type, baseStats);
   Object.assign(pokemon, calculated);
@@ -152,6 +157,38 @@ export function recalculatePokemonForLevel(pokemon, heal = true) {
     ? calculated.maxHp
     : Math.max(0, Math.min(calculated.maxHp, previousHp + calculated.maxHp - previousMaxHp));
   return pokemon;
+}
+
+export function evolvePokemonIfReady(pokemon) {
+  const rule = getEvolutionRule(pokemon.id, pokemon.level);
+  if (!rule) return null;
+
+  const target = POKEDEX_SPECIES.find((entry) => entry.id === rule.to);
+  if (!target) return null;
+
+  const fromId = pokemon.id;
+  const fromName = pokemon.name;
+  const evolved = createPokemonFromTemplate(target, pokemon.level, pokemon.iv ?? NORMAL_IV, {
+    rarity: target.rarity || pokemon.rarity,
+    isShiny: Boolean(pokemon.isShiny),
+    isBoss: Boolean(pokemon.isBoss),
+    bossType: pokemon.bossType || null,
+    encounterRole: pokemon.encounterRole || "captured"
+  });
+
+  Object.assign(pokemon, evolved, {
+    uid: pokemon.uid,
+    xp: pokemon.xp,
+    xpToNext: pokemon.xpToNext,
+    hp: evolved.maxHp
+  });
+
+  return {
+    fromId,
+    fromName,
+    toId: pokemon.id,
+    toName: pokemon.name
+  };
 }
 
 function baseExperienceFromStats(baseStats) {
