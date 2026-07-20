@@ -29,7 +29,7 @@ const FIRST_STAGE_SPRITE_SIZES = {
   43: 84,   // Oddish
   60: 88,   // Poliwag
   63: 98,   // Abra
-  66: 96,   // Machop
+  66: 86,   // Machop
   74: 84,   // Geodude
   92: 98,   // Gastly
   111: 99,  // Rhyhorn
