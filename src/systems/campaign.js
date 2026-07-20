@@ -1,5 +1,5 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
-import { createAreaState, TOTAL_ROUTES } from "../data/worlds.js";
+import { createAreaState, ENVIRONMENTS, TOTAL_ROUTES } from "../data/worlds.js";
 import { deactivateAllMegaEvolutions } from "./mega.js";
 
 const CAMPAIGN_MODES = ["normal", "hard"];
@@ -166,7 +166,7 @@ export function switchCampaign(state, targetMode) {
 export function completeActiveCampaign(state) {
   state.journey.complete = true;
   state.journey.completedRoutes = TOTAL_ROUTES;
-  state.journey.completedWorlds = Math.max(state.journey.completedWorlds || 0, 15);
+  state.journey.completedWorlds = Math.max(state.journey.completedWorlds || 0, ENVIRONMENTS.length);
   state.mode = "exploring";
 
   if (state.campaignMode === "normal") {
