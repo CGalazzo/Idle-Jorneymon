@@ -1,0 +1,215 @@
+.coin-balance {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 39px;
+  padding: 0 10px;
+  color: #ffe58a;
+  background: rgba(123, 84, 17, .22);
+  border: 1px solid rgba(255, 211, 91, .25);
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.coin-balance span { color: #ffc93d; font-size: 15px; }
+.shop-button {
+  height: 39px;
+  padding: 0 14px;
+  color: #ffe17c;
+  background: rgba(137, 92, 17, .2);
+  border: 1px solid rgba(255, 210, 70, .28);
+  border-radius: 12px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  cursor: pointer;
+}
+.shop-button:hover:not(:disabled) { background: rgba(166, 112, 20, .34); }
+.shop-button:disabled { opacity: .35; cursor: not-allowed; }
+
+.shop-dialog {
+  width: min(900px, calc(100% - 24px));
+  max-height: min(820px, calc(100vh - 24px));
+  padding: 22px;
+  color: #edf5ff;
+  background: linear-gradient(145deg, #142d49, #08192b);
+  border: 1px solid rgba(244, 195, 71, .24);
+  border-radius: 22px;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, .62);
+}
+.shop-dialog::backdrop { background: rgba(2, 8, 16, .82); backdrop-filter: blur(6px); }
+.shop-heading .icon-button:hover { transform: none; color: white; }
+.shop-wallet {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 14px;
+  align-items: center;
+  margin: 17px 0 14px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, rgba(112, 77, 16, .42), rgba(30, 56, 76, .72));
+  border: 1px solid rgba(255, 210, 75, .22);
+  border-radius: 15px;
+}
+.shop-wallet > span { grid-row: 1 / 3; color: #dcb955; font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.shop-wallet strong { color: #fff1b0; font-size: 18px; }
+.shop-wallet strong i { color: #ffc83d; font-style: normal; }
+.shop-wallet small { color: #8da5b8; font-size: 9px; }
+.shop-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 15px;
+  padding: 5px;
+  background: rgba(5, 20, 35, .64);
+  border: 1px solid rgba(113, 169, 207, .14);
+  border-radius: 13px;
+}
+.shop-tabs button {
+  min-height: 39px;
+  color: #7899b0;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+.shop-tabs button.selected { color: #092031; background: linear-gradient(145deg, #ffe381, #e6aa31); box-shadow: 0 7px 18px rgba(190, 126, 23, .2); }
+.shop-panel { overflow-y: auto; max-height: 560px; padding-right: 4px; }
+.shop-panel-heading { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin: 3px 2px 12px; }
+.shop-panel-heading small { color: #e0b74e; font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.shop-panel-heading h3 { margin: 2px 0 0; font-size: 20px; }
+.shop-panel-heading p { max-width: 430px; margin: 0; color: #819cb0; font-size: 10px; text-align: right; }
+.shop-grid { display: grid; gap: 9px; }
+.shop-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 150px;
+  gap: 13px;
+  align-items: center;
+  min-height: 94px;
+  padding: 12px 13px;
+  background: rgba(20, 49, 76, .78);
+  border: 1px solid rgba(108, 169, 208, .15);
+  border-radius: 15px;
+}
+.shop-item.unlocked { border-color: rgba(243, 195, 73, .25); }
+.shop-item.purchased { border-color: rgba(76, 214, 140, .38); background: linear-gradient(145deg, rgba(24, 77, 73, .78), rgba(18, 47, 73, .82)); }
+.shop-item.locked { opacity: .68; }
+.shop-item-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: #0c263b;
+  background: linear-gradient(145deg, #f6d56a, #c48a22);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 5px rgba(255, 255, 255, .18), 0 8px 18px rgba(0, 0, 0, .22);
+  font-size: 25px;
+  font-weight: 900;
+}
+.shop-item-icon.great-ball { background: linear-gradient(145deg, #68cfff, #3369c3); }
+.shop-item-icon.ultra-ball { color: #ffd84f; background: linear-gradient(145deg, #354358, #0d1724); }
+.shop-item-icon.master-ball { color: white; background: linear-gradient(145deg, #d06bf2, #6b38a2); }
+.shop-item-icon.exp-icon { color: white; background: linear-gradient(145deg, #6fbcff, #4460c5); border-radius: 15px; font-size: 15px; }
+.shop-item-icon.mega-icon { color: #fff; background: conic-gradient(#ef6cb9, #6dc9ff, #ffe87e, #75e5a6, #ef6cb9); font-size: 32px; }
+.shop-item-copy { min-width: 0; }
+.shop-item-copy small, .shop-item-copy h4, .shop-item-copy p, .shop-item-copy em { display: block; }
+.shop-item-copy small { color: #dcb957; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.shop-item.purchased .shop-item-copy small { color: #67dda0; }
+.shop-item-copy h4 { margin: 3px 0; font-size: 14px; }
+.shop-item-copy p { margin: 0; color: #8ba4b7; font-size: 10px; }
+.shop-item-copy em { margin-top: 5px; color: #65839a; font-size: 8px; font-style: normal; }
+.shop-item > button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 48px;
+  padding: 7px 10px;
+  color: #0e2838;
+  background: linear-gradient(145deg, #ffe27d, #dba02f);
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+.shop-item > button b { margin-top: 2px; font-size: 11px; }
+.shop-item > button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.shop-item > button:disabled { color: #738596; background: #20384c; cursor: not-allowed; }
+.shop-current-bonus {
+  padding: 12px 14px;
+  color: #8ea9bd;
+  background: rgba(7, 25, 43, .6);
+  border: 1px dashed rgba(103, 174, 216, .2);
+  border-radius: 12px;
+  font-size: 10px;
+  text-align: center;
+}
+.shop-current-bonus strong { color: #72dda3; }
+.shop-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 30px;
+  color: #7895aa;
+  background: rgba(8, 27, 45, .6);
+  border: 1px dashed rgba(104, 168, 207, .2);
+  border-radius: 15px;
+  text-align: center;
+}
+.shop-empty span { color: #d9b24e; font-size: 40px; }
+.shop-empty strong { color: #cbddea; font-size: 15px; }
+.shop-empty p { max-width: 430px; margin: 5px 0 0; font-size: 10px; }
+
+.capture-ball-options {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: min(520px, 100%);
+  margin: 8px auto 0;
+}
+.capture-ball-options button {
+  min-height: 39px;
+  padding: 6px 9px;
+  font-size: 8px;
+  line-height: 1.2;
+}
+.capture-ball-options button span { display: block; font-size: 7px; opacity: .75; }
+.capture-ball-options .normal-capture { color: #d9efff; background: #1a4668; }
+.capture-ball-options .ball-capture { color: #102638; background: linear-gradient(145deg, #f5d466, #d69a2d); }
+.capture-ball-options .ball-capture:disabled { color: #708595; background: #20384b; }
+
+.mega-picker { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.mega-picker > small { width: 100%; color: #dc9fe9; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.team-card-actions .mega-equip-button { color: #e9b5f6; border-color: rgba(220, 127, 239, .25); }
+.team-card-actions .mega-equip-button.selected { color: #25102d; background: linear-gradient(145deg, #f2a7ff, #8dc9ff); border-color: #e9b5f6; opacity: 1; }
+.mega-ready-label { margin-top: 4px !important; color: #e5a8f4 !important; font-weight: 900; }
+
+@media (max-width: 820px) {
+  .coin-balance { padding: 0 8px; }
+  .shop-button { padding: 0 10px; }
+  .shop-item { grid-template-columns: 50px minmax(0, 1fr) 125px; }
+  .shop-item-icon { width: 48px; height: 48px; }
+}
+
+@media (max-width: 700px) {
+  .shop-dialog { padding: 16px; }
+  .shop-panel-heading { display: block; }
+  .shop-panel-heading p { margin-top: 4px; text-align: left; }
+  .shop-item { grid-template-columns: 48px 1fr; }
+  .shop-item > button { grid-column: 1 / -1; min-height: 42px; }
+  .shop-wallet { grid-template-columns: 1fr; }
+  .shop-wallet > span { grid-row: auto; }
+}
+
+@media (max-width: 520px) {
+  .coin-balance { min-width: 39px; width: 39px; padding: 0; justify-content: center; }
+  .coin-balance strong { display: none; }
+  .shop-button { width: 39px; padding: 0; overflow: hidden; color: transparent; }
+  .shop-button::after { content: "◉"; display: grid; place-items: center; height: 100%; color: #ffe17c; font-size: 18px; }
+  .shop-tabs button { min-height: 36px; font-size: 7px; letter-spacing: .05em; }
+  .capture-ball-options { grid-template-columns: 1fr; max-height: 150px; overflow-y: auto; }
+}
