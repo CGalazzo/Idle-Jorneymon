@@ -31,12 +31,13 @@ export const BALL_DEFINITIONS = [
     name: "Master Ball",
     shortName: "Master Ball",
     bonus: 100,
-    price: 15000,
+    price: 0,
     guaranteed: true,
     maxStock: 1,
-    available: false,
-    unlockEnvironmentId: "torre-ilusoes",
-    unlockLabel: "Reservada para uma atualização futura"
+    available: true,
+    hardExclusive: true,
+    unlockEnvironmentId: "elite-4",
+    unlockLabel: "Comprada exclusivamente com Emblemas Hard"
   }
 ];
 
