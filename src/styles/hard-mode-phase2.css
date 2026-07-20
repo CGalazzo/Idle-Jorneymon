@@ -1,0 +1,52 @@
+.hard-battle-status {
+  display: inline-flex !important;
+  width: max-content;
+  margin-top: 5px;
+  padding: 3px 7px;
+  color: #ffe5e7;
+  background: rgba(141, 20, 31, .78);
+  border: 1px solid rgba(255, 121, 132, .42);
+  border-radius: 999px;
+  font-size: 7px !important;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  box-shadow: 0 4px 12px rgba(83, 8, 17, .2);
+}
+
+.enemy-card.hard-mega-boss .pokemon-sprite {
+  filter: drop-shadow(0 0 15px rgba(255, 105, 122, .62)) drop-shadow(0 11px 7px rgba(0, 0, 0, .3));
+}
+
+.enemy-card.hard-second-phase {
+  animation: hard-second-phase-pulse 1.15s ease-in-out infinite alternate;
+}
+
+.enemy-card.hard-second-phase .pokemon-info {
+  border-color: rgba(255, 75, 89, .68);
+  box-shadow: 0 0 24px rgba(187, 24, 40, .22);
+}
+
+.hard-exclusive-capture-label {
+  display: inline-flex;
+  width: max-content;
+  margin: 5px 0 2px;
+  padding: 4px 8px;
+  color: #ffe2e5;
+  background: linear-gradient(145deg, rgba(156, 24, 38, .88), rgba(87, 12, 23, .92));
+  border: 1px solid rgba(255, 112, 124, .42);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+@keyframes hard-second-phase-pulse {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.13); }
+}
+
+@media (max-width: 700px) {
+  .hard-battle-status { font-size: 6px !important; }
+  .hard-exclusive-capture-label { font-size: 7px; }
+}
