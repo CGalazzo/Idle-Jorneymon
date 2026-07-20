@@ -18,10 +18,15 @@ function mainJourney(state) {
     : state.journey;
 }
 
-function currentProgressWorldIndex(state) {
-  const journey = mainJourney(state);
+function journeyWorldIndex(journey) {
   if (journey?.complete) return ENVIRONMENTS.length - 1;
   return Math.max(0, Math.min(ENVIRONMENTS.length - 1, Number(journey?.worldIndex) || 0));
+}
+
+function currentProgressWorldIndex(state) {
+  const activeProgress = journeyWorldIndex(mainJourney(state));
+  const normalProgress = journeyWorldIndex(state.campaigns?.normal?.journey);
+  return Math.max(activeProgress, normalProgress);
 }
 
 function environmentIndex(environmentId) {
@@ -134,18 +139,19 @@ export function grantBattleCoins(state, defeated) {
   const routeIndex = Math.max(0, Number(state.journey?.routeIndex) || 0);
   const baseReward = 8 + worldIndex * 2;
   const revisiting = Boolean(state.revisit?.active);
+  const hardMultiplier = state.campaignMode === "hard" ? 2 : 1;
 
   let multiplier = 1;
   if (defeated?.isBoss) multiplier = defeated.bossType === "final" ? 15 : 8;
 
   const revisitMultiplier = revisiting ? (defeated?.isBoss ? 0.5 : 0.35) : 1;
-  const battleReward = Math.max(1, Math.round(baseReward * multiplier * revisitMultiplier));
+  const battleReward = Math.max(1, Math.round(baseReward * multiplier * revisitMultiplier * hardMultiplier));
   let routeBonus = 0;
 
   if (defeated?.isBoss && !revisiting) {
     const expectedFirstClear = Math.max(0, Number(state.journey?.completedRoutes) || 0);
     if (globalRouteIndex(worldIndex, routeIndex) === expectedFirstClear) {
-      routeBonus = 100 + worldIndex * 40;
+      routeBonus = (100 + worldIndex * 40) * hardMultiplier;
     }
   }
 
@@ -154,6 +160,7 @@ export function grantBattleCoins(state, defeated) {
   shop.totalCoinsEarned += total;
 
   const revisitCopy = revisiting ? " na revisita" : "";
-  addLog(state, `Você ganhou ${battleReward} PokéCoins${revisitCopy}.${routeBonus ? ` Bônus de primeira conclusão: +${routeBonus}.` : ""}`);
+  const hardCopy = state.campaignMode === "hard" ? " no Modo Hard" : "";
+  addLog(state, `Você ganhou ${battleReward} PokéCoins${revisitCopy}${hardCopy}.${routeBonus ? ` Bônus de primeira conclusão: +${routeBonus}.` : ""}`);
   return { battleReward, routeBonus, total };
 }
