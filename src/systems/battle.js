@@ -6,11 +6,15 @@ import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
 import { grantBattleCoins } from "./shop.js";
 import {
   activateEquippedMega,
+  activateHardBossMega,
   deactivateAllMegaEvolutions,
   deactivateMegaEvolution
 } from "./mega.js";
 
 const MEGA_TRANSFORMATION_SECONDS = 1.8;
+const HARD_SECOND_PHASE_PAUSE_SECONDS = 1.2;
+const HARD_SECOND_PHASE_THRESHOLD = 0.4;
+const HARD_SECOND_PHASE_STAT_MULTIPLIER = 1.2;
 
 function offensiveStat(pokemon, move) {
   return move.category === "special" ? pokemon.specialAttack : pokemon.attack;
@@ -73,8 +77,22 @@ function clearMegaTransformationPause(state) {
   state.megaEvolutionCooldown = 0;
 }
 
+function activateHardBossSecondPhase(state, pokemon) {
+  if (state.campaignMode !== "hard" || !pokemon?.isBoss || pokemon.bossType !== "final") return false;
+  if (pokemon.hardSecondPhase || pokemon.hp <= 0 || pokemon.hp / Math.max(1, pokemon.maxHp) > HARD_SECOND_PHASE_THRESHOLD) return false;
+
+  pokemon.attack = Math.max(1, Math.round(pokemon.attack * HARD_SECOND_PHASE_STAT_MULTIPLIER));
+  pokemon.specialAttack = Math.max(1, Math.round(pokemon.specialAttack * HARD_SECOND_PHASE_STAT_MULTIPLIER));
+  pokemon.speed = Math.max(1, Math.round(pokemon.speed * HARD_SECOND_PHASE_STAT_MULTIPLIER));
+  pokemon.hardSecondPhase = true;
+  pokemon.hardSecondPhaseMultiplier = HARD_SECOND_PHASE_STAT_MULTIPLIER;
+  addLog(state, `${pokemon.name} entrou na FASE 2! Seu poder e sua velocidade aumentaram.`);
+  return true;
+}
+
 function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
+  const defeatedName = defeated.name;
   state.area.victories += 1;
   state.totals.victories += 1;
 
@@ -82,10 +100,10 @@ function finishVictory(state, now = Date.now()) {
     state.area.bossDefeated = true;
     state.pendingRouteAdvance = true;
     const bossLabel = defeated.bossType === "final" ? "Boss Final" : "Mini Boss";
-    addLog(state, `${bossLabel} ${defeated.name} foi derrotado!`);
+    addLog(state, `${bossLabel} ${defeatedName} foi derrotado!`);
   } else {
     state.area.regularVictories += 1;
-    addLog(state, `${defeated.name} foi derrotado!`);
+    addLog(state, `${defeatedName} foi derrotado!`);
     if (state.area.regularVictories >= state.area.requiredVictories) {
       const bossLabel = state.area.bossType === "final" ? "Boss Final" : "Mini Boss";
       addLog(state, `${bossLabel} ${state.area.bossName} apareceu no fim da rota!`);
@@ -94,6 +112,9 @@ function finishVictory(state, now = Date.now()) {
 
   clearMegaTransformationPause(state);
   deactivateAllMegaEvolutions(state);
+  if (defeated.isMega) deactivateMegaEvolution(defeated);
+  delete defeated.hardSecondPhase;
+  delete defeated.hardSecondPhaseMultiplier;
   grantTeamExperience(state, defeated.xpReward);
   grantBattleCoins(state, defeated);
   state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
@@ -171,6 +192,13 @@ export function updateBattle(state, deltaSeconds, random = Math.random, now = Da
   }
 
   registerParticipant(state, player);
+
+  if (activateHardBossMega(state, state.enemy)) {
+    state.megaEvolutionCooldown = MEGA_TRANSFORMATION_SECONDS;
+    state.battleCooldown = 0;
+    return;
+  }
+
   if (activateEquippedMega(state, player)) {
     state.megaEvolutionCooldown = MEGA_TRANSFORMATION_SECONDS;
     state.battleCooldown = 0;
@@ -187,6 +215,11 @@ export function updateBattle(state, deltaSeconds, random = Math.random, now = Da
     if (attacker.hp <= 0 || defender.hp <= 0) break;
     executeAttack(state, attacker, defender, random);
     if (resolveFainting(state, player, now)) return;
+    if (activateHardBossSecondPhase(state, defender)) {
+      state.megaEvolutionCooldown = HARD_SECOND_PHASE_PAUSE_SECONDS;
+      state.battleCooldown = 0;
+      return;
+    }
   }
 
   state.battleCooldown = state.enemy.isBoss ? 1.45 : 1.25;
