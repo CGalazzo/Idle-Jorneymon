@@ -1,4 +1,6 @@
 import "../styles/hard-mode.css";
+import { getHardBossTemplate } from "../data/hard-mode-data.js";
+import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 import { getCampaignProgress } from "../systems/campaign.js";
 
@@ -13,6 +15,10 @@ function hardLevels(state, worldIndex, routeIndex, bossType) {
   return getRouteLevelRange(worldIndex, routeIndex, bossType, "hard", strongestTeamLevel(state));
 }
 
+function hardBoss(route) {
+  return getHardBossTemplate(route, POKEDEX_SPECIES);
+}
+
 function refreshHardRouteMap() {
   if (!currentState || currentState.campaignMode !== "hard") return;
   document.querySelectorAll("[data-route-world][data-route-index]").forEach((button) => {
@@ -20,9 +26,10 @@ function refreshHardRouteMap() {
     const routeIndex = Number(button.dataset.routeIndex);
     const route = getRouteDefinition(worldIndex, routeIndex);
     const levels = hardLevels(currentState, worldIndex, routeIndex, route.bossType);
+    const boss = hardBoss(route);
     const levelCopy = button.querySelector("span");
     if (levelCopy) levelCopy.textContent = `NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
-    button.title = `Modo Hard · Chefe: ${route.boss.name} · NV. ${levels.bossLevel}`;
+    button.title = `Modo Hard · Chefe: ${boss.name} · NV. ${levels.bossLevel}`;
   });
 }
 
@@ -32,6 +39,46 @@ function installRouteMapHardRefresh() {
   document.querySelector("#route-map-button")?.addEventListener("click", () => {
     window.requestAnimationFrame(refreshHardRouteMap);
   });
+}
+
+function battleStatus(pokemon) {
+  if (!pokemon) return "";
+  const labels = [];
+  if (pokemon.isMega) labels.push("MEGA EVOLUÇÃO");
+  if (pokemon.hardSecondPhase) labels.push("FASE 2");
+  if (pokemon.hardExclusive) labels.push("EXCLUSIVO HARD");
+  return labels.join(" · ");
+}
+
+function decorateBattleCard(card, pokemon) {
+  if (!card) return;
+  let label = card.querySelector(".hard-battle-status");
+  const status = battleStatus(pokemon);
+  if (status && !label) {
+    card.querySelector(".pokemon-info")?.insertAdjacentHTML("beforeend", `<span class="hard-battle-status"></span>`);
+    label = card.querySelector(".hard-battle-status");
+  }
+  if (label) {
+    label.textContent = status;
+    label.hidden = !status;
+  }
+  card.classList.toggle("hard-second-phase", Boolean(pokemon?.hardSecondPhase));
+  card.classList.toggle("hard-mega-boss", Boolean(pokemon?.isBoss && pokemon?.isMega));
+}
+
+function decorateHardBattle(state) {
+  if (state.mode === "battle") {
+    decorateBattleCard(document.querySelector("#battle-stage .enemy-card"), state.enemy);
+    decorateBattleCard(document.querySelector("#battle-stage .player-card"), state.team?.[state.activeTeamIndex]);
+  }
+
+  let captureLabel = document.querySelector("#hard-exclusive-capture-label");
+  const showExclusive = state.mode === "capture" && Boolean(state.enemy?.hardExclusive);
+  if (showExclusive && !captureLabel) {
+    document.querySelector("#capture-title")?.insertAdjacentHTML("afterend", `<span id="hard-exclusive-capture-label" class="hard-exclusive-capture-label">◆ POKÉMON EXCLUSIVO DO MODO HARD</span>`);
+    captureLabel = document.querySelector("#hard-exclusive-capture-label");
+  }
+  if (captureLabel) captureLabel.hidden = !showExclusive;
 }
 
 export function enhanceHardModeMarkup() {
@@ -85,9 +132,11 @@ export function decorateHardCapturedRoster(state) {
   const decorate = (selector, roster) => {
     document.querySelectorAll(`${selector} .team-card`).forEach((card, index) => {
       card.querySelector(".hard-caught-label")?.remove();
-      if (!roster[index]?.capturedInHard) return;
+      const pokemon = roster[index];
+      if (!pokemon?.capturedInHard) return;
       const info = card.querySelector(".team-card-info");
-      info?.insertAdjacentHTML("beforeend", `<span class="hard-caught-label">◆ CAPTURADO NO HARD</span>`);
+      const copy = pokemon.hardExclusive ? "◆ EXCLUSIVO DO HARD" : "◆ CAPTURADO NO HARD";
+      info?.insertAdjacentHTML("beforeend", `<span class="hard-caught-label">${copy}</span>`);
     });
   };
   decorate("#team-list", state.team || []);
@@ -111,6 +160,7 @@ export function renderHardModeState(state) {
   if (isHard) {
     const levels = hardLevels(state, route.worldIndex, route.routeIndex, route.bossType);
     const bossLabel = route.bossType === "final" ? "BOSS FINAL" : "MINI BOSS";
+    const boss = hardBoss(route);
     const environmentLabel = document.querySelector("#environment-label");
     const routeLevels = document.querySelector("#route-levels");
     const routeHudLabel = document.querySelector("#route-hud-label");
@@ -120,10 +170,11 @@ export function renderHardModeState(state) {
     if (environmentLabel) environmentLabel.textContent = `MODO HARD · DIFICULDADE ${route.worldIndex + 1} · ${route.environment.name.toUpperCase()}`;
     if (routeLevels) routeLevels.textContent = `NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
     if (routeHudLabel && !state.journey?.complete) routeHudLabel.textContent = `HARD · ROTA ${route.routeNumber} · NV. ${levels.minLevel}${levels.minLevel === levels.maxLevel ? "" : `–${levels.maxLevel}`}`;
-    if (routeHudBoss) routeHudBoss.textContent = `${bossLabel}: ${route.boss.name} · NV. ${levels.bossLevel}`;
+    if (routeHudBoss) routeHudBoss.textContent = `${bossLabel}: ${boss.name} · NV. ${levels.bossLevel}`;
     if (modeBadge && !state.journey?.complete && !state.revisit?.active) modeBadge.textContent = `HARD · ${modeBadge.textContent.replace(/^HARD · /, "")}`;
   }
 
+  decorateHardBattle(state);
   if (document.querySelector("#route-map-dialog")?.open) refreshHardRouteMap();
 
   const dialog = document.querySelector("#hard-unlock-dialog");
