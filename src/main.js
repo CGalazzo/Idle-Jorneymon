@@ -15,6 +15,13 @@ import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { enhanceEeveeEvolutionMarkup, renderEeveeEvolutionChoice } from "./ui/eevee-evolution-ui.js";
 import {
+  decorateHardCapturedRoster,
+  enhanceHardModeMarkup,
+  isHardUnlockScreenOpen,
+  renderCampaignMenu,
+  renderHardModeState
+} from "./ui/hard-mode-ui.js";
+import {
   enhanceShopMarkup,
   renderItems,
   renderShop,
@@ -25,6 +32,7 @@ import {
 import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
+import { acknowledgeHardUnlock, switchCampaign } from "./systems/campaign.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
@@ -53,9 +61,18 @@ async function boot() {
     <div id="journey-menu-screen" class="journey-menu-screen" hidden>
       <div class="journey-menu-card">
         <small>MENU DA JORNADA</small>
-        <h1>Escolha como continuar</h1>
+        <h1>Escolha o modo de jogo</h1>
+        <div class="campaign-mode-actions">
+          <button id="normal-mode-button" class="campaign-mode-button normal">
+            <strong>MODO NORMAL</strong>
+            <small id="normal-mode-status">0/150 rotas concluídas</small>
+          </button>
+          <button id="hard-mode-button" class="campaign-mode-button hard" disabled>
+            <strong>MODO HARD</strong>
+            <small id="hard-mode-status">Bloqueado · conclua as 150 rotas normais</small>
+          </button>
+        </div>
         <div class="journey-menu-actions">
-          <button id="journey-continue-button" class="journey-menu-action">CONTINUAR JORNADA</button>
           <button id="new-journey-button" class="journey-menu-action secondary">COMEÇAR NOVA JORNADA</button>
         </div>
         <button id="back-to-splash" class="journey-menu-back">← Voltar à tela inicial</button>
@@ -66,6 +83,7 @@ async function boot() {
   enhanceProgressionMarkup();
   enhanceEeveeEvolutionMarkup();
   enhanceShopMarkup();
+  enhanceHardModeMarkup();
 
   function memoizeInnerHTML(element) {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
@@ -131,7 +149,7 @@ async function boot() {
 
   function preloadRouteSprites(currentState) {
     const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.isShiny ? 1 : 0}`).join(",");
-    const routeKey = `${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}:${teamKey}`;
+    const routeKey = `${currentState.campaignMode}:${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}:${teamKey}`;
     if (routeKey === preloadedRouteKey) return preloadedRoutePromise;
     preloadedRouteKey = routeKey;
 
@@ -169,11 +187,13 @@ async function boot() {
   const journeyMenuScreen = document.querySelector("#journey-menu-screen");
   const starterCard = document.querySelector("#starter-card");
   const starterSelection = document.querySelector("#starter-selection");
-  const continueButton = document.querySelector("#journey-continue-button");
+  const normalModeButton = document.querySelector("#normal-mode-button");
+  const hardModeButton = document.querySelector("#hard-mode-button");
   const resetButton = document.querySelector("#reset-button");
   const environmentLabel = document.querySelector("#environment-label");
   const scene = document.querySelector("#scene");
   const eeveeEvolutionDialog = document.querySelector("#eevee-evolution-dialog");
+  const hardUnlockDialog = document.querySelector("#hard-unlock-dialog");
   const teamDialog = document.querySelector("#team-dialog");
   const shopDialog = document.querySelector("#shop-dialog");
   const itemsDialog = document.querySelector("#items-dialog");
@@ -206,7 +226,9 @@ async function boot() {
     renderBase(state);
     renderProgression(state);
     renderShopHud(state);
-    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen);
+    renderHardModeState(state);
+    if (teamDialog.open) decorateHardCapturedRoster(state);
+    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen());
   }
 
   function setWelcomeView(view) {
@@ -240,8 +262,7 @@ async function boot() {
     saveGame(state);
     welcomeScreen.classList.remove("is-hidden");
     document.body.classList.add("welcome-open");
-    continueButton.disabled = !hasSavedGame();
-    continueButton.title = continueButton.disabled ? "Nenhuma jornada salva" : "Continuar do último save";
+    renderCampaignMenu(state);
     setWelcomeView("menu");
   }
 
@@ -272,7 +293,7 @@ async function boot() {
     if (!state.team[state.activeTeamIndex]) state.activeTeamIndex = 0;
 
     if (Array.isArray(state.log)) {
-      state.log.unshift(`Rota ${state.area.routeNumber} reiniciada. Sua equipe foi curada.`);
+      state.log.unshift(`Rota ${state.area.routeNumber}${state.campaignMode === "hard" ? " Hard" : ""} reiniciada. Sua equipe foi curada.`);
       state.log = state.log.slice(0, 7);
     }
 
@@ -288,7 +309,7 @@ async function boot() {
     lastFrame = now;
 
     const evolutionChoicePending = Boolean(state.pendingEvolutionChoices?.length);
-    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !evolutionChoicePending) {
+    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen() && !evolutionChoicePending) {
       const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
@@ -305,7 +326,7 @@ async function boot() {
       }
 
       const modeChanged = previousMode !== state.mode;
-      if (modeChanged || state.pendingEvolutionChoices?.length || now - lastRender >= UI_RENDER_INTERVAL_MS) {
+      if (modeChanged || state.pendingEvolutionChoices?.length || state.hardUnlockCelebrationPending || now - lastRender >= UI_RENDER_INTERVAL_MS) {
         renderGame();
         lastRender = now;
       }
@@ -331,12 +352,29 @@ async function boot() {
     });
   });
 
-  continueButton.addEventListener("click", () => {
-    if (!hasSavedGame()) return;
-    state = loadGame();
+  normalModeButton.addEventListener("click", () => {
+    if (!hasSavedGame() || normalModeButton.disabled) return;
+    if (!switchCampaign(state, "normal")) return;
     preloadedRouteKey = "";
+    saveGame(state);
     showGame();
   });
+
+  hardModeButton.addEventListener("click", () => {
+    if (!hasSavedGame() || hardModeButton.disabled) return;
+    if (!switchCampaign(state, "hard")) return;
+    preloadedRouteKey = "";
+    saveGame(state);
+    showGame();
+  });
+
+  document.querySelector("#hard-unlock-menu-button").addEventListener("click", () => {
+    acknowledgeHardUnlock(state);
+    saveGame(state);
+    if (hardUnlockDialog.open) hardUnlockDialog.close();
+    showJourneyMenu();
+  });
+  hardUnlockDialog.addEventListener("cancel", (event) => event.preventDefault());
 
   document.querySelector("#pokedex-button").addEventListener("click", () => {
     renderPokedex(state);
@@ -351,6 +389,7 @@ async function boot() {
     isTeamOpen = true;
     saveGame(state);
     renderTeam(state);
+    decorateHardCapturedRoster(state);
     teamDialog.showModal();
   });
 
@@ -382,6 +421,7 @@ async function boot() {
       preloadedRouteKey = "";
       saveGame(state);
       renderTeam(state);
+      decorateHardCapturedRoster(state);
       renderGame();
     }
   });
