@@ -35,12 +35,11 @@ function globalRouteIndex(worldIndex, routeIndex) {
     + Math.max(0, Number(routeIndex) || 0);
 }
 
-function canAfford(state, price) {
-  return ensureShopState(state).coins >= Number(price);
+function canAfford(shop, price) {
+  return shop.coins >= Number(price);
 }
 
-function spendCoins(state, price) {
-  const shop = ensureShopState(state);
+function spendCoins(shop, price) {
   const amount = Math.max(0, Math.floor(Number(price) || 0));
   if (shop.coins < amount) return false;
   shop.coins -= amount;
@@ -89,10 +88,10 @@ export function buyBall(state, ballId) {
   const shop = ensureShopState(state);
   if (!ball || ball.available === false || !isBallUnlocked(state, ball.id)) return false;
   if (ball.maxStock && shop.balls[ball.id] >= ball.maxStock) return false;
-  if (!canAfford(state, ball.price) || !spendCoins(state, ball.price)) return false;
+  if (!canAfford(shop, ball.price) || !spendCoins(shop, ball.price)) return false;
 
   shop.balls[ball.id] = (shop.balls[ball.id] || 0) + 1;
-  addLog(state, `${ball.name} comprada por ${ball.price} PokéCoins.`);
+  addLog(state, `${ball.name} comprada por ${ball.price} PokéCoins. Inventário: ${shop.balls[ball.id]}.`);
   return true;
 }
 
@@ -101,10 +100,10 @@ export function buyExpShare(state, level) {
   const upgrade = EXP_SHARE_UPGRADES.find((entry) => entry.level === Number(level));
   if (!upgrade || upgrade.level !== shop.expShareLevel + 1) return false;
   if (!isExpShareUnlocked(state, upgrade.level)) return false;
-  if (!canAfford(state, upgrade.price) || !spendCoins(state, upgrade.price)) return false;
+  if (!canAfford(shop, upgrade.price) || !spendCoins(shop, upgrade.price)) return false;
 
   shop.expShareLevel = upgrade.level;
-  addLog(state, `${upgrade.name} foi comprado. Pokémon que não lutaram agora recebem ${Math.round(upgrade.multiplier * 100)}% do XP.`);
+  addLog(state, `${upgrade.name} foi comprado e está ativo. Pokémon que não lutaram agora recebem ${Math.round(upgrade.multiplier * 100)}% do XP.`);
   return true;
 }
 
@@ -114,10 +113,10 @@ export function buyMegaStone(state, stoneId) {
   if (!stone || !isMegaShopUnlocked(state) || !isSpeciesOwned(state, stone.baseSpeciesId)) return false;
   if (stone.legendary && !isLegendaryMegaUnlocked(state)) return false;
   if (shop.ownedMegaStones.includes(stone.id)) return false;
-  if (!canAfford(state, stone.price) || !spendCoins(state, stone.price)) return false;
+  if (!canAfford(shop, stone.price) || !spendCoins(shop, stone.price)) return false;
 
   shop.ownedMegaStones.push(stone.id);
-  addLog(state, `${stone.name} foi comprada. Equipe-a em ${stone.baseName} na tela da equipe.`);
+  addLog(state, `${stone.name} foi comprada e adicionada aos Itens. Equipe-a em ${stone.baseName} na tela da equipe.`);
   return true;
 }
 
