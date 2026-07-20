@@ -58,7 +58,7 @@ function grantPokemonExperience(state, pokemon, amount) {
     pokemon.xp -= pokemon.xpToNext;
     pokemon.level += 1;
     pokemon.xpToNext = experienceToNextLevel(pokemon.level);
-    recalculatePokemonForLevel(pokemon, true);
+    recalculatePokemonForLevel(pokemon, false);
     addLog(state, `${pokemon.name} subiu para o nível ${pokemon.level}!`);
     resolveEvolutions(state, pokemon);
   }
