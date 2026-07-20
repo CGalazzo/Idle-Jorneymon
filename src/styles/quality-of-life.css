@@ -31,7 +31,7 @@
 .scene::before { backface-visibility: hidden; }
 .battle-stage { contain: layout style; }
 
-/* O jogador permanece fixo; somente a imagem faz o movimento leve de caminhada. */
+/* O jogador permanece fixo; somente o cenário percorre a tela. */
 .scene.exploring .walker,
 .scene.approach .walker,
 .scene.recovering .walker {
@@ -42,9 +42,9 @@
 /* Escala proporcional somente na exploração e na aproximação. */
 .scene .walker,
 .scene .approaching-enemy {
-  --rendered-exploration-size: var(--exploration-sprite-size, 72px);
-  width: calc(var(--rendered-exploration-size) + 34px);
-  height: calc(var(--rendered-exploration-size) + 42px);
+  --rendered-exploration-size: var(--exploration-sprite-size, 82px);
+  width: calc(var(--rendered-exploration-size) + 38px);
+  height: calc(var(--rendered-exploration-size) + 48px);
   overflow: visible !important;
   place-items: end center;
   contain: layout style;
@@ -55,10 +55,12 @@
   isolation: auto;
 }
 
-.scene .walker {
-  bottom: calc(23% - 8px);
-  will-change: auto;
+.scene .walker,
+.scene .approaching-enemy {
+  bottom: 13%;
 }
+
+.scene .walker { will-change: auto; }
 
 .scene .walker img,
 .scene .approaching-enemy img {
@@ -79,32 +81,44 @@
   transform-origin: center bottom;
 }
 
+/* Restaura o movimento completo: GIF animado + passo, balanço e sombra. */
 .scene .walker img {
   filter: drop-shadow(0 9px 5px rgba(24, 42, 31, .22));
+  animation: walkingGrounded .52s ease-in-out infinite alternate;
 }
 
 .scene .walker.facing-left img {
-  transform: scaleX(-1);
-  animation-name: walkingNoClip;
+  transform: translateY(10%) scaleX(-1);
+  animation-name: walkingGrounded;
 }
 
-@keyframes walkingNoClip {
-  from { transform: translateY(0) scaleX(-1); }
-  to { transform: translateY(-6px) rotate(-2deg) scaleX(-1); }
+@keyframes walkingGrounded {
+  from { transform: translateY(10%) scaleX(-1) rotate(1deg); }
+  to { transform: translateY(calc(10% - 7px)) scaleX(-1) rotate(-3deg); }
 }
 
 .scene .walker .shadow,
 .scene .approaching-enemy .shadow {
   width: var(--exploration-shadow-width, 55px);
   max-width: 90%;
-  background: rgba(24, 42, 31, .27);
+  background: rgba(24, 42, 31, .3);
   filter: none;
+  transform-origin: center;
+}
+
+.scene.exploring .walker .shadow,
+.scene.approach .walker .shadow {
+  animation: walkingShadow .52s ease-in-out infinite alternate;
+}
+
+@keyframes walkingShadow {
+  from { transform: scaleX(1); opacity: .8; }
+  to { transform: scaleX(.82); opacity: .55; }
 }
 
 /* O inimigo já existe no DOM e usa apenas animação CSS durante a aproximação. */
 .scene .approaching-enemy {
   left: 88%;
-  bottom: calc(23% - 8px);
   transform: translate3d(-50%, 0, 0);
   will-change: transform;
   backface-visibility: visible;
@@ -112,6 +126,21 @@
 
 .scene .approaching-enemy img {
   filter: drop-shadow(0 9px 5px rgba(24, 42, 31, .22));
+  animation: enemyWalkGrounded .4s ease-in-out infinite alternate;
+}
+
+.scene.approach .approaching-enemy .shadow {
+  animation: enemyShadow .4s ease-in-out infinite alternate;
+}
+
+@keyframes enemyWalkGrounded {
+  from { transform: translateY(10%) rotate(2deg); }
+  to { transform: translateY(calc(10% - 7px)) rotate(-3deg); }
+}
+
+@keyframes enemyShadow {
+  from { transform: scaleX(1); opacity: .8; }
+  to { transform: scaleX(.8); opacity: .52; }
 }
 
 .scene.approach .approaching-enemy:not([hidden]) {
@@ -207,7 +236,7 @@ footer { font-size: 9px; }
 
   .scene .walker,
   .scene .approaching-enemy {
-    --rendered-exploration-size: min(var(--exploration-sprite-size, 72px), 180px);
+    --rendered-exploration-size: min(var(--exploration-sprite-size, 82px), 210px);
   }
 }
 
@@ -223,7 +252,8 @@ footer { font-size: 9px; }
 
   .scene .walker,
   .scene .approaching-enemy {
-    --rendered-exploration-size: min(var(--exploration-sprite-size, 72px), 165px);
+    --rendered-exploration-size: min(var(--exploration-sprite-size, 82px), 190px);
+    bottom: 11%;
   }
 
   .activity-log li { font-size: 11px; }
