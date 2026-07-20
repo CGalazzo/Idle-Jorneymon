@@ -31,8 +31,23 @@ export const STARTERS = [
   { id: 393, name: "Piplup", type: "Água", level: 5, rarity: "starter" }
 ].map(withSprites);
 
+const STARTER_EVOLUTION_SPECIES = [
+  { id: 153, name: "Bayleef", type: "Planta", rarity: "uncommon" },
+  { id: 154, name: "Meganium", type: "Planta", rarity: "rare" },
+  { id: 156, name: "Quilava", type: "Fogo", rarity: "uncommon" },
+  { id: 157, name: "Typhlosion", type: "Fogo", rarity: "rare" },
+  { id: 159, name: "Croconaw", type: "Água", rarity: "uncommon" },
+  { id: 160, name: "Feraligatr", type: "Água", rarity: "rare" },
+  { id: 388, name: "Grotle", type: "Planta", rarity: "uncommon" },
+  { id: 389, name: "Torterra", type: "Planta/Terra", rarity: "rare" },
+  { id: 391, name: "Monferno", type: "Fogo/Lutador", rarity: "uncommon" },
+  { id: 392, name: "Infernape", type: "Fogo/Lutador", rarity: "rare" },
+  { id: 394, name: "Prinplup", type: "Água", rarity: "uncommon" },
+  { id: 395, name: "Empoleon", type: "Água/Aço", rarity: "rare" }
+].map(withSprites);
+
 export const POKEDEX_SPECIES = [...new Map(
-  [...STARTERS, ...ALL_SPECIES.map(withSprites)].map((pokemon) => [pokemon.id, pokemon])
+  [...STARTERS, ...STARTER_EVOLUTION_SPECIES, ...ALL_SPECIES.map(withSprites)].map((pokemon) => [pokemon.id, pokemon])
 ).values()].sort((a, b) => a.id - b.id);
 
 export function createInstanceId(speciesId) {
