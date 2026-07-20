@@ -59,6 +59,7 @@ export function getBallDefinition(ballId) {
 export function isBallUnlocked(state, ballId) {
   const ball = getBallDefinition(ballId);
   if (!ball || ball.available === false) return false;
+  if (ball.hardExclusive) return Boolean(state.hardModeUnlocked);
   const requiredIndex = environmentIndex(ball.unlockEnvironmentId);
   return requiredIndex >= 0 && currentProgressWorldIndex(state) >= requiredIndex;
 }
@@ -91,7 +92,7 @@ export function getVisibleMegaStones(state) {
 export function buyBall(state, ballId) {
   const ball = getBallDefinition(ballId);
   const shop = ensureShopState(state);
-  if (!ball || ball.available === false || !isBallUnlocked(state, ball.id)) return false;
+  if (!ball || ball.available === false || ball.hardExclusive || !isBallUnlocked(state, ball.id)) return false;
   if (ball.maxStock && shop.balls[ball.id] >= ball.maxStock) return false;
   if (!canAfford(shop, ball.price) || !spendCoins(shop, ball.price)) return false;
 
