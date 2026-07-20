@@ -1,4 +1,5 @@
 import { POKEDEX_SPECIES, STARTERS } from "../data/pokemon.js";
+import { getExplorationSpriteUrl } from "../data/exploration-sprites.js";
 import { getExplorationSpriteSize } from "../data/pokemon-metrics.js";
 import { getActivePokemon, MAX_TEAM_SIZE } from "../core/game-state.js";
 import { CAPTURE_DECISION_MS } from "../systems/capture.js";
@@ -46,23 +47,28 @@ function applyExplorationSpriteSize(element, pokemon) {
   element.style.setProperty("--exploration-shadow-width", `${Math.max(30, Math.round(size * 0.66))}px`);
 }
 
-function ensureWalker(walker, pokemon) {
-  const spriteChanged = walker.dataset.pokemonSprite !== pokemon.sprite;
-  if (walker.dataset.pokemonUid === pokemon.uid && !spriteChanged && walker.querySelector("img")) {
-    applyExplorationSpriteSize(walker, pokemon);
-    return;
+function updateExplorationPokemon(element, pokemon, { facingLeft = false } = {}) {
+  if (!element || !pokemon) return;
+  const image = element.querySelector("img");
+  const sprite = getExplorationSpriteUrl(pokemon);
+  const spriteChanged = element.dataset.pokemonSprite !== sprite;
+
+  if (spriteChanged) {
+    image.src = sprite;
+    image.alt = `${pokemon.name} ${element.id === "walker" ? "caminhando" : "se aproximando"}`;
+    image.decoding = "async";
+    element.dataset.pokemonSprite = sprite;
+    element.dataset.pokemonId = String(pokemon.id);
   }
-  walker.innerHTML = `<img src="${pokemon.sprite}" alt="${pokemon.name} caminhando" /><span class="shadow"></span>`;
-  walker.dataset.pokemonUid = pokemon.uid;
-  walker.dataset.pokemonSprite = pokemon.sprite;
-  applyExplorationSpriteSize(walker, pokemon);
+
+  element.classList.toggle("shiny", Boolean(pokemon.isShiny));
+  element.classList.toggle("facing-left", facingLeft);
+  applyExplorationSpriteSize(element, pokemon);
+  element.hidden = false;
 }
 
-function clearWalker(walker) {
-  if (!walker.childElementCount) return;
-  walker.replaceChildren();
-  delete walker.dataset.pokemonUid;
-  delete walker.dataset.pokemonSprite;
+function hideExplorationPokemon(element) {
+  if (element) element.hidden = true;
 }
 
 function updateBattleCard(card, pokemon) {
@@ -130,7 +136,8 @@ export function createAppMarkup() {
           <div class="sky"><span class="cloud cloud-one"></span><span class="cloud cloud-two"></span></div>
           <div class="distant-hills"></div><div class="grass-line"></div><div class="path"></div>
           <div id="battle-stage" class="battle-stage"></div>
-          <div id="walker" class="walker"></div>
+          <div id="walker" class="walker" hidden><img id="walker-sprite" alt="Pokémon caminhando" decoding="async" draggable="false" /><span class="shadow"></span></div>
+          <div id="approaching-enemy" class="approaching-enemy" hidden><img id="approaching-enemy-sprite" alt="Pokémon se aproximando" decoding="async" draggable="false" /><span class="shadow"></span></div>
           <div id="capture-panel" class="capture-panel" hidden>
             <span id="shiny-label" class="shiny-label" hidden>✨ SHINY</span>
             <strong id="capture-title"></strong>
@@ -158,7 +165,7 @@ export function createAppMarkup() {
           <div><small>VITÓRIAS</small><strong id="wins-stat">0</strong></div>
         </section>
       </main>
-      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.6.0</span></footer>
+      <footer><span id="save-status">● Progresso salvo</span><span>PROTÓTIPO v0.6.1</span></footer>
     </div>
     <dialog id="pokedex-dialog" class="pokedex-dialog">
       <div class="dialog-heading"><div><small>REGISTRO DA ROTA 1</small><h2>Pokédex</h2></div><button id="close-pokedex" class="icon-button" aria-label="Fechar Pokédex">×</button></div>
@@ -227,11 +234,14 @@ export function render(state) {
   document.querySelector("#area-name").textContent = state.area.name;
 
   const walker = document.querySelector("#walker");
+  const approachingEnemy = document.querySelector("#approaching-enemy");
   const battleStage = document.querySelector("#battle-stage");
   const capturePanel = document.querySelector("#capture-panel");
+
   if (state.mode === "battle") {
     capturePanel.hidden = true;
-    clearWalker(walker);
+    hideExplorationPokemon(walker);
+    hideExplorationPokemon(approachingEnemy);
     if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id) || battleStage.dataset.playerUid !== player.uid) {
       battleStage.innerHTML = `${pokemonCard(state.enemy, true)}${pokemonCard(player)}`;
       battleStage.dataset.enemyId = String(state.enemy.id);
@@ -240,7 +250,8 @@ export function render(state) {
     updateBattleCard(battleStage.querySelector(".enemy-card"), state.enemy);
     updateBattleCard(battleStage.querySelector(".player-card"), player);
   } else if (state.mode === "capture") {
-    clearWalker(walker);
+    hideExplorationPokemon(walker);
+    hideExplorationPokemon(approachingEnemy);
     if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
       battleStage.innerHTML = `<div class="capture-pokemon ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""}" /></div>`;
       battleStage.dataset.enemyId = String(state.enemy.id);
@@ -252,24 +263,22 @@ export function render(state) {
     updateCaptureTimer(state);
   } else if (state.mode === "approach") {
     capturePanel.hidden = true;
-    ensureWalker(walker, player);
-    if (modeChanged || battleStage.dataset.enemyId !== String(state.enemy.id)) {
-      battleStage.innerHTML = `<div class="approaching-enemy ${state.enemy.isShiny ? "shiny" : ""}"><img src="${state.enemy.sprite}" alt="${state.enemy.name} se aproximando" /><span class="shadow"></span></div>`;
-      battleStage.dataset.enemyId = String(state.enemy.id);
-      scene.dataset.approachDistance = String(Math.max(1, scene.getBoundingClientRect().width * 0.42));
-    }
-    const approachingEnemy = battleStage.querySelector(".approaching-enemy");
-    applyExplorationSpriteSize(approachingEnemy, state.enemy);
-    const distance = Number(scene.dataset.approachDistance) * state.approachProgress;
-    approachingEnemy.style.transform = `translate3d(calc(-50% - ${distance}px), 0, 0)`;
-  } else {
-    capturePanel.hidden = true;
     if (modeChanged) {
       battleStage.replaceChildren();
       delete battleStage.dataset.enemyId;
       delete battleStage.dataset.playerUid;
     }
-    ensureWalker(walker, player);
+    updateExplorationPokemon(walker, player, { facingLeft: true });
+    updateExplorationPokemon(approachingEnemy, state.enemy);
+  } else {
+    capturePanel.hidden = true;
+    hideExplorationPokemon(approachingEnemy);
+    if (modeChanged) {
+      battleStage.replaceChildren();
+      delete battleStage.dataset.enemyId;
+      delete battleStage.dataset.playerUid;
+    }
+    updateExplorationPokemon(walker, player, { facingLeft: true });
   }
 
   document.querySelector("#partner-sprite").src = player.sprite;
@@ -284,5 +293,5 @@ export function render(state) {
   document.querySelector("#encounters-stat").textContent = state.area.encounters;
   document.querySelector("#wins-stat").textContent = state.area.victories;
   document.querySelector("#activity-log").innerHTML = state.log.map((entry, index) => `<li class="${index === 0 ? "latest" : ""}"><i></i><span>${entry}</span></li>`).join("");
-  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.6.0";
+  document.querySelector("footer span:last-child").textContent = "PROTÓTIPO v0.6.1";
 }
