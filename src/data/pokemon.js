@@ -10,6 +10,7 @@ import { getPokemonHeightDm } from "./pokemon-metrics.js";
 
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
 export const SHINY_CHANCE = 1 / 256;
+export const SHINY_STAT_MULTIPLIER = 1.2;
 export const NORMAL_IV = 12;
 export const STARTER_IV = 20;
 export const MINI_BOSS_IV = 20;
@@ -53,12 +54,25 @@ function clampIv(iv) {
   return Math.max(0, Math.min(31, Number(iv) || 0));
 }
 
+function applyShinyStatBonus(stats, isShiny = false) {
+  if (!isShiny) return stats;
+  return Object.fromEntries(
+    Object.entries(stats).map(([stat, value]) => [
+      stat,
+      Math.max(1, Math.round((Number(value) || 1) * SHINY_STAT_MULTIPLIER))
+    ])
+  );
+}
+
 function createPokemonFromTemplate(template, level, iv, extra = {}) {
   const safeLevel = clampLevel(level);
   const safeIv = clampIv(iv);
   const type = template.type || "Normal";
   const baseStats = getOfficialBaseStats(template.id, template);
-  const calculated = calculatePokemonStats(baseStats, safeLevel, safeIv);
+  const calculated = applyShinyStatBonus(
+    calculatePokemonStats(baseStats, safeLevel, safeIv),
+    Boolean(extra.isShiny)
+  );
   const appearance = extra.isShiny ? shinySprites(template) : withSprites(template);
 
   return {
@@ -115,7 +129,10 @@ export function normalizePokemonInstance(pokemon, { refreshExperienceCurve = fal
   const iv = clampIv(pokemon.iv ?? NORMAL_IV);
   const type = template.type || pokemon.type || "Normal";
   const baseStats = getOfficialBaseStats(pokemon.id, { ...template, ...pokemon });
-  const calculated = calculatePokemonStats(baseStats, level, iv);
+  const calculated = applyShinyStatBonus(
+    calculatePokemonStats(baseStats, level, iv),
+    Boolean(pokemon.isShiny)
+  );
   const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || calculated.maxHp);
   const previousHp = Math.max(0, Math.min(previousMaxHp, Number(pokemon.hp ?? previousMaxHp)));
   const hpRatio = previousHp / previousMaxHp;
@@ -147,7 +164,10 @@ export function recalculatePokemonForLevel(pokemon, heal = true) {
   const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
   const previousHp = Math.max(0, Number(pokemon.hp) || 0);
   const baseStats = getOfficialBaseStats(pokemon.id, pokemon);
-  const calculated = calculatePokemonStats(baseStats, pokemon.level, pokemon.iv ?? NORMAL_IV);
+  const calculated = applyShinyStatBonus(
+    calculatePokemonStats(baseStats, pokemon.level, pokemon.iv ?? NORMAL_IV),
+    Boolean(pokemon.isShiny)
+  );
   pokemon.baseStats = baseStats;
   pokemon.heightDm = getPokemonHeightDm(pokemon.id);
   pokemon.types = parseTypes(pokemon.type);
