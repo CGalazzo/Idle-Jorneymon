@@ -44,12 +44,72 @@ export const geloLines = [
   line(species(613, "Cubchoo", "Gelo"), species(614, "Beartic", "Gelo", 2), species(614, "Beartic", "Gelo", 3, "epic"))
 ];
 
-export const fantasmaFinal = species(487, "Giratina", "Fantasma/Dragão", 3, "legendary");
-
-export const fantasmaLines = [
-  line(species(92, "Gastly", "Fantasma/Veneno"), species(93, "Haunter", "Fantasma/Veneno", 2), species(94, "Gengar", "Fantasma/Veneno", 3, "epic")),
-  line(species(355, "Duskull", "Fantasma"), species(356, "Dusclops", "Fantasma", 2), species(477, "Dusknoir", "Fantasma", 3)),
-  line(species(607, "Litwick", "Fantasma/Fogo"), species(608, "Lampent", "Fantasma/Fogo", 2), species(609, "Chandelure", "Fantasma/Fogo", 3, "epic")),
-  line(species(353, "Shuppet", "Fantasma"), species(354, "Banette", "Fantasma", 2), species(354, "Banette", "Fantasma", 3)),
-  line(species(562, "Yamask", "Fantasma"), species(563, "Cofagrigus", "Fantasma", 2), species(563, "Cofagrigus", "Fantasma", 3, "epic"))
+export const fantasmaRoutes = [
+  route([
+    species(92, "Gastly", "Fantasma/Veneno"),
+    species(93, "Haunter", "Fantasma/Veneno", 2),
+    species(261, "Poochyena", "Sombrio"),
+    species(355, "Duskull", "Fantasma"),
+    species(198, "Murkrow", "Sombrio/Voador")
+  ], species(94, "Gengar", "Fantasma/Veneno", 3, "epic")),
+  route([
+    species(261, "Poochyena", "Sombrio"),
+    species(92, "Gastly", "Fantasma/Veneno"),
+    species(228, "Houndour", "Sombrio/Fogo"),
+    species(353, "Shuppet", "Fantasma")
+  ], species(262, "Mightyena", "Sombrio", 3)),
+  route([
+    species(355, "Duskull", "Fantasma"),
+    species(562, "Yamask", "Fantasma"),
+    species(215, "Sneasel", "Sombrio/Gelo"),
+    species(198, "Murkrow", "Sombrio/Voador")
+  ], species(356, "Dusclops", "Fantasma", 2)),
+  route([
+    species(198, "Murkrow", "Sombrio/Voador"),
+    species(228, "Houndour", "Sombrio/Fogo"),
+    species(607, "Litwick", "Fantasma/Fogo"),
+    species(353, "Shuppet", "Fantasma")
+  ], species(430, "Honchkrow", "Sombrio/Voador", 3)),
+  route([
+    species(607, "Litwick", "Fantasma/Fogo"),
+    species(608, "Lampent", "Fantasma/Fogo", 2),
+    species(562, "Yamask", "Fantasma"),
+    species(215, "Sneasel", "Sombrio/Gelo")
+  ], species(609, "Chandelure", "Fantasma/Fogo", 3, "epic")),
+  route([
+    species(215, "Sneasel", "Sombrio/Gelo"),
+    species(228, "Houndour", "Sombrio/Fogo"),
+    species(93, "Haunter", "Fantasma/Veneno", 2),
+    species(354, "Banette", "Fantasma", 3)
+  ], species(461, "Weavile", "Sombrio/Gelo", 3, "epic")),
+  route([
+    species(92, "Gastly", "Fantasma/Veneno"),
+    species(93, "Haunter", "Fantasma/Veneno", 2),
+    species(94, "Gengar", "Fantasma/Veneno", 3, "epic"),
+    species(562, "Yamask", "Fantasma"),
+    species(228, "Houndour", "Sombrio/Fogo"),
+    species(197, "Umbreon", "Sombrio", 3, "rare")
+  ], species(778, "Mimikyu", "Fantasma/Fada", 3, "epic")),
+  route([
+    species(198, "Murkrow", "Sombrio/Voador"),
+    species(215, "Sneasel", "Sombrio/Gelo"),
+    species(354, "Banette", "Fantasma", 3),
+    species(197, "Umbreon", "Sombrio", 3, "rare")
+  ], species(229, "Houndoom", "Sombrio/Fogo", 3, "epic")),
+  route([
+    species(94, "Gengar", "Fantasma/Veneno", 3, "epic"),
+    species(477, "Dusknoir", "Fantasma", 3),
+    species(609, "Chandelure", "Fantasma/Fogo", 3, "epic"),
+    species(430, "Honchkrow", "Sombrio/Voador", 3),
+    species(262, "Mightyena", "Sombrio", 3),
+    species(461, "Weavile", "Sombrio/Gelo", 3, "epic")
+  ], species(491, "Darkrai", "Sombrio", 3, "legendary")),
+  route([
+    species(94, "Gengar", "Fantasma/Veneno", 3, "epic"),
+    species(477, "Dusknoir", "Fantasma", 3),
+    species(609, "Chandelure", "Fantasma/Fogo", 3, "epic"),
+    species(229, "Houndoom", "Sombrio/Fogo", 3, "epic"),
+    species(461, "Weavile", "Sombrio/Gelo", 3, "epic"),
+    species(197, "Umbreon", "Sombrio", 3, "rare")
+  ], species(487, "Giratina", "Fantasma/Dragão", 3, "legendary"), "final")
 ];
