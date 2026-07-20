@@ -55,7 +55,12 @@ function buildRoutes(lines, finalBoss = null) {
 
 function world(id, name, theme, lines, finalBoss = null) {
   const routes = buildRoutes(lines, finalBoss);
-  if (id === "bosque") routes[0].boss = lines[2][1];
+  if (id === "bosque") {
+    routes[0].boss = lines[2][1];
+    routes[2].boss = lines[3][1];
+    routes[6].boss = lines[3][2];
+    routes[7].boss = species(71, "Victreebel", "Planta/Veneno", 3);
+  }
 
   return {
     id,
