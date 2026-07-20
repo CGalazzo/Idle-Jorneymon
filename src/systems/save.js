@@ -8,10 +8,12 @@ export function hasSavedGame() {
   return Boolean(localStorage.getItem(SAVE_KEY));
 }
 
-function normalizePokemon(pokemon, refreshExperienceCurve = false) {
+function normalizePokemon(pokemon, refreshExperienceCurve = false, applyPendingEvolutions = true) {
   const normalized = normalizePokemonInstance(pokemon, { refreshExperienceCurve });
-  while (evolvePokemonIfReady(normalized)) {
-    // Aplica evoluções pendentes em saves antigos sem interromper a jornada.
+  if (applyPendingEvolutions) {
+    while (evolvePokemonIfReady(normalized)) {
+      // Aplica evoluções pendentes em Pokémon pertencentes ao jogador.
+    }
   }
   return normalized;
 }
@@ -151,7 +153,7 @@ export function loadGame() {
       pokedex,
       collection,
       approachProgress: saved.approachProgress || 0,
-      enemy: validEncounterMode ? normalizePokemon(saved.enemy) : null
+      enemy: validEncounterMode ? normalizePokemon(saved.enemy, false, false) : null
     };
   } catch {
     return createInitialState();
