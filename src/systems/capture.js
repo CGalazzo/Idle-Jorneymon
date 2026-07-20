@@ -2,6 +2,7 @@ import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state
 import { createCapturedPokemon } from "../data/pokemon.js";
 import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
+import { completeActiveCampaign } from "./campaign.js";
 import { consumeBall, getBallDefinition, isBallUnlocked } from "./shop.js";
 
 export const CAPTURE_DECISION_MS = 5000;
@@ -77,9 +78,12 @@ function advanceJourney(state) {
   state.activeTeamIndex = Math.max(0, state.team.findIndex((pokemon) => pokemon.hp > 0));
 
   if (!nextPosition) {
-    state.journey.complete = true;
-    state.mode = "exploring";
-    addLog(state, `Jornada concluída! Você venceu as ${TOTAL_ROUTES} rotas e se tornou o grande campeão!`);
+    completeActiveCampaign(state);
+    if (state.campaignMode === "normal") {
+      addLog(state, `Jornada Normal concluída! Você venceu as ${TOTAL_ROUTES} rotas e desbloqueou o Modo Hard.`);
+    } else {
+      addLog(state, `Modo Hard concluído! Você venceu novamente as ${TOTAL_ROUTES} rotas.`);
+    }
     return;
   }
 
@@ -90,9 +94,9 @@ function advanceJourney(state) {
 
   const nextRoute = getRouteDefinition(nextPosition.worldIndex, nextPosition.routeIndex);
   if (completedEnvironment) {
-    addLog(state, `${nextRoute.environment.name} foi liberado! A equipe avançou para a Dificuldade ${nextRoute.worldIndex + 1}.`);
+    addLog(state, `${nextRoute.environment.name} foi liberado! A equipe avançou para a Dificuldade ${nextRoute.worldIndex + 1}${state.campaignMode === "hard" ? " no Modo Hard" : ""}.`);
   } else {
-    addLog(state, `Rota ${nextRoute.routeNumber} liberada em ${nextRoute.environment.name}.`);
+    addLog(state, `Rota ${nextRoute.routeNumber} liberada em ${nextRoute.environment.name}${state.campaignMode === "hard" ? " · Hard" : ""}.`);
   }
 }
 
@@ -163,12 +167,13 @@ export function attemptCapture(state, ballId = null, random = Math.random) {
 
   const capturedPokemon = createCapturedPokemon(pokemon);
   const shinyLabel = pokemon.isShiny ? " shiny" : "";
+  const hardLabel = capturedPokemon.capturedInHard ? " do Modo Hard" : "";
   if (state.team.length < MAX_TEAM_SIZE) {
     state.team.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel} foi capturado${ballCopy} e entrou na equipe!`);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel} foi capturado${ballCopy} e entrou na equipe!`);
   } else {
     state.storage.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel} foi capturado${ballCopy} e enviado ao depósito.`);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel} foi capturado${ballCopy} e enviado ao depósito.`);
   }
   returnToExploration(state);
   return true;
