@@ -3,6 +3,7 @@ import "./styles/progression.css";
 import "./styles/quality-of-life.css";
 import { startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
+import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
 import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
 import { POKEDEX_SPECIES } from "./data/pokemon.js";
 import { getRouteDefinition } from "./data/worlds.js";
@@ -13,6 +14,8 @@ import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
+
+const UI_RENDER_INTERVAL_MS = 50;
 
 async function boot() {
   const app = document.querySelector("#app");
@@ -54,20 +57,36 @@ async function boot() {
 
   const spriteCache = new Map();
   let preloadedRouteKey = "";
+  let preloadedRoutePromise = Promise.resolve();
 
   function preloadSprite(url) {
-    if (!url || spriteCache.has(url)) return;
+    if (!url) return Promise.resolve();
+    const cached = spriteCache.get(url);
+    if (cached) return cached.promise;
+
     const image = new Image();
     image.decoding = "async";
-    image.src = url;
-    spriteCache.set(url, image);
-    if (typeof image.decode === "function") image.decode().catch(() => {});
+    const promise = new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      image.addEventListener("load", finish, { once: true });
+      image.addEventListener("error", finish, { once: true });
+      image.src = url;
+      if (typeof image.decode === "function") image.decode().then(finish).catch(() => {});
+    });
+
+    spriteCache.set(url, { image, promise });
+    return promise;
   }
 
   function preloadRouteSprites(currentState) {
     const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.isShiny ? 1 : 0}`).join(",");
     const routeKey = `${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}:${teamKey}`;
-    if (routeKey === preloadedRouteKey) return;
+    if (routeKey === preloadedRouteKey) return preloadedRoutePromise;
     preloadedRouteKey = routeKey;
 
     const route = getRouteDefinition(currentState.journey?.worldIndex, currentState.journey?.routeIndex);
@@ -75,16 +94,24 @@ async function boot() {
       return POKEDEX_SPECIES.find((pokemon) => pokemon.id === Number(entry.id)) || entry;
     });
     const pokemon = [...routePokemon, ...currentState.team];
+    const urls = new Set();
+
     pokemon.forEach((entry) => {
-      preloadSprite(entry.sprite);
-      preloadSprite(entry.backSprite);
-      if (entry.sprite) preloadSprite(entry.sprite.replace("/animated/", "/animated/shiny/"));
-      if (entry.backSprite) preloadSprite(entry.backSprite.replace("/animated/back/", "/animated/back/shiny/"));
+      if (entry.sprite) urls.add(entry.sprite);
+      if (entry.backSprite) urls.add(entry.backSprite);
+      if (entry.sprite) urls.add(entry.sprite.replace("/animated/", "/animated/shiny/"));
+      if (entry.backSprite) urls.add(entry.backSprite.replace("/animated/back/", "/animated/back/shiny/"));
+      urls.add(getExplorationSpriteUrl(entry, false));
+      urls.add(getExplorationSpriteUrl(entry, true));
     });
+
+    preloadedRoutePromise = Promise.all([...urls].map(preloadSprite));
+    return preloadedRoutePromise;
   }
 
   let state = loadGame();
   let lastFrame = performance.now();
+  let lastRender = 0;
   let lastSave = performance.now();
   let isMenuOpen = false;
   let isTeamOpen = false;
@@ -94,6 +121,20 @@ async function boot() {
   const starterCard = document.querySelector("#starter-card");
   const starterSelection = document.querySelector("#starter-selection");
   const continueButton = document.querySelector("#continue-button");
+  const scene = document.querySelector("#scene");
+
+  function updateSceneMetrics() {
+    const width = scene.clientWidth || 1;
+    scene.style.setProperty("--approach-distance", `${Math.max(1, Math.round(width * 0.42))}px`);
+  }
+
+  updateSceneMetrics();
+  if (typeof ResizeObserver === "function") {
+    const sceneResizeObserver = new ResizeObserver(updateSceneMetrics);
+    sceneResizeObserver.observe(scene);
+  } else {
+    window.addEventListener("resize", updateSceneMetrics, { passive: true });
+  }
 
   function renderGame() {
     preloadRouteSprites(state);
@@ -106,6 +147,7 @@ async function boot() {
     welcomeScreen.classList.add("is-hidden");
     document.body.classList.remove("welcome-open");
     lastFrame = performance.now();
+    updateSceneMetrics();
     renderGame();
   }
 
@@ -130,6 +172,7 @@ async function boot() {
     lastFrame = now;
 
     if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen) {
+      const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
       if (state.mode === "battle") updateBattle(state, delta);
@@ -143,7 +186,12 @@ async function boot() {
         saveGame(state);
         lastSave = now;
       }
-      renderGame();
+
+      const modeChanged = previousMode !== state.mode;
+      if (modeChanged || now - lastRender >= UI_RENDER_INTERVAL_MS) {
+        renderGame();
+        lastRender = now;
+      }
     }
 
     requestAnimationFrame(loop);
@@ -241,6 +289,7 @@ async function boot() {
     lastFrame = performance.now();
   });
 
+  await preloadRouteSprites(state);
   renderGame();
   if (state.hasStarted) showGame();
   else showWelcome();
