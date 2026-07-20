@@ -1,4 +1,5 @@
 import "../styles/hard-mode.css";
+import "../styles/hard-mode-phase2.css";
 import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
