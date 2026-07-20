@@ -1,4 +1,5 @@
 import { MAX_TEAM_SIZE } from "../core/game-state.js";
+import { clearMegaEquipmentForPokemon } from "./mega.js";
 
 export function moveTeamMember(state, uid, direction) {
   const index = state.team.findIndex((pokemon) => pokemon.uid === uid);
@@ -36,6 +37,7 @@ export function sendToStorage(state, uid) {
   const index = state.team.findIndex((pokemon) => pokemon.uid === uid);
   if (index < 0) return false;
   const activeUid = state.team[state.activeTeamIndex]?.uid;
+  clearMegaEquipmentForPokemon(state, uid);
   state.storage.push(state.team.splice(index, 1)[0]);
   const preservedIndex = state.team.findIndex((pokemon) => pokemon.uid === activeUid);
   state.activeTeamIndex = preservedIndex >= 0 ? preservedIndex : 0;
