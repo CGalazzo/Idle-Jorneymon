@@ -1,0 +1,155 @@
+.journey-menu-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background:
+    linear-gradient(rgba(3, 13, 23, .42), rgba(3, 13, 23, .58)),
+    url("/assets/idlemon-jorney-background.webp") center / cover no-repeat fixed;
+}
+
+.journey-menu-card {
+  width: min(520px, 100%);
+  padding: 36px 30px 30px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(17, 40, 67, .94), rgba(9, 24, 44, .96));
+  border: 1px solid rgba(93, 181, 239, .32);
+  border-radius: 24px;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .52);
+  backdrop-filter: blur(10px);
+}
+
+.journey-menu-card > small {
+  color: #5bcdf9;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .22em;
+}
+
+.journey-menu-card h1 {
+  margin: 9px 0 24px;
+  font-size: clamp(28px, 6vw, 44px);
+  line-height: 1.05;
+}
+
+.journey-menu-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.journey-menu-action {
+  min-height: 54px;
+  padding: 0 18px;
+  color: #061725;
+  background: linear-gradient(135deg, #6de7ff, #319ce9);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(35, 143, 214, .24);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+  transition: transform .2s ease, filter .2s ease, opacity .2s ease;
+}
+
+.journey-menu-action.secondary {
+  color: #eaf6ff;
+  background: rgba(24, 60, 92, .9);
+  border: 1px solid rgba(105, 188, 235, .35);
+  box-shadow: none;
+}
+
+.journey-menu-action:hover:not(:disabled) {
+  transform: translateY(-3px);
+  filter: brightness(1.08);
+}
+
+.journey-menu-action:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+  filter: grayscale(.5);
+}
+
+.journey-menu-back {
+  margin-top: 20px;
+  padding: 7px 0;
+  color: #9bb9ce;
+  background: none;
+  border: 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.welcome-screen.showing-secondary {
+  background:
+    linear-gradient(rgba(3, 13, 23, .38), rgba(3, 13, 23, .56)),
+    url("/assets/idlemon-jorney-background.webp") center / cover no-repeat fixed;
+}
+
+.welcome-screen.showing-secondary .starter-card {
+  width: min(900px, calc(100% - 28px));
+  max-height: calc(100vh - 28px);
+  margin: 14px;
+  overflow-y: auto;
+  background: linear-gradient(145deg, rgba(17, 40, 67, .94), rgba(9, 24, 44, .96));
+  backdrop-filter: blur(10px);
+}
+
+.welcome-screen.showing-secondary .starter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.welcome-screen.showing-secondary .starter-option {
+  min-width: 0;
+}
+
+.splash-screen .splash-continue {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .journey-menu-screen {
+    padding: 16px;
+  }
+
+  .journey-menu-card {
+    padding: 30px 18px 24px;
+  }
+
+  .welcome-screen.showing-secondary .starter-card {
+    width: calc(100% - 16px);
+    max-height: calc(100vh - 16px);
+    margin: 8px;
+    padding: 24px 10px 18px;
+  }
+
+  .welcome-screen.showing-secondary .starter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .welcome-screen.showing-secondary .starter-option {
+    padding: 11px 4px 10px;
+  }
+
+  .welcome-screen.showing-secondary .starter-image {
+    height: 72px;
+  }
+
+  .welcome-screen.showing-secondary .starter-image img {
+    width: 62px;
+    height: 62px;
+  }
+
+  .welcome-screen.showing-secondary .starter-option strong {
+    font-size: 11px;
+  }
+
+  .welcome-screen.showing-secondary .starter-option small {
+    font-size: 7px;
+  }
+}
