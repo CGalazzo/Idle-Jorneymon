@@ -124,8 +124,17 @@ export const HARD_MODE_SPECIES = uniqueSpecies([
 
 export const HARD_SHINY_CHANCE = 1 / 160;
 
-function exclusiveUnlocksForRoute(exclusives, routeIndex) {
+function hardBossRemixId(route) {
+  const remixIds = HARD_BOSS_REMIX_IDS[route.environment.id] || [];
+  const remixSlot = route.routeIndex === 4 ? 0 : route.routeIndex === 9 ? 1 : -1;
+  return remixSlot >= 0 ? remixIds[remixSlot] : null;
+}
+
+function exclusiveUnlocksForRoute(exclusives, routeIndex, environmentId) {
   if (!exclusives.length) return [];
+  if (environmentId === "elite-4") {
+    return exclusives.filter((_, index) => routeIndex >= [8, 9][index]);
+  }
   if (exclusives.length === 1) return routeIndex >= 4 ? exclusives : [];
   if (exclusives.length === 2) {
     return exclusives.filter((_, index) => routeIndex >= [2, 7][index]);
@@ -141,8 +150,10 @@ export function getHardEncounterPool(route) {
   const earlierBoss = routes[Math.max(0, routeIndex - 2)]?.boss;
   const exclusives = exclusiveUnlocksForRoute(
     HARD_EXCLUSIVE_BY_WORLD[route.environment.id] || [],
-    routeIndex
+    routeIndex,
+    route.environment.id
   );
+  const activeBossId = hardBossRemixId(route) || route.boss.id;
 
   const remixed = [
     ...route.encounters,
@@ -152,12 +163,11 @@ export function getHardEncounterPool(route) {
     ...exclusives
   ].filter(Boolean);
 
-  return uniqueSpecies(remixed).filter((pokemon) => pokemon.id !== route.boss.id);
+  return uniqueSpecies(remixed).filter((pokemon) => pokemon.id !== activeBossId);
 }
 
 export function getHardBossTemplate(route, speciesCatalog) {
-  const remixIds = HARD_BOSS_REMIX_IDS[route.environment.id] || [];
-  const remixSlot = route.routeIndex === 4 ? 0 : route.routeIndex === 9 ? 1 : -1;
-  if (remixSlot < 0 || !remixIds[remixSlot]) return route.boss;
-  return speciesCatalog.find((pokemon) => pokemon.id === remixIds[remixSlot]) || route.boss;
+  const remixId = hardBossRemixId(route);
+  if (!remixId) return route.boss;
+  return speciesCatalog.find((pokemon) => pokemon.id === remixId) || route.boss;
 }
