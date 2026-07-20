@@ -3,6 +3,12 @@ import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js
 import { createAreaState } from "../data/worlds.js";
 import { grantTeamExperience } from "./progression.js";
 import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
+import { grantBattleCoins } from "./shop.js";
+import {
+  activateEquippedMega,
+  deactivateAllMegaEvolutions,
+  deactivateMegaEvolution
+} from "./mega.js";
 
 function offensiveStat(pokemon, move) {
   return move.category === "special" ? pokemon.specialAttack : pokemon.attack;
@@ -80,7 +86,9 @@ function finishVictory(state, now = Date.now()) {
     }
   }
 
+  deactivateAllMegaEvolutions(state);
   grantTeamExperience(state, defeated.xpReward);
+  grantBattleCoins(state, defeated);
   state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
   state.mode = "capture";
   state.captureOffer = {
@@ -93,6 +101,7 @@ function finishVictory(state, now = Date.now()) {
 
 function restartCurrentRouteAfterDefeat(state) {
   const defeatedArea = state.area.name;
+  deactivateAllMegaEvolutions(state);
   state.area = createAreaState(state.journey?.worldIndex, state.journey?.routeIndex);
   state.pendingRouteAdvance = false;
   state.captureOffer = null;
@@ -128,6 +137,7 @@ function resolveFainting(state, player, now) {
   }
   if (player.hp <= 0) {
     addLog(state, `${player.name} desmaiou.`);
+    deactivateMegaEvolution(player);
     handleFaintedPokemon(state);
     return true;
   }
@@ -144,6 +154,8 @@ export function updateBattle(state, deltaSeconds, random = Math.random, now = Da
     handleFaintedPokemon(state);
     return;
   }
+
+  activateEquippedMega(state, player);
   registerParticipant(state, player);
 
   const enemy = state.enemy;
@@ -165,6 +177,7 @@ export function updateRecovery(state, deltaSeconds) {
   state.recoveryCooldown -= deltaSeconds;
   if (state.recoveryCooldown > 0) return;
 
+  deactivateAllMegaEvolutions(state);
   state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
   state.activeTeamIndex = 0;
   state.mode = "exploring";
