@@ -1,8 +1,9 @@
 import { createStarter } from "../data/pokemon.js";
+import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
 
 export const GAME_VERSION = "0.6.1";
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 export const MAX_TEAM_SIZE = 3;
 
 export function createInitialState(starterId = 4, hasStarted = false) {
@@ -24,6 +25,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     totals: { encounters: 0, victories: 0 },
     pendingRouteAdvance: false,
     pendingEvolutionChoices: [],
+    shop: createInitialShopState(),
     team: [starter],
     storage: [],
     activeTeamIndex: 0,
