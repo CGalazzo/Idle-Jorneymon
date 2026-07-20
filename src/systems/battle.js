@@ -10,6 +10,8 @@ import {
   deactivateMegaEvolution
 } from "./mega.js";
 
+const MEGA_TRANSFORMATION_SECONDS = 1.8;
+
 function offensiveStat(pokemon, move) {
   return move.category === "special" ? pokemon.specialAttack : pokemon.attack;
 }
@@ -67,6 +69,10 @@ function nextAvailablePokemon(state) {
   return state.team.findIndex((pokemon) => pokemon.hp > 0);
 }
 
+function clearMegaTransformationPause(state) {
+  state.megaEvolutionCooldown = 0;
+}
+
 function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
   state.area.victories += 1;
@@ -86,6 +92,7 @@ function finishVictory(state, now = Date.now()) {
     }
   }
 
+  clearMegaTransformationPause(state);
   deactivateAllMegaEvolutions(state);
   grantTeamExperience(state, defeated.xpReward);
   grantBattleCoins(state, defeated);
@@ -101,6 +108,7 @@ function finishVictory(state, now = Date.now()) {
 
 function restartCurrentRouteAfterDefeat(state) {
   const defeatedArea = state.area.name;
+  clearMegaTransformationPause(state);
   deactivateAllMegaEvolutions(state);
   state.area = createAreaState(state.journey?.worldIndex, state.journey?.routeIndex);
   state.pendingRouteAdvance = false;
@@ -137,6 +145,7 @@ function resolveFainting(state, player, now) {
   }
   if (player.hp <= 0) {
     addLog(state, `${player.name} desmaiou.`);
+    clearMegaTransformationPause(state);
     deactivateMegaEvolution(player);
     handleFaintedPokemon(state);
     return true;
@@ -146,6 +155,12 @@ function resolveFainting(state, player, now) {
 
 export function updateBattle(state, deltaSeconds, random = Math.random, now = Date.now()) {
   if (!state.enemy) return;
+
+  if (state.megaEvolutionCooldown > 0) {
+    state.megaEvolutionCooldown = Math.max(0, state.megaEvolutionCooldown - deltaSeconds);
+    return;
+  }
+
   state.battleCooldown -= deltaSeconds;
   if (state.battleCooldown > 0) return;
 
@@ -155,8 +170,12 @@ export function updateBattle(state, deltaSeconds, random = Math.random, now = Da
     return;
   }
 
-  activateEquippedMega(state, player);
   registerParticipant(state, player);
+  if (activateEquippedMega(state, player)) {
+    state.megaEvolutionCooldown = MEGA_TRANSFORMATION_SECONDS;
+    state.battleCooldown = 0;
+    return;
+  }
 
   const enemy = state.enemy;
   const playerFirst = player.speed === enemy.speed ? random() >= 0.5 : player.speed > enemy.speed;
@@ -177,6 +196,7 @@ export function updateRecovery(state, deltaSeconds) {
   state.recoveryCooldown -= deltaSeconds;
   if (state.recoveryCooldown > 0) return;
 
+  clearMegaTransformationPause(state);
   deactivateAllMegaEvolutions(state);
   state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
   state.activeTeamIndex = 0;
