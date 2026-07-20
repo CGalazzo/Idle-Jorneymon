@@ -1,3 +1,4 @@
+import { SCENE_BACKGROUNDS } from "../data/scene-backgrounds.js";
 import { ENVIRONMENTS, getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 
 function createWorldTrack() {
@@ -69,6 +70,14 @@ export function renderProgression(state) {
   if (scene) {
     [...scene.classList].filter((className) => className.startsWith("env-")).forEach((className) => scene.classList.remove(className));
     scene.classList.add(route.environment.theme);
+
+    const environmentId = route.environment.id;
+    const background = SCENE_BACKGROUNDS[environmentId];
+    if (background && scene.dataset.environmentBackground !== environmentId) {
+      scene.style.setProperty("--route-background", `url("${background}")`);
+      scene.dataset.environmentBackground = environmentId;
+    }
+
     scene.classList.toggle("boss-ready", bossReady);
     scene.classList.toggle("journey-complete", Boolean(state.journey?.complete));
   }
@@ -103,5 +112,5 @@ export function renderProgression(state) {
   if (state.journey?.complete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA";
 
   const footerVersion = document.querySelector("footer span:last-child");
-  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.5.0";
+  if (footerVersion) footerVersion.textContent = "PROTÓTIPO v0.5.1";
 }

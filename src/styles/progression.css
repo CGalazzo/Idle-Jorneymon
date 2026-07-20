@@ -109,3 +109,63 @@
   .world-step { height: 14px; font-size: 5px; }
   .journey-complete-panel strong { font-size: 17px; }
 }
+
+/* Cenários ilustrados com movimento contínuo de esteira. */
+.scene {
+  --route-tile-width: 676px;
+  isolation: isolate;
+  background: #101820;
+  image-rendering: auto;
+}
+
+.scene::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image: var(--route-background);
+  background-repeat: repeat-x;
+  background-position: 0 center;
+  background-size: var(--route-tile-width) 100%;
+  will-change: background-position;
+  animation: routeTreadmill 10s linear infinite;
+}
+
+.scene > .sky,
+.scene > .distant-hills,
+.scene > .grass-line,
+.scene > .path { display: none; }
+
+.scene.battle::before,
+.scene.capture::before,
+.scene.recovering::before,
+.scene.journey-complete::before { animation-play-state: paused; }
+
+.scene.approach::before { animation-duration: 12s; }
+
+.scene .walker,
+.scene.approach .walker {
+  left: 27%;
+  bottom: 20%;
+  z-index: 3;
+  animation: none;
+}
+
+.scene .walker img { animation: walking .52s ease-in-out infinite alternate; }
+.scene.recovering .walker img { animation: tired 1s ease-in-out infinite; }
+.scene .approaching-enemy { bottom: 20%; }
+
+@keyframes routeTreadmill {
+  to { background-position-x: calc(-1 * var(--route-tile-width)); }
+}
+
+@media (max-width: 700px) {
+  .scene { --route-tile-width: 548px; }
+  .scene .walker,
+  .scene.approach .walker { left: 22%; bottom: 18%; }
+  .scene .approaching-enemy { bottom: 18%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene::before { animation: none; }
+}

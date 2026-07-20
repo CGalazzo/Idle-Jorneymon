@@ -19,4 +19,4 @@ O progresso é salvo automaticamente no `localStorage` do navegador, com estrutu
 
 ## Versão atual
 
-`v0.5.0` — atributos-base oficiais, Ataque Especial, Defesa Especial e Velocidade; fraquezas, resistências, imunidades, STAB e categorias física/especial; progressão contínua de níveis da Rota 1 (NV. 3–5) até a Rota 100 (NV. 100).
+`v0.5.1` — cenários ilustrados próprios para os 10 ambientes, com movimento contínuo de esteira durante a exploração, parceiro fixo na tela e Pokémon selvagens surgindo pela direita.
