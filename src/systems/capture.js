@@ -2,6 +2,8 @@ import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state
 import { createCapturedPokemon } from "../data/pokemon.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition } from "../data/worlds.js";
 
+export const CAPTURE_DECISION_MS = 5000;
+
 export const CAPTURE_RATES = {
   common: 30,
   uncommon: 25,
@@ -69,6 +71,23 @@ function returnToExploration(state) {
   }
   state.mode = "exploring";
   resetEncounter(state);
+}
+
+export function updateCaptureDecision(state, now = Date.now()) {
+  if (state.mode !== "capture" || !state.enemy) return false;
+  if (!state.captureOffer) {
+    state.captureOffer = { chance: getCaptureChance(state.enemy) };
+  }
+  if (!Number.isFinite(state.captureOffer.expiresAt)) {
+    state.captureOffer.startedAt = now;
+    state.captureOffer.expiresAt = now + CAPTURE_DECISION_MS;
+    return false;
+  }
+  if (now < state.captureOffer.expiresAt) return false;
+
+  addLog(state, `O tempo para capturar ${state.enemy.name} acabou. A jornada continua.`);
+  returnToExploration(state);
+  return true;
 }
 
 export function declineCapture(state) {
