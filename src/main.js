@@ -2,12 +2,12 @@ import "./styles/base.css";
 import "./styles/start-menu.css";
 import "./styles/progression.css";
 import "./styles/quality-of-life.css";
-import { startNewJourney } from "./core/game-state.js";
+import { randomEncounterTarget, startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
 import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
 import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
 import { POKEDEX_SPECIES } from "./data/pokemon.js";
-import { getRouteDefinition } from "./data/worlds.js";
+import { createAreaState, getRouteDefinition } from "./data/worlds.js";
 import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from "./ui/render.js";
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
@@ -139,10 +139,19 @@ async function boot() {
   const starterCard = document.querySelector("#starter-card");
   const starterSelection = document.querySelector("#starter-selection");
   const continueButton = document.querySelector("#journey-continue-button");
+  const resetButton = document.querySelector("#reset-button");
+  const environmentLabel = document.querySelector("#environment-label");
   const scene = document.querySelector("#scene");
 
   document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
   starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
+  resetButton.title = "Reiniciar rota";
+  resetButton.setAttribute("aria-label", "Reiniciar rota");
+  if (environmentLabel) {
+    environmentLabel.style.color = "#000";
+    environmentLabel.style.opacity = "1";
+    environmentLabel.style.textShadow = "0 1px 2px rgba(255,255,255,.75)";
+  }
 
   function updateSceneMetrics() {
     const width = scene.clientWidth || 1;
@@ -202,6 +211,39 @@ async function boot() {
   function showStarterSelection() {
     isMenuOpen = true;
     setWelcomeView("starters");
+  }
+
+  function restartCurrentRoute() {
+    const worldIndex = Math.max(0, Number(state.journey?.worldIndex) || 0);
+    const routeIndex = Math.max(0, Number(state.journey?.routeIndex) || 0);
+
+    state.area = createAreaState(worldIndex, routeIndex);
+    state.mode = "exploring";
+    state.pendingRouteAdvance = false;
+    state.battleParticipants = [];
+    state.captureOffer = null;
+    state.approachProgress = 0;
+    state.enemy = null;
+    state.exploration = 0;
+    state.nextEncounterAt = randomEncounterTarget();
+    state.battleCooldown = 0;
+    state.recoveryCooldown = 0;
+
+    state.team.forEach((pokemon) => {
+      pokemon.hp = pokemon.maxHp;
+    });
+    if (!state.team[state.activeTeamIndex]) state.activeTeamIndex = 0;
+
+    if (Array.isArray(state.log)) {
+      state.log.unshift(`Rota ${state.area.routeNumber} reiniciada. Sua equipe foi curada.`);
+      state.log = state.log.slice(0, 7);
+    }
+
+    preloadedRouteKey = "";
+    saveGame(state);
+    lastSave = performance.now();
+    lastFrame = performance.now();
+    renderGame();
   }
 
   function loop(now) {
@@ -321,10 +363,9 @@ async function boot() {
     if (event.target.id === "pokedex-dialog") event.target.close();
   });
 
-  document.querySelector("#reset-button").addEventListener("click", () => {
-    if (!window.confirm("Deseja apagar todo o progresso e reiniciar a jornada?")) return;
-    resetGame();
-    window.location.reload();
+  resetButton.addEventListener("click", () => {
+    if (!window.confirm("Deseja reiniciar a rota atual e curar toda a equipe?")) return;
+    restartCurrentRoute();
   });
 
   window.addEventListener("beforeunload", () => saveGame(state));
