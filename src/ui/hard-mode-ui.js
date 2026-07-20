@@ -152,11 +152,15 @@ export function renderHardModeState(state) {
   const route = getRouteDefinition(state.journey?.worldIndex, state.journey?.routeIndex);
   const heading = document.querySelector(".journey-heading");
   let chip = document.querySelector("#hard-campaign-chip");
+  const chipCopy = state.hardEndgame?.championBadgeOwned ? "MODO HARD · CAMPEÃO" : "MODO HARD";
   if (isHard && heading && !chip) {
-    heading.insertAdjacentHTML("afterbegin", `<span id="hard-campaign-chip" class="hard-campaign-chip">MODO HARD</span>`);
+    heading.insertAdjacentHTML("afterbegin", `<span id="hard-campaign-chip" class="hard-campaign-chip">${chipCopy}</span>`);
     chip = document.querySelector("#hard-campaign-chip");
   }
-  if (chip) chip.hidden = !isHard;
+  if (chip) {
+    chip.hidden = !isHard;
+    chip.textContent = chipCopy;
+  }
 
   if (isHard) {
     const levels = hardLevels(state, route.worldIndex, route.routeIndex, route.bossType);
