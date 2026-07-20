@@ -61,7 +61,7 @@ function nextAvailablePokemon(state) {
   return state.team.findIndex((pokemon) => pokemon.hp > 0);
 }
 
-function finishVictory(state) {
+function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
   state.area.victories += 1;
   state.totals.victories += 1;
@@ -88,8 +88,8 @@ function finishVictory(state) {
   state.mode = "capture";
   state.captureOffer = {
     chance: getCaptureChance(defeated),
-    startedAt: Date.now(),
-    expiresAt: Date.now() + CAPTURE_DECISION_MS
+    startedAt: now,
+    expiresAt: now + CAPTURE_DECISION_MS
   };
   state.battleParticipants = [];
 }
@@ -124,9 +124,9 @@ function handleFaintedPokemon(state) {
   state.recoveryCooldown = 5;
 }
 
-function resolveFainting(state, player) {
+function resolveFainting(state, player, now) {
   if (state.enemy.hp <= 0) {
-    finishVictory(state);
+    finishVictory(state, now);
     return true;
   }
   if (player.hp <= 0) {
@@ -137,7 +137,7 @@ function resolveFainting(state, player) {
   return false;
 }
 
-export function updateBattle(state, deltaSeconds, random = Math.random) {
+export function updateBattle(state, deltaSeconds, random = Math.random, now = Date.now()) {
   if (!state.enemy) return;
   state.battleCooldown -= deltaSeconds;
   if (state.battleCooldown > 0) return;
@@ -158,7 +158,7 @@ export function updateBattle(state, deltaSeconds, random = Math.random) {
   for (const [attacker, defender] of turns) {
     if (attacker.hp <= 0 || defender.hp <= 0) break;
     executeAttack(state, attacker, defender, random);
-    if (resolveFainting(state, player)) return;
+    if (resolveFainting(state, player, now)) return;
   }
 
   state.battleCooldown = state.enemy.isBoss ? 1.45 : 1.25;
