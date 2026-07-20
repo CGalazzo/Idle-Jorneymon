@@ -9,8 +9,8 @@ import { getEvolutionRule } from "./evolutions.js";
 import { getPokemonHeightDm } from "./pokemon-metrics.js";
 
 const ANIMATED_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
-const STATIC_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
-const LAST_ANIMATED_SPECIES_ID = 649;
+const SHOWDOWN_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown";
+const LAST_GENERATION_FIVE_SPECIES_ID = 649;
 
 export const SHINY_CHANCE = 1 / 256;
 export const SHINY_STAT_MULTIPLIER = 1.2;
@@ -59,18 +59,20 @@ export function createInstanceId(speciesId) {
 
 export function getPokemonSpriteUrls(speciesId, isShiny = false) {
   const id = Math.max(1, Number(speciesId) || 1);
-  if (id <= LAST_ANIMATED_SPECIES_ID) {
-    const shinyPath = isShiny ? "shiny/" : "";
-    const backShinyPath = isShiny ? "back/shiny/" : "back/";
+  const shinyPath = isShiny ? "shiny/" : "";
+  const backShinyPath = isShiny ? "back/shiny/" : "back/";
+
+  if (id <= LAST_GENERATION_FIVE_SPECIES_ID) {
     return {
       sprite: `${ANIMATED_SPRITE_BASE}/${shinyPath}${id}.gif`,
       backSprite: `${ANIMATED_SPRITE_BASE}/${backShinyPath}${id}.gif`
     };
   }
 
-  const shinyPath = isShiny ? "shiny/" : "";
-  const sprite = `${STATIC_SPRITE_BASE}/${shinyPath}${id}.png`;
-  return { sprite, backSprite: sprite };
+  return {
+    sprite: `${SHOWDOWN_SPRITE_BASE}/${shinyPath}${id}.gif`,
+    backSprite: `${SHOWDOWN_SPRITE_BASE}/${backShinyPath}${id}.gif`
+  };
 }
 
 function withSprites(pokemon) {
