@@ -3,31 +3,44 @@ import "./styles/start-menu.css";
 import "./styles/progression.css";
 import "./styles/quality-of-life.css";
 import "./styles/eevee-evolution.css";
+import "./styles/shop.css";
 import { randomEncounterTarget, startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
 import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
+import { MEGA_FORM_IDS } from "./data/mega-data.js";
 import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
 import { POKEDEX_SPECIES } from "./data/pokemon.js";
 import { createAreaState, getRouteDefinition } from "./data/worlds.js";
 import { createAppMarkup, render as renderBase, renderPokedex, renderTeam } from "./ui/render.js";
 import { enhanceProgressionMarkup, renderProgression } from "./ui/progression-ui.js";
 import { enhanceEeveeEvolutionMarkup, renderEeveeEvolutionChoice } from "./ui/eevee-evolution-ui.js";
+import {
+  enhanceShopMarkup,
+  renderShop,
+  renderShopHud,
+  selectShopTab
+} from "./ui/shop-ui.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
 import { hasSavedGame, loadGame, resetGame, saveGame } from "./systems/save.js";
 import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./systems/team.js";
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
 import { acceptEeveeEvolution, declineEeveeEvolution } from "./systems/progression.js";
+import { equipMegaStone } from "./systems/mega.js";
+import { buyBall, buyExpShare, buyMegaStone } from "./systems/shop.js";
 
 const UI_RENDER_INTERVAL_MS = 50;
 
 async function boot() {
   const app = document.querySelector("#app");
   app.innerHTML = '<div class="game-loading"><strong>Preparando a jornada...</strong><span>Carregando atributos e tamanhos oficiais dos Pokémon</span></div>';
-  const speciesIds = POKEDEX_SPECIES.map((pokemon) => pokemon.id);
+  const speciesIds = [...new Set([
+    ...POKEDEX_SPECIES.map((pokemon) => pokemon.id),
+    ...MEGA_FORM_IDS
+  ])];
   await Promise.all([
     loadOfficialPokemonData(speciesIds),
-    loadOfficialPokemonMetrics(speciesIds)
+    loadOfficialPokemonMetrics(POKEDEX_SPECIES.map((pokemon) => pokemon.id))
   ]);
   app.innerHTML = createAppMarkup();
 
@@ -48,6 +61,7 @@ async function boot() {
 
   enhanceProgressionMarkup();
   enhanceEeveeEvolutionMarkup();
+  enhanceShopMarkup();
 
   function memoizeInnerHTML(element) {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
@@ -73,7 +87,11 @@ async function boot() {
     "#team-list",
     "#storage-list",
     "#team-mini",
-    "#activity-log"
+    "#activity-log",
+    "#capture-ball-options",
+    "#shop-ball-grid",
+    "#shop-exp-grid",
+    "#shop-mega-grid"
   ].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
 
   const spriteCache = new Map();
@@ -136,6 +154,7 @@ async function boot() {
   let lastSave = performance.now();
   let isMenuOpen = true;
   let isTeamOpen = false;
+  let isShopOpen = false;
 
   const welcomeScreen = document.querySelector("#welcome-screen");
   const splashScreen = document.querySelector("#splash-screen");
@@ -147,6 +166,8 @@ async function boot() {
   const environmentLabel = document.querySelector("#environment-label");
   const scene = document.querySelector("#scene");
   const eeveeEvolutionDialog = document.querySelector("#eevee-evolution-dialog");
+  const teamDialog = document.querySelector("#team-dialog");
+  const shopDialog = document.querySelector("#shop-dialog");
 
   document.querySelector("#back-to-welcome").textContent = "← Voltar ao menu";
   starterSelection.querySelector("p").textContent = "Escolha um dos Pokémon abaixo para iniciar sua jornada.";
@@ -175,7 +196,8 @@ async function boot() {
     preloadRouteSprites(state);
     renderBase(state);
     renderProgression(state);
-    renderEeveeEvolutionChoice(state, !isMenuOpen);
+    renderShopHud(state);
+    renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen);
   }
 
   function setWelcomeView(view) {
@@ -257,7 +279,7 @@ async function boot() {
     lastFrame = now;
 
     const evolutionChoicePending = Boolean(state.pendingEvolutionChoices?.length);
-    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !evolutionChoicePending) {
+    if (state.hasStarted && !document.hidden && !isMenuOpen && !isTeamOpen && !isShopOpen && !evolutionChoicePending) {
       const previousMode = state.mode;
       if (state.mode === "exploring") updateExploration(state, delta);
       if (state.mode === "approach") updateApproach(state, delta);
@@ -316,8 +338,6 @@ async function boot() {
     document.querySelector("#pokedex-dialog").close();
   });
 
-  const teamDialog = document.querySelector("#team-dialog");
-
   document.querySelector("#team-button").addEventListener("click", () => {
     isTeamOpen = true;
     saveGame(state);
@@ -348,14 +368,20 @@ async function boot() {
     if (actionButton.dataset.setActive) changed = setActivePokemon(state, actionButton.dataset.setActive);
     if (actionButton.dataset.sendStorage) changed = sendToStorage(state, actionButton.dataset.sendStorage);
     if (actionButton.dataset.addTeam) changed = addToTeam(state, actionButton.dataset.addTeam);
+    if (actionButton.dataset.equipMega) changed = equipMegaStone(state, actionButton.dataset.equipMega, actionButton.dataset.megaPokemon);
     if (changed) {
+      preloadedRouteKey = "";
       saveGame(state);
       renderTeam(state);
+      renderGame();
     }
   });
 
-  document.querySelector("#try-capture").addEventListener("click", () => {
-    attemptCapture(state);
+  document.querySelector("#capture-ball-options").addEventListener("click", (event) => {
+    const normalButton = event.target.closest("#try-capture");
+    const ballButton = event.target.closest("[data-capture-ball]");
+    if ((!normalButton && !ballButton) || ballButton?.disabled) return;
+    attemptCapture(state, ballButton?.dataset.captureBall || null);
     saveGame(state);
     renderGame();
   });
@@ -364,6 +390,48 @@ async function boot() {
     declineCapture(state);
     saveGame(state);
     renderGame();
+  });
+
+  document.querySelector("#shop-button").addEventListener("click", () => {
+    if (state.mode !== "exploring" || state.pendingEvolutionChoices?.length) return;
+    isShopOpen = true;
+    saveGame(state);
+    selectShopTab("balls");
+    renderShop(state);
+    shopDialog.showModal();
+  });
+
+  document.querySelector("#close-shop").addEventListener("click", () => shopDialog.close());
+
+  shopDialog.addEventListener("close", () => {
+    isShopOpen = false;
+    lastFrame = performance.now();
+    renderGame();
+  });
+
+  shopDialog.addEventListener("click", (event) => {
+    if (event.target === shopDialog) {
+      shopDialog.close();
+      return;
+    }
+
+    const tabButton = event.target.closest("[data-shop-tab]");
+    if (tabButton) {
+      selectShopTab(tabButton.dataset.shopTab);
+      return;
+    }
+
+    const actionButton = event.target.closest("button");
+    if (!actionButton || actionButton.disabled) return;
+    let changed = false;
+    if (actionButton.dataset.buyBall) changed = buyBall(state, actionButton.dataset.buyBall);
+    if (actionButton.dataset.buyExpShare) changed = buyExpShare(state, actionButton.dataset.buyExpShare);
+    if (actionButton.dataset.buyMegaStone) changed = buyMegaStone(state, actionButton.dataset.buyMegaStone);
+    if (changed) {
+      saveGame(state);
+      renderShop(state);
+      renderGame();
+    }
   });
 
   document.querySelector("#accept-eevee-evolution").addEventListener("click", () => {
