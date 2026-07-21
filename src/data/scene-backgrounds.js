@@ -7,7 +7,6 @@ import cavernaGelo from "./scene-assets/caverna-gelo.js";
 import torreFantasma from "./scene-assets/torre-fantasma.js";
 import vulcao from "./scene-assets/vulcao.js";
 import planaltoIndigo from "./scene-assets/planalto-indigo.js";
-import elite4Fallback from "./scene-assets/elite-4.js";
 import elite4Gold from "./scene-assets/elite-4-gold.webp";
 import pantano from "./scene-assets/pantano.js";
 import usinaEletrica from "./scene-assets/usina-eletrica.js";
@@ -33,7 +32,5 @@ export const SCENE_BACKGROUNDS = {
   vulcao: webp(vulcao),
   "ilha-flutuante": webp(ilhaFlutuante),
   "planalto-indigo": webp(planaltoIndigo),
-  // A primeira camada é a nova arte dourada. A segunda mantém o cenário antigo
-  // disponível imediatamente caso o navegador não consiga carregar o arquivo externo.
-  "elite-4": [elite4Gold, webp(elite4Fallback)]
+  "elite-4": elite4Gold
 };
