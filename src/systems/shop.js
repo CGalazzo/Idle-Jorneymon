@@ -18,15 +18,55 @@ function mainJourney(state) {
     : state.journey;
 }
 
+function clampWorldIndex(value) {
+  return Math.max(0, Math.min(ENVIRONMENTS.length - 1, Number(value) || 0));
+}
+
+function worldIndexUnlockedByCompletedRoutes(completedRoutes = 0) {
+  let remaining = Math.max(0, Math.floor(Number(completedRoutes) || 0));
+  let unlockedWorldIndex = 0;
+
+  for (let worldIndex = 0; worldIndex < ENVIRONMENTS.length - 1; worldIndex += 1) {
+    const routeCount = ENVIRONMENTS[worldIndex]?.routes?.length || 0;
+    if (remaining < routeCount) break;
+    remaining -= routeCount;
+    unlockedWorldIndex = worldIndex + 1;
+  }
+
+  return clampWorldIndex(unlockedWorldIndex);
+}
+
 function journeyWorldIndex(journey) {
   if (journey?.complete) return ENVIRONMENTS.length - 1;
-  return Math.max(0, Math.min(ENVIRONMENTS.length - 1, Number(journey?.worldIndex) || 0));
+  return Math.max(
+    clampWorldIndex(journey?.worldIndex),
+    worldIndexUnlockedByCompletedRoutes(journey?.completedRoutes)
+  );
+}
+
+function areaWorldIndex(area) {
+  const index = environmentIndex(area?.environmentId);
+  return index >= 0 ? index : 0;
 }
 
 function currentProgressWorldIndex(state) {
-  const activeProgress = journeyWorldIndex(mainJourney(state));
-  const normalProgress = journeyWorldIndex(state.campaigns?.normal?.journey);
-  return Math.max(activeProgress, normalProgress);
+  const journeys = [
+    mainJourney(state),
+    state.journey,
+    state.campaigns?.normal?.journey,
+    state.campaigns?.hard?.journey
+  ];
+  const areas = [
+    state.area,
+    state.revisit?.originArea,
+    state.campaigns?.normal?.area,
+    state.campaigns?.hard?.area
+  ];
+
+  return Math.max(
+    ...journeys.map(journeyWorldIndex),
+    ...areas.map(areaWorldIndex)
+  );
 }
 
 function environmentIndex(environmentId) {
