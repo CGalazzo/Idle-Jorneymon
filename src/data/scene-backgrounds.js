@@ -16,6 +16,7 @@ import ilhaFlutuante from "./scene-assets/ilha-flutuante.js";
 import "../styles/new-worlds.css";
 
 const webp = (data) => `data:image/webp;base64,${data}`;
+const elite4GoldBackground = `${elite4Gold}?v=elite4-gold-hall-20260721`;
 
 export const SCENE_BACKGROUNDS = {
   bosque: webp(bosque),
@@ -32,5 +33,5 @@ export const SCENE_BACKGROUNDS = {
   vulcao: webp(vulcao),
   "ilha-flutuante": webp(ilhaFlutuante),
   "planalto-indigo": webp(planaltoIndigo),
-  "elite-4": elite4Gold
+  "elite-4": elite4GoldBackground
 };
