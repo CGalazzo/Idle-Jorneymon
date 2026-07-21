@@ -1,3 +1,5 @@
+import { HARD_EVOLUTION_RULES } from "./hard-evolutions.js";
+
 export const EVOLUTION_RULES = {
   1: { to: 2, level: 16 }, 2: { to: 3, level: 32 },
   4: { to: 5, level: 16 }, 5: { to: 6, level: 36 },
@@ -157,6 +159,6 @@ export function getEvolutionRule(speciesId, level, context = {}) {
   if (id === 281) return getKirliaEvolution(level, context);
   if (id === 236) return getTyrogueEvolution(level, context);
 
-  const rule = EVOLUTION_RULES[id];
+  const rule = EVOLUTION_RULES[id] || HARD_EVOLUTION_RULES[id];
   return rule && Number(level) >= rule.level ? rule : null;
 }
