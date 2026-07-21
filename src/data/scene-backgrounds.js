@@ -7,6 +7,7 @@ import cavernaGelo from "./scene-assets/caverna-gelo.js";
 import torreFantasma from "./scene-assets/torre-fantasma.js";
 import vulcao from "./scene-assets/vulcao.js";
 import planaltoIndigo from "./scene-assets/planalto-indigo.js";
+import elite4 from "./scene-assets/elite-4.js";
 import pantano from "./scene-assets/pantano.js";
 import usinaEletrica from "./scene-assets/usina-eletrica.js";
 import dojoLuta from "./scene-assets/dojo-luta.js";
@@ -15,7 +16,6 @@ import ilhaFlutuante from "./scene-assets/ilha-flutuante.js";
 import "../styles/new-worlds.css";
 
 const webp = (data) => `data:image/webp;base64,${data}`;
-const elite4GoldBackground = "https://raw.githubusercontent.com/CGalazzo/Idle-Jorneymon/main/src/data/scene-assets/elite-4-gold.webp?v=20260721-elite4-fix";
 
 export const SCENE_BACKGROUNDS = {
   bosque: webp(bosque),
@@ -32,5 +32,5 @@ export const SCENE_BACKGROUNDS = {
   vulcao: webp(vulcao),
   "ilha-flutuante": webp(ilhaFlutuante),
   "planalto-indigo": webp(planaltoIndigo),
-  "elite-4": elite4GoldBackground
+  "elite-4": webp(elite4)
 };
