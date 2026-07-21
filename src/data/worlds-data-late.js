@@ -28,10 +28,10 @@ export const ilhaRoutes = [
   route([species(519, "Pidove", "Normal/Voador"), species(520, "Tranquill", "Normal/Voador", 2), species(334, "Altaria", "Dragão/Voador", 3), species(426, "Drifblim", "Fantasma/Voador", 3)], species(521, "Unfezant", "Normal/Voador", 3)),
   route([species(661, "Fletchling", "Normal/Voador"), species(821, "Rookidee", "Voador"), species(714, "Noibat", "Voador/Dragão"), species(188, "Skiploom", "Planta/Voador", 2)], species(662, "Fletchinder", "Fogo/Voador", 2)),
   route([species(661, "Fletchling", "Normal/Voador"), species(662, "Fletchinder", "Fogo/Voador", 2), species(715, "Noivern", "Voador/Dragão", 3), species(700, "Sylveon", "Fada", 3)], species(663, "Talonflame", "Fogo/Voador", 3)),
-  route([species(731, "Pikipek", "Normal/Voador"), species(821, "Rookidee", "Voador"), species(333, "Swablu", "Normal/Voador"), species(425, "Drifloon", "Fantasma/Voador")], species(732, "Trumbeak", "Normal/Voador", 2)),
+  route([species(731, "Pikipek", "Normal/Voador"), species(821, "Rookidee", "Voador"), species(333, "Swablu", "Dragão/Voador"), species(425, "Drifloon", "Fantasma/Voador")], species(732, "Trumbeak", "Normal/Voador", 2)),
   route([species(731, "Pikipek", "Normal/Voador"), species(732, "Trumbeak", "Normal/Voador", 2), species(189, "Jumpluff", "Planta/Voador", 3), species(715, "Noivern", "Voador/Dragão", 3)], species(733, "Toucannon", "Normal/Voador", 3)),
   route([species(821, "Rookidee", "Voador"), species(822, "Corvisquire", "Voador", 2), species(334, "Altaria", "Dragão/Voador", 3)], species(823, "Corviknight", "Voador/Aço", 3, "epic")),
-  route([species(398, "Staraptor", "Normal/Voador", 3), species(521, "Unfezant", "Normal/Voador", 3), species(663, "Talonflame", "Fogo/Voador", 3), species(733, "Toucannon", "Normal/Voador", 3), species(823, "Corviknight", "Voador/Aço", 3), species(715, "Noivern", "Voador/Dragão", 3)], species(384, "Rayquaza", "Dragão/Voador", 3, "legendary"), "final")
+  route([species(398, "Staraptor", "Normal/Voador", 3), species(521, "Unfezant", "Normal/Voador", 3), species(663, "Talonflame", "Fogo/Voador", 3), species(733, "Toucannon", "Normal/Voador", 3), species(823, "Corviknight", "Voador/Aço", 3), species(715, "Noivern", "Voador/Dragão", 3)], species(249, "Lugia", "Psíquico/Voador", 3, "legendary"), "final")
 ];
 
 export const planaltoLines = [
