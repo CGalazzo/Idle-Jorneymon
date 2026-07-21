@@ -12,12 +12,6 @@
 .scene.env-ilusoes { background: linear-gradient(#4a2c71 0 50%, #33234f 50%); }
 .scene.env-ilha { background: linear-gradient(#56bdf2 0 55%, #71bd48 55%); }
 
-/* O nível 15 usa esta classe nos modos Normal e Hard.
-   O ::before continua recebendo a animação routeTreadmill de progression.css. */
-.scene.env-elite::before {
-  background-image: url("https://raw.githubusercontent.com/CGalazzo/Idle-Jorneymon/41b932efedde33b4d14071c331dc2cde844e68e9/src/data/scene-assets/elite-4-gold.webp") !important;
-}
-
 @media (max-width: 700px) {
   .world-track { gap: 2px; }
   .world-step { height: 15px; font-size: 5px; }
