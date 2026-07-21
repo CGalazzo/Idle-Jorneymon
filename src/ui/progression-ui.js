@@ -1,8 +1,10 @@
 import "../styles/route-map.css";
+import "../styles/menu-readability.css";
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
 import { SCENE_BACKGROUNDS } from "../data/scene-backgrounds.js";
 import { createAreaState, ENVIRONMENTS, getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 import { saveGame } from "../systems/save.js";
+import { installPokedexLocationDisplay } from "./pokedex-locations-ui.js";
 
 let currentState = null;
 
@@ -62,11 +64,12 @@ function beginRevisit(state, worldIndex, routeIndex) {
   const originJourney = mainJourney(state);
   const originWorldIndex = Number(originJourney?.worldIndex) || 0;
   const originRouteIndex = Number(originJourney?.routeIndex) || 0;
+  const selectingMainPosition = worldIndex === originWorldIndex && routeIndex === originRouteIndex;
 
-  if (!state.revisit?.active && worldIndex === originWorldIndex && routeIndex === originRouteIndex) return true;
-  if (state.revisit?.active && worldIndex === originWorldIndex && routeIndex === originRouteIndex) {
-    return resumeMainJourney(state);
-  }
+  // Durante uma jornada em andamento, selecionar a rota atual apenas fecha o mapa.
+  // Depois de concluir as 150 rotas, a mesma posição precisa iniciar uma revisita real.
+  if (!state.revisit?.active && selectingMainPosition && !originJourney?.complete) return true;
+  if (state.revisit?.active && selectingMainPosition) return resumeMainJourney(state);
 
   if (!state.revisit?.active) {
     state.revisit = {
@@ -130,6 +133,7 @@ function routeStatus(state, worldIndex, routeIndex, unlockedLimit) {
   const unlocked = index <= unlockedLimit;
 
   if (isRevisiting) return { label: "Revisitando", className: "revisiting", unlocked };
+  if (completed && journey?.complete) return { label: "Concluída · Revisitar", className: "completed", unlocked };
   if (isMainCurrent) return { label: "Jornada atual", className: "main-current", unlocked };
   if (completed) return { label: "Concluída", className: "completed", unlocked };
   if (unlocked) return { label: "Liberada", className: "", unlocked };
@@ -149,7 +153,9 @@ function renderRouteMap(state) {
 
   introCopy.innerHTML = state.revisit?.active
     ? `Você está revisitando uma rota. Sua jornada principal está guardada em <strong>${mainRoute.environment.name} · Rota ${mainRoute.routeNumber}</strong>.`
-    : `Escolha qualquer rota já liberada. Sua posição atual em <strong>${mainRoute.environment.name} · Rota ${mainRoute.routeNumber}</strong> ficará preservada.`;
+    : journey?.complete
+      ? `Jornada concluída. Escolha qualquer rota, incluindo <strong>${mainRoute.environment.name} · Rota ${mainRoute.routeNumber}</strong>, para revisitar e enfrentar os Pokémon novamente.`
+      : `Escolha qualquer rota já liberada. Sua posição atual em <strong>${mainRoute.environment.name} · Rota ${mainRoute.routeNumber}</strong> ficará preservada.`;
   returnButton.hidden = !state.revisit?.active;
 
   worldsRoot.innerHTML = ENVIRONMENTS.map((environment, worldIndex) => {
@@ -285,6 +291,7 @@ export function enhanceProgressionMarkup() {
   }
 
   setupRouteMapEvents();
+  installPokedexLocationDisplay();
 }
 
 export function renderProgression(state) {
@@ -303,6 +310,9 @@ export function renderProgression(state) {
   const bossLabel = route.bossType === "final" ? "BOSS FINAL" : "MINI BOSS";
   const revisiting = Boolean(state.revisit?.active);
   const journeyComplete = Boolean(state.journey?.complete) && !revisiting;
+  const showCompletionTrophy = journeyComplete && (
+    state.campaignMode !== "normal" || Boolean(state.hardUnlockCelebrationPending)
+  );
 
   if (scene) {
     const theme = route.environment.theme;
@@ -321,7 +331,7 @@ export function renderProgression(state) {
     }
 
     scene.classList.toggle("boss-ready", bossReady);
-    scene.classList.toggle("journey-complete", journeyComplete);
+    scene.classList.toggle("journey-complete", showCompletionTrophy);
   }
 
   document.querySelector("#environment-label").textContent = `${revisiting ? "REVISITANDO · " : ""}DIFICULDADE ${route.worldIndex + 1} · ${route.environment.name.toUpperCase()}`;
@@ -356,8 +366,8 @@ export function renderProgression(state) {
   });
 
   const completePanel = document.querySelector("#journey-complete-panel");
-  if (completePanel) completePanel.hidden = !journeyComplete;
-  if (journeyComplete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA";
+  if (completePanel) completePanel.hidden = !showCompletionTrophy;
+  if (journeyComplete) document.querySelector("#mode-badge").textContent = "JORNADA CONCLUÍDA · ABRA O MAPA PARA REVISITAR";
   if (revisiting) document.querySelector("#mode-badge").textContent = "REVISITANDO";
 
   const footerVersion = document.querySelector("footer span:last-child");
