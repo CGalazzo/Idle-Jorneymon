@@ -13,6 +13,18 @@ function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function backgroundSources(background) {
+  return (Array.isArray(background) ? background : [background]).filter(Boolean);
+}
+
+function backgroundCssValue(background) {
+  return backgroundSources(background).map((source) => `url("${source}")`).join(", ");
+}
+
+function backgroundCacheKey(environmentId, background) {
+  return `${environmentId}:${backgroundSources(background).join("|")}`;
+}
+
 function createWorldTrack() {
   return ENVIRONMENTS.map((environment, index) => `
     <span class="world-step" data-world-step="${index}" title="Dificuldade ${index + 1}: ${environment.name}">
@@ -325,9 +337,10 @@ export function renderProgression(state) {
 
     const environmentId = route.environment.id;
     const background = SCENE_BACKGROUNDS[environmentId];
-    if (background && scene.dataset.environmentBackground !== environmentId) {
-      scene.style.setProperty("--route-background", `url("${background}")`);
-      scene.dataset.environmentBackground = environmentId;
+    const cacheKey = backgroundCacheKey(environmentId, background);
+    if (background && scene.dataset.environmentBackground !== cacheKey) {
+      scene.style.setProperty("--route-background", backgroundCssValue(background));
+      scene.dataset.environmentBackground = cacheKey;
     }
 
     scene.classList.toggle("boss-ready", bossReady);
