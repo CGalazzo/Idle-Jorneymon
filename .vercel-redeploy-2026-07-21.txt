@@ -1,0 +1,1 @@
+Redeploy trigger for production after the previous Vercel build-rate limit. This file does not affect gameplay or the build output.
