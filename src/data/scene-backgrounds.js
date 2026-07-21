@@ -15,7 +15,7 @@ import ilhaFlutuante from "./scene-assets/ilha-flutuante.js";
 import "../styles/new-worlds.css";
 
 const webp = (data) => `data:image/webp;base64,${data}`;
-const elite4GoldBackground = "https://raw.githubusercontent.com/CGalazzo/Idle-Jorneymon/41b932efedde33b4d14071c331dc2cde844e68e9/src/data/scene-assets/elite-4-gold.webp";
+const elite4GoldBackground = "https://raw.githubusercontent.com/CGalazzo/Idle-Jorneymon/main/src/data/scene-assets/elite-4-gold.webp?v=20260721-elite4-fix";
 
 export const SCENE_BACKGROUNDS = {
   bosque: webp(bosque),
