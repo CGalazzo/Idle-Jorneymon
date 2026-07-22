@@ -1,4 +1,4 @@
-const CACHE_NAME = "idle-jorneymon-app-v3";
+const CACHE_NAME = "idle-jorneymon-app-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
