@@ -5,40 +5,27 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import androidx.webkit.WebViewAssetLoader;
-
 public class MainActivity extends Activity {
-    private static final String APP_URL = "https://appassets.androidplatform.net/assets/www/index.html";
+    private static final String APP_URL = "https://idle-jorneymon.vercel.app/";
+    private static final String APP_HOST = Uri.parse(APP_URL).getHost();
+
     private WebView webView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(7, 17, 31));
-        getWindow().setNavigationBarColor(Color.rgb(7, 17, 31));
-        getWindow().getDecorView().setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-        );
 
-        WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
-            .build();
+        getWindow().setStatusBarColor(Color.rgb(11, 24, 48));
+        getWindow().setNavigationBarColor(Color.rgb(11, 24, 48));
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.rgb(7, 17, 31));
+        webView.setBackgroundColor(Color.rgb(11, 24, 48));
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -49,25 +36,19 @@ public class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " IdleJorneymonApp/1.0 Android");
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        settings.setUserAgentString(settings.getUserAgentString() + " IdleJorneymonApp/2.0 Android");
 
-        webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return assetLoader.shouldInterceptRequest(request.getUrl());
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return openExternalWhenNeeded(request.getUrl());
             }
 
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri url = request.getUrl();
-                if ("appassets.androidplatform.net".equals(url.getHost())) return false;
-                try {
-                    startActivity(new Intent(Intent.ACTION_VIEW, url));
-                } catch (Exception ignored) {
-                    // O jogo continua aberto mesmo sem aplicativo externo compatível.
-                }
-                return true;
+            @SuppressWarnings("deprecation")
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return openExternalWhenNeeded(Uri.parse(url));
             }
         });
 
@@ -75,13 +56,32 @@ public class MainActivity extends Activity {
         webView.loadUrl(APP_URL);
     }
 
+    private boolean openExternalWhenNeeded(Uri url) {
+        String scheme = url.getScheme();
+        String host = url.getHost();
+
+        if ("https".equalsIgnoreCase(scheme)
+            && APP_HOST != null
+            && APP_HOST.equalsIgnoreCase(host)) {
+            return false;
+        }
+
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, url));
+        } catch (Exception ignored) {
+            // Mantém o jogo aberto quando não houver aplicativo para o link externo.
+        }
+        return true;
+    }
+
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
-        } else {
-            super.onBackPressed();
+            return;
         }
+        super.onBackPressed();
     }
 
     @Override
@@ -89,6 +89,7 @@ public class MainActivity extends Activity {
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
+            webView = null;
         }
         super.onDestroy();
     }

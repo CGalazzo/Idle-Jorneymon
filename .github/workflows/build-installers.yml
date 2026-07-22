@@ -1,30 +1,24 @@
-name: Build downloadable apps
+name: Build Android APK
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "public/**"
-      - "scripts/prepare-packaged-build.mjs"
-      - "index.html"
-      - "package.json"
-      - "package-lock.json"
       - "android-app/**"
-      - "desktop-app/**"
+      - "public/icons/app-icon.svg"
+      - "src/ui/install-app.js"
+      - "src/styles/install-app.css"
+      - "index.html"
       - ".github/workflows/build-installers.yml"
   pull_request:
     branches: [main]
     paths:
-      - "src/**"
-      - "public/**"
-      - "scripts/prepare-packaged-build.mjs"
-      - "index.html"
-      - "package.json"
-      - "package-lock.json"
       - "android-app/**"
-      - "desktop-app/**"
+      - "public/icons/app-icon.svg"
+      - "src/ui/install-app.js"
+      - "src/styles/install-app.css"
+      - "index.html"
       - ".github/workflows/build-installers.yml"
 
 permissions:
@@ -32,134 +26,103 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: downloadable-apps-${{ github.ref }}
+  group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   android:
-    name: Build Android APK
+    name: Build simple Android APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm install
-      - run: npm run build -- --base=./
-      - run: node scripts/prepare-packaged-build.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - uses: android-actions/setup-android@v3
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Place game inside Android app
+
+      - name: Generate valid Android icon
         run: |
-          rm -rf android-app/app/src/main/assets/www
-          mkdir -p android-app/app/src/main/assets/www
-          cp -R dist/. android-app/app/src/main/assets/www/
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
           mkdir -p android-app/app/src/main/res/drawable
-          cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
-      - name: Build APK
+          rsvg-convert --width 512 --height 512 \
+            --output android-app/app/src/main/res/drawable/app_icon.png \
+            public/icons/app-icon.svg
+          file android-app/app/src/main/res/drawable/app_icon.png
+
+      - name: Build release APK
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set +e
-          gradle -p android-app assembleDebug --no-daemon > android-build.log 2>&1
+          gradle -p android-app assembleRelease --no-daemon --stacktrace > android-release.log 2>&1
           status=$?
+          tail -n 120 android-release.log
           if [ $status -ne 0 ]; then
-            {
-              echo "### Erro do APK Android"
-              echo '```text'
-              tail -n 80 android-build.log
-              echo '```'
-            } > android-error.md
             if [ "${{ github.event_name }}" = "pull_request" ]; then
+              {
+                echo "### Erro no APK Android simples"
+                echo '```text'
+                tail -n 90 android-release.log
+                echo '```'
+              } > android-error.md
               gh pr comment "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --body-file android-error.md
             fi
-            cat android-error.md
             exit $status
           fi
-      - run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: Idle-Jorneymon-Android.apk
-          if-no-files-found: error
 
-  windows:
-    name: Build Windows installer
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm install
-      - run: npm run build -- --base=./
-      - run: node scripts/prepare-packaged-build.mjs
-      - name: Place game inside Windows app
-        shell: pwsh
+      - name: Prepare download
         run: |
-          Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
-          Copy-Item -Recurse dist desktop-app/dist
-          New-Item -ItemType Directory -Force desktop-app/build | Out-Null
-          Copy-Item public/icons/app-icon-512.png desktop-app/build/icon.png
-      - name: Install desktop dependencies
-        working-directory: desktop-app
-        run: npm install
-      - name: Build Windows installer
-        working-directory: desktop-app
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $ErrorActionPreference = "Continue"
-          $PSNativeCommandUseErrorActionPreference = $false
-          cmd /c "npm run build:win > windows-build.log 2>&1"
-          $status = $LASTEXITCODE
-          if ($status -ne 0) {
-            $tail = Get-Content windows-build.log -Tail 80
-            $body = @("### Erro do instalador Windows", "Erro capturado nas últimas linhas:") + $tail
-            $body | Set-Content windows-error.md
-            if ("${{ github.event_name }}" -eq "pull_request") {
-              gh pr comment "${{ github.event.pull_request.number }}" --repo "$env:GITHUB_REPOSITORY" --body-file windows-error.md
-            }
-            Get-Content windows-error.md
-            exit $status
-          }
+          cp android-app/app/build/outputs/apk/release/app-release.apk Idle-Jorneymon-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs Idle-Jorneymon-Android.apk
+          sha256sum Idle-Jorneymon-Android.apk > Idle-Jorneymon-Android.sha256
+
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: desktop-app/release/Idle-Jorneymon-Windows-Setup.exe
+          name: idle-jorneymon-android
+          path: |
+            Idle-Jorneymon-Android.apk
+            Idle-Jorneymon-Android.sha256
           if-no-files-found: error
 
   publish:
-    name: Publish direct downloads
-    needs: [android, windows]
+    name: Publish Android download
+    if: github.event_name != 'pull_request'
+    needs: android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: idle-jorneymon-android
           path: release
-          merge-multiple: true
-      - name: Publish fixed download links
+
+      - name: Publish fixed APK link
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view app-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit app-latest --repo "$GITHUB_REPOSITORY" --title "Idle Jorneymon - Download" --notes "APK Android e instalador Windows."
+            gh release edit app-latest --repo "$GITHUB_REPOSITORY" \
+              --title "Idle Jorneymon - APK Android" \
+              --notes "APK Android simples que abre a versão atual do jogo."
           else
-            gh release create app-latest --repo "$GITHUB_REPOSITORY" --target main --title "Idle Jorneymon - Download" --notes "APK Android e instalador Windows."
+            gh release create app-latest --repo "$GITHUB_REPOSITORY" --target main \
+              --title "Idle Jorneymon - APK Android" \
+              --notes "APK Android simples que abre a versão atual do jogo."
           fi
+
+          gh release delete-asset app-latest Idle-Jorneymon-Windows-Setup.exe --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+          gh release delete-asset app-latest Idle-Jorneymon-Windows-Setup.exe.blockmap --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
           gh release upload app-latest \
             release/Idle-Jorneymon-Android.apk \
-            release/Idle-Jorneymon-Windows-Setup.exe \
+            release/Idle-Jorneymon-Android.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
