@@ -1,0 +1,93 @@
+/* Escala de legibilidade adotada para a Pokédex e como referência para novos menus. */
+:root {
+  --ui-readable-caption: 10px;
+  --ui-readable-small: 11px;
+  --ui-readable-body: 12px;
+  --ui-readable-name: 15px;
+}
+
+.pokedex-dialog .dialog-heading small {
+  font-size: 11px !important;
+}
+
+.pokedex-dialog .dialog-heading h2 {
+  font-size: 30px !important;
+}
+
+.pokedex-dialog .pokedex-summary span {
+  padding: 8px 12px !important;
+  font-size: var(--ui-readable-body) !important;
+  line-height: 1.25;
+}
+
+.pokedex-dialog .dex-card {
+  min-height: 190px;
+  padding: 19px 10px 14px;
+  gap: 3px;
+}
+
+.pokedex-dialog .dex-card strong {
+  font-size: var(--ui-readable-name) !important;
+  line-height: 1.2;
+}
+
+.pokedex-dialog .dex-card > small {
+  font-size: var(--ui-readable-small) !important;
+  line-height: 1.35;
+}
+
+.pokedex-dialog .dex-number {
+  font-size: var(--ui-readable-caption) !important;
+}
+
+.pokedex-dialog .dex-types {
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.pokedex-dialog .dex-types i {
+  padding: 4px 7px;
+  font-size: var(--ui-readable-caption) !important;
+  line-height: 1.2;
+}
+
+.pokedex-dialog .dex-location-block {
+  width: 100%;
+  margin-top: 7px;
+  line-height: 1.35;
+}
+
+.pokedex-dialog .dex-location-block b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--ui-readable-caption) !important;
+  letter-spacing: .08em;
+}
+
+.pokedex-dialog .dex-location-block span,
+.pokedex-dialog .dex-location-block i {
+  font-size: var(--ui-readable-small) !important;
+  line-height: 1.4;
+}
+
+.pokedex-dialog .dex-location-block i {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .pokedex-dialog .dialog-heading h2 {
+    font-size: 27px !important;
+  }
+
+  .pokedex-dialog .dex-card {
+    min-height: 184px;
+    padding-inline: 8px;
+  }
+
+  .pokedex-dialog .dex-card strong {
+    font-size: 14px !important;
+  }
+}
