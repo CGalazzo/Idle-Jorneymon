@@ -43,7 +43,21 @@ function restoreRuntime(state, runtime = {}) {
   state.recoveryCooldown = Math.max(0, Number(runtime.recoveryCooldown) || 0);
   state.megaEvolutionCooldown = Math.max(0, Number(runtime.megaEvolutionCooldown) || 0);
   state.battleParticipants = cloneValue(runtime.battleParticipants || []);
-  state.activeTeamIndex = Math.max(0, Math.min(state.team.length - 1, Number(runtime.activeTeamIndex) || 0));
+  const lastTeamIndex = Math.max(0, (state.team?.length || 1) - 1);
+  state.activeTeamIndex = Math.max(0, Math.min(lastTeamIndex, Number(runtime.activeTeamIndex) || 0));
+}
+
+function safariElapsedMs(safari, reason, now) {
+  const startedAt = Number(safari?.startedAt);
+  const expiresAt = Number(safari?.expiresAt);
+  if (!Number.isFinite(startedAt) || startedAt <= 0) {
+    return reason === "time" ? SAFARI_DURATION_MS : 0;
+  }
+
+  const effectiveEnd = reason === "time" && Number.isFinite(expiresAt)
+    ? Math.min(now, expiresAt)
+    : now;
+  return Math.max(0, Math.min(SAFARI_DURATION_MS, effectiveEnd - startedAt));
 }
 
 export function canStartSafari(state) {
@@ -94,12 +108,15 @@ export function finishSafariSession(state, reason = "exit", now = Date.now()) {
   if (!state.safari?.active) return false;
   const safari = state.safari;
   const habitat = getSafariHabitat(safari.habitatId);
+  const elapsedMs = safariElapsedMs(safari, reason, now);
   const result = {
     reason,
     habitatName: habitat?.name || "Zona Safari",
     encounters: Math.max(0, Number(safari.encounters) || 0),
     captures: Math.max(0, Number(safari.captures) || 0),
-    ballsUsed: SAFARI_BALLS_PER_SESSION - Math.max(0, Number(safari.ballsRemaining) || 0),
+    ballsUsed: Math.max(0, SAFARI_BALLS_PER_SESSION - Math.max(0, Number(safari.ballsRemaining) || 0)),
+    elapsedMs,
+    startedAt: Number(safari.startedAt) || Math.max(0, now - elapsedMs),
     endedAt: now
   };
 
@@ -123,14 +140,23 @@ export function finishSafariSession(state, reason = "exit", now = Date.now()) {
 
 export function updateSafariSession(state, now = Date.now()) {
   if (!state.safari?.active) return false;
-  if (state.safari.ballsRemaining <= 0) return finishSafariSession(state, "balls", now);
-  if (now >= Number(state.safari.expiresAt)) return finishSafariSession(state, "time", now);
+
+  const expiresAt = Number(state.safari.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0 || now >= expiresAt) {
+    return finishSafariSession(state, "time", now);
+  }
+
+  const ballsRemaining = Number(state.safari.ballsRemaining);
+  if (!Number.isFinite(ballsRemaining) || ballsRemaining <= 0) {
+    return finishSafariSession(state, "balls", now);
+  }
   return false;
 }
 
 export function consumeSafariBall(state) {
-  if (!state.safari?.active || state.safari.ballsRemaining <= 0) return false;
-  state.safari.ballsRemaining -= 1;
+  const ballsRemaining = Number(state.safari?.ballsRemaining);
+  if (!state.safari?.active || !Number.isFinite(ballsRemaining) || ballsRemaining <= 0) return false;
+  state.safari.ballsRemaining = ballsRemaining - 1;
   return true;
 }
 
@@ -140,5 +166,7 @@ export function clearSafariResult(state) {
 }
 
 export function safariRemainingMs(state, now = Date.now()) {
-  return state.safari?.active ? Math.max(0, Number(state.safari.expiresAt) - now) : 0;
+  if (!state.safari?.active) return 0;
+  const expiresAt = Number(state.safari.expiresAt);
+  return Number.isFinite(expiresAt) ? Math.max(0, expiresAt - now) : 0;
 }
