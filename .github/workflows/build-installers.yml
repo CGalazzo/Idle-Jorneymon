@@ -18,40 +18,45 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: downloadable-apps
   cancel-in-progress: true
 
 jobs:
+  started:
+    if: github.event_name == 'issues' && github.event.issue.title == 'Build downloadable apps'
+    name: Report build start
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body "Compilação iniciada: Android e Windows."
+
   android:
     if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
       - run: npm install
       - run: npm run build -- --base=./
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
       - uses: android-actions/setup-android@v3
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-
       - name: Place game inside Android app
         run: |
           rm -rf android-app/app/src/main/assets/www
@@ -59,13 +64,10 @@ jobs:
           cp -R dist/. android-app/app/src/main/assets/www/
           mkdir -p android-app/app/src/main/res/drawable
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
-
       - name: Build APK
         run: gradle -p android-app assembleDebug --no-daemon
-
       - name: Rename APK
         run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
-
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -78,29 +80,23 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
       - run: npm install
       - run: npm run build -- --base=./
-
       - name: Place game inside Windows app
         shell: pwsh
         run: |
           Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
           Copy-Item -Recurse dist desktop-app/dist
-
       - name: Install desktop dependencies
         working-directory: desktop-app
         run: npm install
-
       - name: Build Windows installer
         working-directory: desktop-app
         run: npm run build:win
-
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
@@ -117,7 +113,6 @@ jobs:
         with:
           path: release
           merge-multiple: true
-
       - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -132,3 +127,17 @@ jobs:
             release/Idle-Jorneymon-Windows-Setup.exe \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
+
+  report:
+    if: always() && github.event_name == 'issues' && github.event.issue.title == 'Build downloadable apps'
+    name: Report build result
+    needs: [android, windows, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+        run: gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body "Resultado: Android=$ANDROID_RESULT | Windows=$WINDOWS_RESULT | Publicação=$PUBLISH_RESULT"
