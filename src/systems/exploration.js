@@ -1,7 +1,7 @@
 import { addLog, getActivePokemon } from "../core/game-state.js";
 import { createWildPokemon } from "../data/pokemon.js";
 import { createSafariPokemon } from "../data/safari-pokemon.js";
-import { registerSeen } from "./capture.js";
+import { registerPokedexSeen } from "./pokedex.js";
 
 const APPROACH_DURATION_SECONDS = 2.8;
 
@@ -17,7 +17,6 @@ export function updateExploration(state, deltaSeconds, random = Math.random) {
     : createWildPokemon(state, activePokemon.level, random);
   state.battleParticipants = [activePokemon.uid];
   state.approachProgress = 0;
-  registerSeen(state, state.enemy);
   if (state.safari?.active) state.safari.encounters += 1;
   else state.area.encounters += 1;
   state.totals.encounters += 1;
@@ -29,6 +28,7 @@ export function updateExploration(state, deltaSeconds, random = Math.random) {
       ? state.enemy.bossType === "final" ? "O Boss Final" : "O Mini Boss"
       : "Um Pokémon selvagem";
   addLog(state, `${encounterLabel} ${state.enemy.name}${state.enemy.isShiny ? " shiny" : ""} está se aproximando!`);
+  registerPokedexSeen(state, state.enemy);
 }
 
 export function updateApproach(state, deltaSeconds) {
