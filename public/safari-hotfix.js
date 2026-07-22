@@ -2,6 +2,7 @@
   const CAPTURE_ROOT_SELECTOR = "#capture-ball-options";
   const SAFARI_BUTTON_SELECTOR = "button.safari-capture-button";
   const SAFARI_BACKGROUND_STYLE_ID = "safari-habitat-background-style";
+  const SAFARI_TRACK_CLASS = "safari-seamless-track";
   const SAFARI_BACKGROUNDS = {
     "campo aberto": {
       id: "campo-aberto",
@@ -46,10 +47,88 @@
     style.id = SAFARI_BACKGROUND_STYLE_ID;
     style.textContent = `
       body.safari-active #scene[data-safari-habitat-background]::before {
-        background-image: var(--safari-habitat-background, var(--route-background)) !important;
+        background-image: none !important;
+        animation: none !important;
+      }
+
+      body.safari-active #scene[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} {
+        --safari-tile-width: 676px;
+        --safari-loop-offset: -1352px;
+        position: absolute;
+        z-index: 0;
+        inset: 0 auto 0 0;
+        display: flex;
+        width: max-content;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+        will-change: transform;
+        animation: safariSeamlessTreadmill 10s linear infinite;
+        transform: translate3d(0, 0, 0);
+        backface-visibility: hidden;
+      }
+
+      body.safari-active #scene[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} > span {
+        flex: 0 0 calc(var(--safari-tile-width) + 1px);
+        width: calc(var(--safari-tile-width) + 1px);
+        height: 100%;
+        margin-right: -1px;
+        background-image: var(--safari-habitat-background, var(--route-background));
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        transform-origin: center;
+        backface-visibility: hidden;
+      }
+
+      body.safari-active #scene[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} > span:nth-child(even) {
+        transform: scaleX(-1);
+      }
+
+      body.safari-active #scene.approach[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} {
+        animation-duration: 12s;
+      }
+
+      body.safari-active #scene.battle[data-safari-habitat-background] .${SAFARI_TRACK_CLASS},
+      body.safari-active #scene.capture[data-safari-habitat-background] .${SAFARI_TRACK_CLASS},
+      body.safari-active #scene.recovering[data-safari-habitat-background] .${SAFARI_TRACK_CLASS},
+      body.safari-active #scene.journey-complete[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} {
+        animation-play-state: paused;
+      }
+
+      @keyframes safariSeamlessTreadmill {
+        to { transform: translate3d(var(--safari-loop-offset), 0, 0); }
+      }
+
+      @media (max-width: 700px) {
+        body.safari-active #scene[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} {
+          --safari-tile-width: 548px;
+          --safari-loop-offset: -1096px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body.safari-active #scene[data-safari-habitat-background] .${SAFARI_TRACK_CLASS} {
+          animation: none;
+        }
       }
     `;
     document.head.appendChild(style);
+  }
+
+  function ensureSafariSeamlessTrack() {
+    const scene = document.querySelector("#scene");
+    if (!scene) return null;
+
+    let track = scene.querySelector(`.${SAFARI_TRACK_CLASS}`);
+    if (!track) {
+      track = document.createElement("div");
+      track.className = SAFARI_TRACK_CLASS;
+      track.setAttribute("aria-hidden", "true");
+      track.innerHTML = "<span></span><span></span><span></span><span></span>";
+      scene.insertBefore(track, scene.firstChild);
+    }
+    return track;
   }
 
   async function getSafariBackground(entry) {
@@ -80,7 +159,11 @@
     const scene = document.querySelector("#scene");
     if (!scene) return;
 
-    if (!document.body.classList.contains("safari-active")) {
+    const track = ensureSafariSeamlessTrack();
+    const active = document.body.classList.contains("safari-active");
+    if (track) track.hidden = !active;
+
+    if (!active) {
       scene.removeAttribute("data-safari-habitat-background");
       scene.style.removeProperty("--safari-habitat-background");
       return;
@@ -129,6 +212,7 @@
 
   function installSafariFixes() {
     installSafariBackgroundStyle();
+    ensureSafariSeamlessTrack();
     moveSafariHudOutsideScene();
     bindSafariCapturePointer();
     applySafariHabitatBackground();
