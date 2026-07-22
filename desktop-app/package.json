@@ -1,0 +1,44 @@
+{
+  "name": "idle-jorneymon-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "build:win": "node scripts/make-icon.cjs && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "png-to-ico": "^2.1.8"
+  },
+  "build": {
+    "appId": "com.caiogalazzo.idlejorneymon",
+    "productName": "Idle Jorneymon",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "dist/**/*",
+      "build/icon.ico"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "Idle-Jorneymon-Windows-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Idle Jorneymon"
+    }
+  }
+}
