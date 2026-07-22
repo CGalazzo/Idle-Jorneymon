@@ -1,0 +1,133 @@
+name: Build downloadable apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "android-app/**"
+      - "desktop-app/**"
+      - ".github/workflows/build-installers.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+      - run: npm run build -- --base=./
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Place game inside Android app
+        run: |
+          rm -rf android-app/app/src/main/assets/www
+          mkdir -p android-app/app/src/main/assets/www
+          cp -R dist/. android-app/app/src/main/assets/www/
+          mkdir -p android-app/app/src/main/res/drawable
+          cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
+
+      - name: Build APK
+        run: gradle -p android-app assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: Idle-Jorneymon-Android.apk
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+      - run: npm run build -- --base=./
+
+      - name: Place game inside Windows app
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist desktop-app/dist
+
+      - name: Install desktop dependencies
+        working-directory: desktop-app
+        run: npm install
+
+      - name: Build Windows installer
+        working-directory: desktop-app
+        run: npm run build:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: desktop-app/release/Idle-Jorneymon-Windows-Setup.exe
+          if-no-files-found: error
+
+  publish:
+    name: Publish downloads
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Move fixed release tag
+        run: |
+          git tag -f app-latest "$GITHUB_SHA"
+          git push origin refs/tags/app-latest --force
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view app-latest >/dev/null 2>&1; then
+            gh release edit app-latest --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+          else
+            gh release create app-latest --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+          fi
+          gh release upload app-latest \
+            release/Idle-Jorneymon-Android.apk \
+            release/Idle-Jorneymon-Windows-Setup.exe \
+            --clobber
