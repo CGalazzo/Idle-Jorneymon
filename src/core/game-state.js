@@ -2,6 +2,7 @@ import { createInitialHardEndgameState } from "../data/hard-endgame-data.js";
 import { createStarter } from "../data/pokemon.js";
 import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
+import { createInitialSafariState } from "../systems/safari.js";
 
 export const GAME_VERSION = "0.6.1";
 export const SAVE_VERSION = 10;
@@ -21,6 +22,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     hardUnlockCelebrationPending: false,
     hardUnlockAcknowledged: false,
     hardEndgame: createInitialHardEndgameState(),
+    safari: createInitialSafariState(),
     journey: {
       worldIndex: 0,
       routeIndex: 0,
