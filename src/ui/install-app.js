@@ -1,102 +1,91 @@
 import "../styles/install-app.css";
 
-const RELEASE_BASE = "https://github.com/CGalazzo/Idle-Jorneymon/releases/download/app-latest";
-const RELEASE_PAGE = "https://github.com/CGalazzo/Idle-Jorneymon/releases/tag/app-latest";
-const DOWNLOADS = {
-  android: `${RELEASE_BASE}/Idle-Jorneymon-Android.apk`,
-  windows: `${RELEASE_BASE}/Idle-Jorneymon-Windows-Setup.exe`
-};
+const APK_URL = "https://github.com/CGalazzo/Idle-Jorneymon/releases/download/app-latest/Idle-Jorneymon-Android.apk";
+const APP_USER_AGENT = /IdleJorneymonApp\//i;
 
-let installButton = null;
-let markupObserver = null;
+let downloadButton = null;
+let pendingFrame = 0;
 
-function isPackagedApp() {
-  return /IdleJorneymonApp\//i.test(window.navigator.userAgent || "")
-    || window.matchMedia?.("(display-mode: standalone)")?.matches
-    || window.matchMedia?.("(display-mode: fullscreen)")?.matches
-    || window.navigator.standalone === true;
+function isAndroidApp() {
+  return APP_USER_AGENT.test(window.navigator.userAgent || "");
 }
 
-function currentPlatform() {
-  const userAgent = window.navigator.userAgent || "";
-  if (/Android/i.test(userAgent)) return "android";
-  if (/Windows NT/i.test(userAgent)) return "windows";
-  return "other";
-}
+function removeLegacyPwa() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => {});
+  }
 
-function updateButtonState() {
-  if (!installButton) return;
-
-  const installed = isPackagedApp();
-  installButton.hidden = installed;
-  installButton.disabled = installed;
-  installButton.setAttribute("aria-hidden", installed ? "true" : "false");
-  if (installed) return;
-
-  const platform = currentPlatform();
-  const title = installButton.querySelector("strong");
-  const subtitle = installButton.querySelector("small");
-
-  if (platform === "android") {
-    if (title) title.textContent = "BAIXAR APK";
-    if (subtitle) subtitle.textContent = "Instalar o jogo no Android";
-  } else if (platform === "windows") {
-    if (title) title.textContent = "BAIXAR PARA WINDOWS";
-    if (subtitle) subtitle.textContent = "Baixar o instalador do jogo";
-  } else {
-    if (title) title.textContent = "BAIXAR APP";
-    if (subtitle) subtitle.textContent = "Disponível para Android e Windows";
+  if ("caches" in window) {
+    window.caches.keys()
+      .then((names) => Promise.all(
+        names
+          .filter((name) => name.startsWith("idle-jorneymon-"))
+          .map((name) => window.caches.delete(name))
+      ))
+      .catch(() => {});
   }
 }
 
-function requestDownload() {
-  if (isPackagedApp()) {
-    updateButtonState();
-    return;
-  }
+function journeyMenuIsVisible() {
+  const menuActions = document.querySelector(".journey-menu-actions");
+  if (!menuActions) return false;
 
-  const platform = currentPlatform();
-  const target = DOWNLOADS[platform] || RELEASE_PAGE;
-  window.location.assign(target);
+  const style = window.getComputedStyle(menuActions);
+  return style.display !== "none"
+    && style.visibility !== "hidden"
+    && menuActions.getClientRects().length > 0;
 }
 
-function ensureInstallButton() {
-  if (installButton?.isConnected) return true;
-  installButton = document.querySelector("#install-app-button");
-  if (installButton) {
-    updateButtonState();
-    return true;
-  }
+function ensureDownloadButton() {
+  if (downloadButton?.isConnected) return downloadButton;
 
-  const actions = document.querySelector(".journey-menu-actions");
-  if (!actions) return false;
+  downloadButton = document.createElement("a");
+  downloadButton.id = "android-apk-download";
+  downloadButton.className = "android-apk-download";
+  downloadButton.href = APK_URL;
+  downloadButton.download = "Idle-Jorneymon-Android.apk";
+  downloadButton.setAttribute("aria-label", "Baixar o APK do Idle Jorneymon para Android");
+  downloadButton.innerHTML = `
+    <span class="android-apk-download__icon" aria-hidden="true">↓</span>
+    <span>BAIXAR APK</span>
+  `;
 
-  actions.insertAdjacentHTML("beforeend", `
-    <button id="install-app-button" class="journey-menu-action install-app-button" type="button">
-      <strong>BAIXAR APP</strong>
-      <small>Disponível para Android e Windows</small>
-    </button>`);
-
-  installButton = document.querySelector("#install-app-button");
-  installButton?.addEventListener("click", requestDownload);
-  updateButtonState();
-  return true;
+  document.body.appendChild(downloadButton);
+  return downloadButton;
 }
 
-function observeMarkup() {
-  if (ensureInstallButton()) return;
-  markupObserver = new MutationObserver(() => {
-    if (!ensureInstallButton()) return;
-    markupObserver?.disconnect();
-    markupObserver = null;
+function updateVisibility() {
+  pendingFrame = 0;
+  const button = ensureDownloadButton();
+  button.hidden = isAndroidApp() || !journeyMenuIsVisible();
+}
+
+function scheduleVisibilityUpdate() {
+  if (pendingFrame) return;
+  pendingFrame = window.requestAnimationFrame(updateVisibility);
+}
+
+function start() {
+  removeLegacyPwa();
+  updateVisibility();
+
+  const observer = new MutationObserver(scheduleVisibilityUpdate);
+  observer.observe(document.body, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+    attributeFilter: ["class", "hidden", "style"]
   });
-  markupObserver.observe(document.body, { childList: true, subtree: true });
-}
 
-window.matchMedia?.("(display-mode: standalone)")?.addEventListener?.("change", updateButtonState);
+  window.addEventListener("pageshow", scheduleVisibilityUpdate);
+  window.addEventListener("resize", scheduleVisibilityUpdate);
+  window.addEventListener("orientationchange", scheduleVisibilityUpdate);
+}
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", observeMarkup, { once: true });
+  document.addEventListener("DOMContentLoaded", start, { once: true });
 } else {
-  observeMarkup();
+  start();
 }
