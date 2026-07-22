@@ -143,6 +143,7 @@ export function ensureCampaignState(state) {
 
 export function syncActiveCampaign(state) {
   ensureCampaignState(state);
+  if (state.safari?.active) return state;
   state.campaigns[state.campaignMode] = snapshotFromState(state);
   return state;
 }
