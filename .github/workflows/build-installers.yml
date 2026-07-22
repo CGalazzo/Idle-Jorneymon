@@ -109,6 +109,8 @@ jobs:
         run: |
           Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
           Copy-Item -Recurse dist desktop-app/dist
+          New-Item -ItemType Directory -Force desktop-app/build | Out-Null
+          Copy-Item public/icons/app-icon-512.png desktop-app/build/icon.png
       - name: Install desktop dependencies
         working-directory: desktop-app
         run: npm install
@@ -124,7 +126,7 @@ jobs:
           $status = $LASTEXITCODE
           if ($status -ne 0) {
             $tail = Get-Content windows-build.log -Tail 80
-            $body = @("### Erro do instalador Windows", "```text") + $tail + @("```")
+            $body = @("### Erro do instalador Windows", "Erro capturado nas últimas linhas:") + $tail
             $body | Set-Content windows-error.md
             if ("${{ github.event_name }}" -eq "pull_request") {
               gh pr comment "${{ github.event.pull_request.number }}" --repo "$env:GITHUB_REPOSITORY" --body-file windows-error.md
