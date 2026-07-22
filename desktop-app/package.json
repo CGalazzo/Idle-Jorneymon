@@ -1,10 +1,16 @@
 {
   "name": "idle-jorneymon-desktop",
   "version": "1.0.0",
+  "description": "Idle Jorneymon para Windows",
+  "author": "Caio Galazzo",
   "private": true,
   "main": "main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CGalazzo/Idle-Jorneymon.git"
+  },
   "scripts": {
-    "build:win": "electron-builder --win nsis"
+    "build:win": "electron-builder --win nsis --publish never"
   },
   "devDependencies": {
     "electron": "^37.2.0",
