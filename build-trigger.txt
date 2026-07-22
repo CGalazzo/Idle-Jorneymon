@@ -1,0 +1,1 @@
+Verificação manual do build Android e Windows em 2026-07-22.
