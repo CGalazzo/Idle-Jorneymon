@@ -41,7 +41,6 @@ body.safari-active #route-hud, body.safari-active #route-summary, body.safari-ac
 body.safari-active .journey-heading { padding-left: 0; }
 body.safari-active #scene { border-color: rgba(112, 223, 139, .48); }
 body.safari-active #scene::after { content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(rgba(29, 96, 46, .08), rgba(6, 48, 29, .12)); }
-body.safari-active #scene > * { position: relative; z-index: 2; }
 body.safari-active #scene::before { filter: saturate(1.08) hue-rotate(8deg); }
 
 .safari-capture-button { width: 100%; min-height: 52px; color: #092713; background: linear-gradient(145deg, #7ce494, #55c678); border: 1px solid #a6f3b6; border-radius: 12px; font-size: 13px; font-weight: 900; cursor: pointer; }
