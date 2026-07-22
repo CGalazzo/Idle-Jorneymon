@@ -13,6 +13,8 @@ on:
       - "android-app/**"
       - "desktop-app/**"
       - ".github/workflows/build-installers.yml"
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
@@ -23,6 +25,7 @@ concurrency:
 
 jobs:
   android:
+    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
@@ -70,6 +73,7 @@ jobs:
           if-no-files-found: error
 
   windows:
+    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Build Windows installer
     runs-on: windows-latest
     steps:
@@ -104,6 +108,7 @@ jobs:
           if-no-files-found: error
 
   publish:
+    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Publish downloads
     needs: [android, windows]
     runs-on: ubuntu-latest
