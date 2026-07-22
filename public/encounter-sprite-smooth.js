@@ -17,6 +17,8 @@
   let attachedImage = null;
   let attachedEnemy = null;
   let attachedScene = null;
+  let observedHabitatLabel = null;
+  let habitatObserver = null;
   let wasApproaching = false;
   let activationScheduled = false;
 
@@ -26,6 +28,10 @@
       .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase();
+  }
+
+  function imageSource(image) {
+    return image?.getAttribute("src") || image?.currentSrc || image?.src || "";
   }
 
   function explorationSpriteUrl(speciesId, shiny = false) {
@@ -55,6 +61,16 @@
       preloadUrl(explorationSpriteUrl(id, false));
       preloadUrl(explorationSpriteUrl(id, true));
     });
+  }
+
+  function attachHabitatObserver() {
+    const label = document.querySelector("#safari-hud-habitat");
+    if (!label || label === observedHabitatLabel) return;
+    habitatObserver?.disconnect();
+    observedHabitatLabel = label;
+    habitatObserver = new MutationObserver(preloadSafariHabitat);
+    habitatObserver.observe(label, { childList: true, subtree: true, characterData: true });
+    preloadSafariHabitat();
   }
 
   function addPreconnect(url) {
@@ -139,19 +155,30 @@
 
     activationScheduled = true;
     const token = ++currentToken;
-    const expectedSrc = attachedImage.currentSrc || attachedImage.src;
+    const expectedSrc = imageSource(attachedImage);
     restartApproachAnimation();
 
     waitForImage(attachedImage, token).then(() => {
       if (token !== currentToken) return;
-      if (!attachedScene?.classList.contains("approach") || attachedEnemy?.hidden) return;
-      if ((attachedImage.currentSrc || attachedImage.src) !== expectedSrc) return;
+      if (!attachedScene?.classList.contains("approach") || attachedEnemy?.hidden) {
+        activationScheduled = false;
+        return;
+      }
+      if (imageSource(attachedImage) !== expectedSrc) {
+        activationScheduled = false;
+        activateWhenReady();
+        return;
+      }
 
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           activationScheduled = false;
           if (token !== currentToken) return;
           if (!attachedScene?.classList.contains("approach") || attachedEnemy?.hidden) return;
+          if (imageSource(attachedImage) !== expectedSrc) {
+            activateWhenReady();
+            return;
+          }
           attachedEnemy.classList.add(READY_CLASS);
         });
       });
@@ -200,7 +227,7 @@
       currentToken += 1;
       activationScheduled = false;
       attachedEnemy.classList.remove(READY_CLASS);
-      preloadUrl(attachedImage.currentSrc || attachedImage.src);
+      preloadUrl(imageSource(attachedImage));
       activateWhenReady();
     });
     imageObserver.observe(image, { attributes: true, attributeFilter: ["src"] });
@@ -219,7 +246,8 @@
     const sceneObserver = new MutationObserver(handleSceneState);
     sceneObserver.observe(scene, { attributes: true, attributeFilter: ["class"] });
 
-    preloadSafariHabitat();
+    preloadUrl(imageSource(image));
+    attachHabitatObserver();
     handleSceneState();
     return true;
   }
@@ -228,15 +256,15 @@
     installStyle();
     addPreconnect("https://raw.githubusercontent.com");
     attachEncounterElements();
+    attachHabitatObserver();
 
     const pageObserver = new MutationObserver(() => {
       attachEncounterElements();
-      preloadSafariHabitat();
+      attachHabitatObserver();
     });
     pageObserver.observe(document.body, {
       childList: true,
-      subtree: true,
-      characterData: true
+      subtree: true
     });
   }
 
