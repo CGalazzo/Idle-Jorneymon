@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -53,7 +54,26 @@ jobs:
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
 
       - name: Build release APK
-        run: gradle -p android-app assembleRelease --no-daemon
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          gradle -p android-app assembleRelease --no-daemon --stacktrace > android-release.log 2>&1
+          status=$?
+          tail -n 120 android-release.log
+          if [ $status -ne 0 ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              {
+                echo "### Erro no APK Android simples"
+                echo '```text'
+                tail -n 90 android-release.log
+                echo '```'
+              } > android-error.md
+              gh pr comment "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --body-file android-error.md
+            fi
+            exit $status
+          fi
 
       - name: Prepare download
         run: |
