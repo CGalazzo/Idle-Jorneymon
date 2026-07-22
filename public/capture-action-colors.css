@@ -1,0 +1,21 @@
+/* Diferencia claramente a ação de recusar a captura. */
+#capture-panel #decline-capture.decline-button {
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #dc3545, #a91524) !important;
+  border: 1px solid #ff7b86 !important;
+  box-shadow: 0 7px 16px rgba(132, 17, 31, .28);
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+}
+
+#capture-panel #decline-capture.decline-button:hover,
+#capture-panel #decline-capture.decline-button:focus-visible {
+  color: #ffffff !important;
+  filter: brightness(1.12);
+  box-shadow: 0 9px 20px rgba(132, 17, 31, .38);
+  outline: none;
+}
+
+#capture-panel #decline-capture.decline-button:active {
+  transform: translateY(1px);
+  filter: brightness(.96);
+}
