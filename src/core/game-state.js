@@ -1,3 +1,4 @@
+import { createInitialChampionsHallState } from "../data/champions-hall-data.js";
 import { createInitialHardEndgameState } from "../data/hard-endgame-data.js";
 import { createStarter } from "../data/pokemon.js";
 import { createInitialSafariState } from "../data/safari-data.js";
@@ -22,6 +23,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     hardUnlockCelebrationPending: false,
     hardUnlockAcknowledged: false,
     hardEndgame: createInitialHardEndgameState(),
+    championsHall: createInitialChampionsHallState(),
     safari: createInitialSafariState(),
     journey: {
       worldIndex: 0,
