@@ -39,8 +39,23 @@ export function getCaptureBallOptions(state, pokemon) {
 }
 
 export function registerSeen(state, pokemon) {
-  const current = state.pokedex[pokemon.id] || { seen: 0, caught: 0, shinyCaught: 0 };
-  state.pokedex[pokemon.id] = { ...current, seen: current.seen + 1 };
+  const current = state.pokedex[pokemon.id] || { seen: 0, caught: 0, shinySeen: 0, shinyCaught: 0 };
+  const nextEntry = {
+    ...current,
+    seen: (Number(current.seen) || 0) + 1,
+    shinySeen: (Number(current.shinySeen) || 0) + (pokemon.isShiny ? 1 : 0)
+  };
+  state.pokedex[pokemon.id] = nextEntry;
+
+  if (typeof window !== "undefined" && typeof window.CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("idle-jorneymon-pokedex-seen", {
+      detail: {
+        pokemonId: Number(pokemon.id),
+        isShiny: Boolean(pokemon.isShiny),
+        entry: nextEntry
+      }
+    }));
+  }
 }
 
 function resetEncounter(state) {
@@ -117,10 +132,11 @@ function returnToExploration(state) {
 }
 
 function registerCaptureSuccess(state, pokemon, ballCopy = "") {
-  const entry = state.pokedex[pokemon.id] || { seen: 1, caught: 0, shinyCaught: 0 };
+  const entry = state.pokedex[pokemon.id] || { seen: 1, caught: 0, shinySeen: pokemon.isShiny ? 1 : 0, shinyCaught: 0 };
   state.pokedex[pokemon.id] = {
     ...entry,
     caught: (entry.caught || 0) + 1,
+    shinySeen: Math.max(Number(entry.shinySeen) || 0, pokemon.isShiny ? 1 : 0),
     shinyCaught: (entry.shinyCaught || 0) + (pokemon.isShiny ? 1 : 0)
   };
 
