@@ -1,4 +1,5 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
+import { normalizeChampionsHallState } from "../data/champions-hall-data.js";
 import { createAreaState, ENVIRONMENTS, TOTAL_ROUTES } from "../data/worlds.js";
 import { deactivateAllMegaEvolutions } from "./mega.js";
 
@@ -137,13 +138,18 @@ export function ensureCampaignState(state) {
   state.hardModeUnlocked = Boolean(state.hardModeUnlocked || normalComplete);
   state.hardUnlockCelebrationPending = Boolean(state.hardUnlockCelebrationPending);
   state.hardUnlockAcknowledged = Boolean(state.hardUnlockAcknowledged);
+  state.championsHall = normalizeChampionsHallState(state.championsHall);
+
   if (state.hardEndgame && hardComplete) state.hardEndgame.postGameUnlocked = true;
+  if (hardComplete && !state.championsHall.unlocked && !state.championsHall.unlockAcknowledged) {
+    state.championsHall.unlockCelebrationPending = true;
+  }
   return state;
 }
 
 export function syncActiveCampaign(state) {
   ensureCampaignState(state);
-  if (state.safari?.active) return state;
+  if (state.safari?.active || state.championsHall?.active) return state;
   state.campaigns[state.campaignMode] = snapshotFromState(state);
   return state;
 }
@@ -151,6 +157,7 @@ export function syncActiveCampaign(state) {
 export function switchCampaign(state, targetMode) {
   const target = CAMPAIGN_MODES.includes(targetMode) ? targetMode : "normal";
   ensureCampaignState(state);
+  if (state.championsHall?.active) return false;
   if (target === "hard" && !state.hardModeUnlocked) return false;
   if (target === state.campaignMode) return true;
 
@@ -184,8 +191,13 @@ export function completeActiveCampaign(state) {
     state.hardModeUnlocked = true;
     state.hardUnlockCelebrationPending = true;
     state.hardUnlockAcknowledged = false;
-  } else if (state.hardEndgame) {
-    state.hardEndgame.postGameUnlocked = true;
+  } else {
+    if (state.hardEndgame) state.hardEndgame.postGameUnlocked = true;
+    state.championsHall = normalizeChampionsHallState(state.championsHall);
+    if (!state.championsHall.unlocked) {
+      state.championsHall.unlockCelebrationPending = true;
+      state.championsHall.unlockAcknowledged = false;
+    }
   }
 
   syncActiveCampaign(state);
