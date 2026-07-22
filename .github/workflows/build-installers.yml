@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "android-app/**"
-      - "public/icons/app-icon-512.png"
+      - "public/icons/app-icon.svg"
       - "src/ui/install-app.js"
       - "src/styles/install-app.css"
       - "index.html"
@@ -15,7 +15,7 @@ on:
     branches: [main]
     paths:
       - "android-app/**"
-      - "public/icons/app-icon-512.png"
+      - "public/icons/app-icon.svg"
       - "src/ui/install-app.js"
       - "src/styles/install-app.css"
       - "index.html"
@@ -48,10 +48,15 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Apply application icon
+      - name: Generate valid Android icon
         run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
           mkdir -p android-app/app/src/main/res/drawable
-          cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
+          rsvg-convert --width 512 --height 512 \
+            --output android-app/app/src/main/res/drawable/app_icon.png \
+            public/icons/app-icon.svg
+          file android-app/app/src/main/res/drawable/app_icon.png
 
       - name: Build release APK
         shell: bash
