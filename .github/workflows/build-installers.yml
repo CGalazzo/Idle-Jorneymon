@@ -63,7 +63,16 @@ jobs:
           cp -R dist/. android-app/app/src/main/assets/www/
           mkdir -p android-app/app/src/main/res/drawable
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
-      - run: gradle -p android-app assembleDebug --no-daemon
+      - name: Build APK
+        shell: bash
+        run: |
+          set +e
+          gradle -p android-app assembleDebug --no-daemon > android-build.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            tail -n 120 android-build.log
+            exit $status
+          fi
       - run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
       - uses: actions/upload-artifact@v4
         with:
@@ -93,7 +102,13 @@ jobs:
         run: npm install
       - name: Build Windows installer
         working-directory: desktop-app
-        run: npm run build:win
+        shell: pwsh
+        run: |
+          npm run build:win *> windows-build.log
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content windows-build.log -Tail 120
+            exit $LASTEXITCODE
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
