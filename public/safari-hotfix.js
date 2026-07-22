@@ -32,6 +32,7 @@
 
   const safariBackgroundCache = new Map();
   const safariBackgroundLoads = new Map();
+  let installScheduled = false;
 
   function normalizeHabitatName(value = "") {
     return String(value)
@@ -116,10 +117,7 @@
     document.head.appendChild(style);
   }
 
-  function ensureSafariSeamlessTrack() {
-    const scene = document.querySelector("#scene");
-    if (!scene) return null;
-
+  function ensureSafariSeamlessTrack(scene) {
     let track = scene.querySelector(`.${SAFARI_TRACK_CLASS}`);
     if (!track) {
       track = document.createElement("div");
@@ -159,16 +157,17 @@
     const scene = document.querySelector("#scene");
     if (!scene) return;
 
-    const track = ensureSafariSeamlessTrack();
     const active = document.body.classList.contains("safari-active");
-    if (track) track.hidden = !active;
+    const existingTrack = scene.querySelector(`.${SAFARI_TRACK_CLASS}`);
 
     if (!active) {
+      existingTrack?.remove();
       scene.removeAttribute("data-safari-habitat-background");
       scene.style.removeProperty("--safari-habitat-background");
       return;
     }
 
+    ensureSafariSeamlessTrack(scene);
     const habitatLabel = document.querySelector("#safari-hud-habitat");
     const entry = SAFARI_BACKGROUNDS[normalizeHabitatName(habitatLabel?.textContent)];
     if (!entry) return;
@@ -177,7 +176,10 @@
 
     try {
       const background = await getSafariBackground(entry);
-      if (scene.dataset.safariHabitatBackground === entry.id) {
+      if (
+        document.body.classList.contains("safari-active")
+        && scene.dataset.safariHabitatBackground === entry.id
+      ) {
         scene.style.setProperty("--safari-habitat-background", background);
       }
     } catch (error) {
@@ -202,8 +204,6 @@
       if (!button || !root.contains(button) || button.disabled) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
 
-      // O botão é recriado pelo ciclo de renderização entre pressionar e soltar.
-      // Disparar o clique imediatamente preserva a ação antes da troca do elemento.
       event.preventDefault();
       event.stopPropagation();
       button.click();
@@ -212,21 +212,29 @@
 
   function installSafariFixes() {
     installSafariBackgroundStyle();
-    ensureSafariSeamlessTrack();
     moveSafariHudOutsideScene();
     bindSafariCapturePointer();
     applySafariHabitatBackground();
   }
 
+  function scheduleInstallSafariFixes() {
+    if (installScheduled) return;
+    installScheduled = true;
+    window.requestAnimationFrame(() => {
+      installScheduled = false;
+      installSafariFixes();
+    });
+  }
+
   function startObserver() {
     installSafariFixes();
-    const observer = new MutationObserver(installSafariFixes);
+    const observer = new MutationObserver(scheduleInstallSafariFixes);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ["class", "hidden"]
+      attributeFilter: ["class"]
     });
   }
 
