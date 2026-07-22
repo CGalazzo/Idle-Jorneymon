@@ -1,0 +1,71 @@
+.safari-menu-button {
+  width: 100%;
+  padding: 15px 18px;
+  color: #efffe9;
+  background: linear-gradient(145deg, rgba(35, 115, 62, .96), rgba(18, 72, 42, .98));
+  border: 1px solid rgba(128, 238, 151, .5);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(4, 36, 19, .28);
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.safari-menu-button small { display: block; margin-top: 4px; color: #bfe9c7; font-size: 10px; letter-spacing: .02em; }
+.safari-menu-button:disabled { opacity: .45; cursor: not-allowed; }
+
+.safari-dialog { width: min(920px, calc(100% - 24px)); max-height: calc(100vh - 28px); padding: 22px; color: #effff2; background: linear-gradient(145deg, #123d29, #071f18); border: 1px solid rgba(127, 231, 153, .35); border-radius: 20px; box-shadow: 0 30px 90px rgba(0,0,0,.58); }
+.safari-dialog::backdrop, .safari-result-dialog::backdrop { background: rgba(1, 10, 6, .82); backdrop-filter: blur(6px); }
+.safari-intro { margin: 12px 0 18px; color: #b6d8bf; font-size: 13px; line-height: 1.55; }
+.safari-rules { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+.safari-rules span { padding: 7px 10px; color: #e9ffe9; background: rgba(68, 139, 82, .22); border: 1px solid rgba(126, 224, 145, .22); border-radius: 999px; font-size: 10px; font-weight: 900; }
+.safari-habitat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-height: 430px; overflow-y: auto; padding-right: 3px; }
+.safari-habitat { padding: 15px; color: #eaffec; text-align: left; background: rgba(15, 57, 38, .84); border: 1px solid rgba(108, 193, 128, .22); border-radius: 15px; cursor: pointer; transition: .18s ease; }
+.safari-habitat:hover, .safari-habitat.selected { transform: translateY(-2px); border-color: #78df92; background: linear-gradient(145deg, rgba(31, 105, 57, .92), rgba(15, 65, 41, .92)); box-shadow: 0 10px 24px rgba(3, 27, 14, .3); }
+.safari-habitat strong, .safari-habitat small, .safari-habitat span { display: block; }
+.safari-habitat strong { font-size: 16px; }
+.safari-habitat small { margin-top: 3px; color: #88dea1; font-size: 10px; font-weight: 900; }
+.safari-habitat span { margin-top: 8px; color: #afcdb7; font-size: 11px; line-height: 1.45; }
+.safari-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 17px; }
+.safari-dialog-actions button { min-height: 40px; padding: 0 17px; border-radius: 11px; font-weight: 900; cursor: pointer; }
+.safari-start-button { color: #082513; background: #79e493; border: 1px solid #9cf0ad; }
+.safari-start-button:disabled { opacity: .35; cursor: not-allowed; }
+.safari-cancel-button { color: #c9ded0; background: #153b2a; border: 1px solid rgba(142, 208, 157, .24); }
+
+.safari-hud { position: absolute; z-index: 9; top: 14px; left: 14px; display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 8px; max-width: calc(100% - 28px); padding: 10px 11px; color: #f1fff1; background: rgba(7, 43, 25, .86); border: 1px solid rgba(124, 232, 150, .45); border-radius: 13px; box-shadow: 0 10px 28px rgba(0,0,0,.3); backdrop-filter: blur(8px); }
+.safari-hud > span { display: grid; gap: 1px; min-width: 76px; }
+.safari-hud small { color: #94d8a5; font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.safari-hud strong { font-size: 11px; }
+.safari-exit-button { min-height: 32px; padding: 0 10px; color: #ffe8e8; background: rgba(124, 32, 37, .72); border: 1px solid rgba(244, 124, 128, .35); border-radius: 9px; font-size: 8px; font-weight: 900; cursor: pointer; }
+
+body.safari-active #route-hud, body.safari-active #route-summary, body.safari-active #resume-journey-button, body.safari-active #reset-button { display: none !important; }
+body.safari-active .journey-heading { padding-left: 0; }
+body.safari-active #scene { border-color: rgba(112, 223, 139, .48); }
+body.safari-active #scene::after { content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(rgba(29, 96, 46, .08), rgba(6, 48, 29, .12)); }
+body.safari-active #scene > * { position: relative; z-index: 2; }
+body.safari-active #scene::before { filter: saturate(1.08) hue-rotate(8deg); }
+
+.safari-capture-button { width: 100%; min-height: 52px; color: #092713; background: linear-gradient(145deg, #7ce494, #55c678); border: 1px solid #a6f3b6; border-radius: 12px; font-size: 13px; font-weight: 900; cursor: pointer; }
+.safari-capture-button span { display: block; margin-top: 3px; font-size: 9px; }
+
+.safari-result-dialog { width: min(480px, calc(100% - 24px)); padding: 0; color: #effff2; background: transparent; border: 0; }
+.safari-result-card { padding: 27px 24px; text-align: center; background: linear-gradient(145deg, #16452f, #071e17); border: 2px solid rgba(128, 232, 151, .58); border-radius: 20px; box-shadow: 0 25px 80px rgba(0,0,0,.58); }
+.safari-result-card > span { display: block; font-size: 48px; }
+.safari-result-card h2 { margin: 8px 0 5px; font-size: 24px; }
+.safari-result-card p { color: #b5d3bd; }
+.safari-result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 17px 0; }
+.safari-result-stats div { padding: 10px 5px; background: rgba(63, 132, 80, .19); border-radius: 11px; }
+.safari-result-stats strong, .safari-result-stats small { display: block; }
+.safari-result-stats strong { font-size: 18px; }
+.safari-result-stats small { color: #8cc69b; font-size: 8px; }
+.safari-result-card button { min-height: 42px; padding: 0 18px; color: #092713; background: #79e493; border: 1px solid #a2f0b2; border-radius: 11px; font-weight: 900; cursor: pointer; }
+
+.dex-types { display: flex !important; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 5px; }
+.dex-types i { padding: 3px 6px; color: #dff5ff; background: rgba(65, 113, 147, .42); border-radius: 999px; font-size: 8px; font-style: normal; font-weight: 900; }
+.safari-caught-label { color: #83e69a !important; font-weight: 900; }
+
+@media (max-width: 700px) {
+  .safari-habitat-grid { grid-template-columns: 1fr; }
+  .safari-hud { top: 8px; left: 8px; max-width: calc(100% - 16px); grid-template-columns: 1fr 1fr; }
+  .safari-hud > span:first-child { grid-column: 1 / -1; }
+  .safari-exit-button { grid-column: 1 / -1; }
+}
