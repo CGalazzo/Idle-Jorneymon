@@ -1,12 +1,13 @@
 import "../styles/install-app.css";
 
+const INSTALLED_KEY = "idle-jorneymon-app-installed";
+const PROMPT_WAIT_MS = 3500;
+
 let deferredInstallPrompt = null;
 let installButton = null;
-let installDialog = null;
-let confirmInstallButton = null;
 let markupObserver = null;
-let pendingInstallRequest = false;
-let prepareTimeout = null;
+let installInProgress = false;
+let promptWaiters = [];
 
 function isStandalone() {
   return window.matchMedia?.("(display-mode: standalone)")?.matches
@@ -14,139 +15,100 @@ function isStandalone() {
     || window.navigator.standalone === true;
 }
 
-function supportsDirectInstallation() {
-  return "onbeforeinstallprompt" in window;
+function wasInstalledHere() {
+  try {
+    return localStorage.getItem(INSTALLED_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
-function setButtonCopy(title, subtitle) {
-  if (!installButton) return;
-  const strong = installButton.querySelector("strong");
-  const small = installButton.querySelector("small");
-  if (strong) strong.textContent = title;
-  if (small) small.textContent = subtitle;
+function rememberInstallation() {
+  try {
+    localStorage.setItem(INSTALLED_KEY, "1");
+  } catch {
+    // A instalação continua válida mesmo quando o armazenamento está indisponível.
+  }
 }
 
-function ensureDialog() {
-  if (installDialog?.isConnected) return installDialog;
-  installDialog = document.querySelector("#install-app-dialog");
-  if (installDialog) return installDialog;
-
-  document.body.insertAdjacentHTML("beforeend", `
-    <dialog id="install-app-dialog" class="install-app-dialog">
-      <div class="install-app-card">
-        <img src="/icons/app-icon-512.png" alt="Símbolo do Idle Jorneymon" />
-        <h2>Instalar Idle Jorneymon</h2>
-        <p>Confirme para instalar o jogo como aplicativo neste dispositivo.</p>
-        <button id="confirm-install-app" class="confirm-install-app" type="button">CONFIRMAR INSTALAÇÃO</button>
-      </div>
-    </dialog>`);
-
-  installDialog = document.querySelector("#install-app-dialog");
-  confirmInstallButton = document.querySelector("#confirm-install-app");
-  confirmInstallButton?.addEventListener("click", confirmInstallation);
-  installDialog?.addEventListener("cancel", (event) => event.preventDefault());
-  return installDialog;
+function isInstalled() {
+  return isStandalone() || wasInstalledHere();
 }
 
 function updateButtonState() {
   if (!installButton) return;
+  const installed = isInstalled();
+  installButton.hidden = installed;
+  installButton.disabled = installed || installInProgress;
+  installButton.setAttribute("aria-hidden", installed ? "true" : "false");
 
-  if (isStandalone()) {
-    installButton.hidden = true;
-    installButton.disabled = true;
-    installButton.setAttribute("aria-hidden", "true");
-    return;
-  }
-
-  if (!supportsDirectInstallation()) {
-    installButton.hidden = true;
-    installButton.disabled = true;
-    installButton.setAttribute("aria-hidden", "true");
-    return;
-  }
-
-  installButton.hidden = false;
-  installButton.setAttribute("aria-hidden", "false");
-
-  if (deferredInstallPrompt) {
-    installButton.disabled = false;
-    setButtonCopy("BAIXAR APP", "Instalar no celular ou computador");
-    return;
-  }
-
-  installButton.disabled = true;
-  setButtonCopy("PREPARANDO APP", "Aguarde a instalação ficar disponível");
+  const title = installButton.querySelector("strong");
+  const subtitle = installButton.querySelector("small");
+  if (title) title.textContent = "BAIXAR APP";
+  if (subtitle) subtitle.textContent = "Instalar no celular ou computador";
 }
 
-function openConfirmation() {
-  if (!deferredInstallPrompt || isStandalone()) return false;
-  const dialog = ensureDialog();
-  confirmInstallButton = document.querySelector("#confirm-install-app");
-  if (confirmInstallButton) {
-    confirmInstallButton.disabled = false;
-    confirmInstallButton.textContent = "CONFIRMAR INSTALAÇÃO";
+function resolvePromptWaiters(promptEvent) {
+  const waiters = promptWaiters;
+  promptWaiters = [];
+  waiters.forEach((resolve) => resolve(promptEvent));
+}
+
+function waitForPrompt(timeoutMs = PROMPT_WAIT_MS) {
+  if (deferredInstallPrompt) return Promise.resolve(deferredInstallPrompt);
+
+  return new Promise((resolve) => {
+    const finish = (promptEvent = null) => {
+      window.clearTimeout(timeout);
+      resolve(promptEvent);
+    };
+    const timeout = window.setTimeout(() => {
+      promptWaiters = promptWaiters.filter((waiter) => waiter !== finish);
+      resolve(null);
+    }, timeoutMs);
+    promptWaiters.push(finish);
+  });
+}
+
+async function refreshInstallability() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.update();
+  } catch {
+    // O botão continua disponível; o navegador poderá entregar o prompt depois.
   }
-  if (!dialog.open) dialog.showModal();
-  return true;
 }
 
-function waitForInstallPrompt() {
-  pendingInstallRequest = true;
-  installButton.disabled = true;
-  setButtonCopy("PREPARANDO APP", "Aguarde alguns segundos");
-  window.clearTimeout(prepareTimeout);
-  prepareTimeout = window.setTimeout(() => {
-    if (!pendingInstallRequest || deferredInstallPrompt) return;
-    pendingInstallRequest = false;
-    setButtonCopy("BAIXAR APP", "Instalação ainda não disponível");
-    installButton.disabled = true;
-  }, 8000);
-}
-
-function requestInstallation() {
-  if (isStandalone()) {
+async function requestInstallation() {
+  if (isInstalled() || installInProgress) {
     updateButtonState();
     return;
   }
 
-  if (deferredInstallPrompt) {
-    openConfirmation();
-    return;
-  }
-
-  waitForInstallPrompt();
-}
-
-async function confirmInstallation() {
-  const promptEvent = deferredInstallPrompt;
-  if (!promptEvent || isStandalone()) {
-    installDialog?.close();
-    updateButtonState();
-    return;
-  }
-
-  confirmInstallButton.disabled = true;
-  confirmInstallButton.textContent = "ABRINDO INSTALAÇÃO...";
-  deferredInstallPrompt = null;
+  installInProgress = true;
+  updateButtonState();
 
   try {
-    await promptEvent.prompt();
-    const choice = await promptEvent.userChoice.catch(() => null);
-    installDialog?.close();
-
-    if (choice?.outcome === "accepted") {
-      installButton.hidden = true;
-      installButton.disabled = true;
-      return;
+    let promptEvent = deferredInstallPrompt;
+    if (!promptEvent) {
+      await refreshInstallability();
+      promptEvent = deferredInstallPrompt || await waitForPrompt();
     }
 
-    setButtonCopy("BAIXAR APP", "Recarregue a página para tentar novamente");
-    installButton.disabled = true;
+    if (!promptEvent) return;
+
+    deferredInstallPrompt = null;
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice.catch(() => null);
+    if (choice?.outcome === "accepted") {
+      rememberInstallation();
+    }
   } catch (error) {
     console.warn("Idle Jorneymon: a instalação não pôde ser iniciada.", error);
-    installDialog?.close();
-    setButtonCopy("BAIXAR APP", "Recarregue a página para tentar novamente");
-    installButton.disabled = true;
+  } finally {
+    installInProgress = false;
+    updateButtonState();
   }
 }
 
@@ -162,10 +124,11 @@ function ensureInstallButton() {
   if (!actions) return false;
 
   actions.insertAdjacentHTML("beforeend", `
-    <button id="install-app-button" class="journey-menu-action install-app-button" type="button" disabled>
-      <strong>PREPARANDO APP</strong>
-      <small>Aguarde a instalação ficar disponível</small>
+    <button id="install-app-button" class="journey-menu-action install-app-button" type="button">
+      <strong>BAIXAR APP</strong>
+      <small>Instalar no celular ou computador</small>
     </button>`);
+
   installButton = document.querySelector("#install-app-button");
   installButton?.addEventListener("click", requestInstallation);
   updateButtonState();
@@ -183,34 +146,27 @@ function observeMarkup() {
 }
 
 async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) return false;
+  if (!("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("/service-worker.js?v=4", { scope: "/" });
+    await navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
     await navigator.serviceWorker.ready;
-    return true;
   } catch (error) {
-    console.warn("Idle Jorneymon: não foi possível preparar a instalação do aplicativo.", error);
-    return false;
+    console.warn("Idle Jorneymon: não foi possível registrar o modo aplicativo.", error);
   }
 }
 
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  window.clearTimeout(prepareTimeout);
+  resolvePromptWaiters(event);
   ensureInstallButton();
   updateButtonState();
-
-  if (pendingInstallRequest) {
-    pendingInstallRequest = false;
-    openConfirmation();
-  }
 });
 
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
-  pendingInstallRequest = false;
-  installDialog?.close();
+  rememberInstallation();
+  resolvePromptWaiters(null);
   updateButtonState();
 });
 
@@ -222,4 +178,4 @@ if (document.readyState === "loading") {
   observeMarkup();
 }
 
-registerServiceWorker().then(() => updateButtonState());
+registerServiceWorker();
