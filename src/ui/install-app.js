@@ -43,7 +43,7 @@ function ensureDialog() {
   document.body.insertAdjacentHTML("beforeend", `
     <dialog id="install-app-dialog" class="install-app-dialog">
       <div class="install-app-card">
-        <img src="/icons/app-icon-512.png" alt="Símbolo do Idle Jorneymon" />
+        <img src="/icons/app-icon.svg" alt="Símbolo do Idle Jorneymon" />
         <h2>Instalar Idle Jorneymon</h2>
         <div id="install-app-instructions">${instructionMarkup()}</div>
         <button id="close-install-app" type="button">ENTENDI</button>
