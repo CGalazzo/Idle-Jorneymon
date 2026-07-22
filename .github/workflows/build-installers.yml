@@ -29,6 +29,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: downloadable-apps-${{ github.ref }}
@@ -63,7 +64,27 @@ jobs:
           cp -R dist/. android-app/app/src/main/assets/www/
           mkdir -p android-app/app/src/main/res/drawable
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
-      - run: gradle -p android-app assembleDebug --no-daemon
+      - name: Build APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          gradle -p android-app assembleDebug --no-daemon > android-build.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            {
+              echo "### Erro do APK Android"
+              echo '```text'
+              tail -n 80 android-build.log
+              echo '```'
+            } > android-error.md
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              gh pr comment "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --body-file android-error.md
+            fi
+            cat android-error.md
+            exit $status
+          fi
       - run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
       - uses: actions/upload-artifact@v4
         with:
@@ -88,12 +109,31 @@ jobs:
         run: |
           Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
           Copy-Item -Recurse dist desktop-app/dist
+          New-Item -ItemType Directory -Force desktop-app/build | Out-Null
+          Copy-Item public/icons/app-icon-512.png desktop-app/build/icon.png
       - name: Install desktop dependencies
         working-directory: desktop-app
         run: npm install
       - name: Build Windows installer
         working-directory: desktop-app
-        run: npm run build:win
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
+          cmd /c "npm run build:win > windows-build.log 2>&1"
+          $status = $LASTEXITCODE
+          if ($status -ne 0) {
+            $tail = Get-Content windows-build.log -Tail 80
+            $body = @("### Erro do instalador Windows", "Erro capturado nas últimas linhas:") + $tail
+            $body | Set-Content windows-error.md
+            if ("${{ github.event_name }}" -eq "pull_request") {
+              gh pr comment "${{ github.event.pull_request.number }}" --repo "$env:GITHUB_REPOSITORY" --body-file windows-error.md
+            }
+            Get-Content windows-error.md
+            exit $status
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
