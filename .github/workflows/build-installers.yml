@@ -17,6 +17,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: downloadable-apps
+  cancel-in-progress: true
+
 jobs:
   android:
     name: Build Android APK
@@ -104,30 +108,22 @@ jobs:
     needs: [android, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: actions/download-artifact@v4
         with:
           path: release
           merge-multiple: true
 
-      - name: Move fixed release tag
-        run: |
-          git tag -f app-latest "$GITHUB_SHA"
-          git push origin refs/tags/app-latest --force
-
       - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view app-latest >/dev/null 2>&1; then
-            gh release edit app-latest --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+          if gh release view app-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit app-latest --repo "$GITHUB_REPOSITORY" --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
           else
-            gh release create app-latest --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+            gh release create app-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
           fi
           gh release upload app-latest \
             release/Idle-Jorneymon-Android.apk \
             release/Idle-Jorneymon-Windows-Setup.exe \
+            --repo "$GITHUB_REPOSITORY" \
             --clobber
