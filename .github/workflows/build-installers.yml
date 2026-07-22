@@ -29,6 +29,8 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: downloadable-apps-${{ github.ref }}
@@ -63,7 +65,27 @@ jobs:
           cp -R dist/. android-app/app/src/main/assets/www/
           mkdir -p android-app/app/src/main/res/drawable
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
-      - run: gradle -p android-app assembleDebug --no-daemon
+      - name: Build APK
+        shell: bash
+        run: |
+          set +e
+          gradle -p android-app assembleDebug --no-daemon > android-build.log 2>&1
+          status=$?
+          tail -n 140 android-build.log
+          exit $status
+      - name: Report Android error
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "### Erro do APK Android"
+            echo '```text'
+            tail -n 100 android-build.log
+            echo '```'
+          } > android-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --body-file android-comment.md
       - run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
       - uses: actions/upload-artifact@v4
         with:
@@ -93,7 +115,22 @@ jobs:
         run: npm install
       - name: Build Windows installer
         working-directory: desktop-app
-        run: npm run build:win
+        shell: pwsh
+        run: |
+          npm run build:win *>&1 | Tee-Object -FilePath windows-build.log
+          exit $LASTEXITCODE
+      - name: Report Windows error
+        if: failure() && github.event_name == 'pull_request'
+        working-directory: desktop-app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          "### Erro do instalador Windows" | Out-File windows-comment.md -Encoding utf8
+          '```text' | Out-File windows-comment.md -Append -Encoding utf8
+          Get-Content windows-build.log -Tail 100 | Out-File windows-comment.md -Append -Encoding utf8
+          '```' | Out-File windows-comment.md -Append -Encoding utf8
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "$env:GITHUB_REPOSITORY" --body-file windows-comment.md
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
