@@ -1,5 +1,9 @@
 import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-state.js";
 import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
+import {
+  CHAMPIONS_HALL_CAPTURE_CHANCE,
+  CHAMPIONS_HALL_XP_MULTIPLIER
+} from "../data/champions-hall-data.js";
 import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { SAFARI_CAPTURE_CHANCE, SAFARI_XP_MULTIPLIER } from "../data/safari-data.js";
@@ -123,6 +127,16 @@ function prepareCapture(state, defeated, now, chance) {
   state.battleParticipants = [];
 }
 
+function finishChampionsHallVictory(state, defeated, now) {
+  state.totals.victories += 1;
+  state.championsHall.victories = Math.max(0, Number(state.championsHall.victories) || 0) + 1;
+  clearMegaTransformationPause(state);
+  deactivateAllMegaEvolutions(state);
+  grantTeamExperience(state, Math.max(1, Math.round(defeated.xpReward * CHAMPIONS_HALL_XP_MULTIPLIER)));
+  addLog(state, `${defeated.name} shiny foi derrotado no Salão dos Campeões. Nenhuma moeda foi recebida e a equipe ganhou 25% do XP normal.`);
+  prepareCapture(state, defeated, now, CHAMPIONS_HALL_CAPTURE_CHANCE);
+}
+
 function finishSafariVictory(state, defeated, now) {
   state.totals.victories += 1;
   state.safari.victories = Math.max(0, Number(state.safari.victories) || 0) + 1;
@@ -135,6 +149,10 @@ function finishSafariVictory(state, defeated, now) {
 
 function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
+  if (state.championsHall?.active || defeated?.championsHallEncounter) {
+    finishChampionsHallVictory(state, defeated, now);
+    return;
+  }
   if (state.safari?.active || defeated?.safariEncounter) {
     finishSafariVictory(state, defeated, now);
     return;
@@ -191,6 +209,18 @@ function restartCurrentRouteAfterDefeat(state) {
   addLog(state, `Derrota em ${defeatedArea}: o progresso da rota voltou para 0/${state.area.requiredVictories}.`);
 }
 
+function recoverSpecialArea(state, message) {
+  clearMegaTransformationPause(state);
+  deactivateAllMegaEvolutions(state);
+  state.mode = "recovering";
+  state.recoveryCooldown = 5;
+  state.enemy = null;
+  state.captureOffer = null;
+  state.pendingRouteAdvance = false;
+  state.battleParticipants = [];
+  addLog(state, message);
+}
+
 function handleFaintedPokemon(state) {
   const nextIndex = nextAvailablePokemon(state);
   if (nextIndex >= 0) {
@@ -203,16 +233,12 @@ function handleFaintedPokemon(state) {
   }
 
   addLog(state, "Toda a equipe desmaiou.");
+  if (state.championsHall?.active) {
+    recoverSpecialArea(state, "A equipe será recuperada sem encerrar sua permanência no Salão dos Campeões.");
+    return;
+  }
   if (state.safari?.active) {
-    clearMegaTransformationPause(state);
-    deactivateAllMegaEvolutions(state);
-    state.mode = "recovering";
-    state.recoveryCooldown = 5;
-    state.enemy = null;
-    state.captureOffer = null;
-    state.pendingRouteAdvance = false;
-    state.battleParticipants = [];
-    addLog(state, "A equipe será recuperada sem encerrar a sessão da Zona Safari.");
+    recoverSpecialArea(state, "A equipe será recuperada sem encerrar a sessão da Zona Safari.");
     return;
   }
   if (state.enemy?.hardChallengeBoss) {
@@ -311,7 +337,9 @@ export function updateRecovery(state, deltaSeconds) {
   state.battleParticipants = [];
   state.exploration = 0;
   state.nextEncounterAt = randomEncounterTarget();
-  addLog(state, state.safari?.active
-    ? "A equipe se recuperou e retomou a exploração da Zona Safari."
-    : "A equipe se recuperou e recomeçou a rota desde o início.");
+  addLog(state, state.championsHall?.active
+    ? "A equipe se recuperou e retomou a caminhada pelo Salão dos Campeões."
+    : state.safari?.active
+      ? "A equipe se recuperou e retomou a exploração da Zona Safari."
+      : "A equipe se recuperou e recomeçou a rota desde o início.");
 }
