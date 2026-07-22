@@ -3,6 +3,7 @@ import {
   SAFARI_BALLS_PER_SESSION,
   SAFARI_DURATION_MS,
   SAFARI_ENTRY_PRICE,
+  createInitialSafariState,
   getSafariHabitat
 } from "../data/safari-data.js";
 import { deactivateAllMegaEvolutions } from "./mega.js";
@@ -11,39 +12,6 @@ function cloneValue(value) {
   if (value == null) return value;
   if (typeof structuredClone === "function") return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
-}
-
-export function createInitialSafariState() {
-  return {
-    active: false,
-    habitatId: null,
-    startedAt: 0,
-    expiresAt: 0,
-    ballsRemaining: 0,
-    encounters: 0,
-    victories: 0,
-    captures: 0,
-    originRuntime: null,
-    lastResult: null
-  };
-}
-
-export function normalizeSafariState(value = {}) {
-  const base = createInitialSafariState();
-  return {
-    ...base,
-    ...value,
-    active: Boolean(value.active),
-    habitatId: getSafariHabitat(value.habitatId)?.id || null,
-    startedAt: Math.max(0, Number(value.startedAt) || 0),
-    expiresAt: Math.max(0, Number(value.expiresAt) || 0),
-    ballsRemaining: Math.max(0, Math.min(SAFARI_BALLS_PER_SESSION, Number(value.ballsRemaining) || 0)),
-    encounters: Math.max(0, Number(value.encounters) || 0),
-    victories: Math.max(0, Number(value.victories) || 0),
-    captures: Math.max(0, Number(value.captures) || 0),
-    originRuntime: value.originRuntime || null,
-    lastResult: value.lastResult || null
-  };
 }
 
 function runtimeSnapshot(state) {
