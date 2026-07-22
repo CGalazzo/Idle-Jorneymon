@@ -5,6 +5,7 @@ import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 import { getCampaignProgress } from "../systems/campaign.js";
+import { enhanceSafariMarkup, renderSafariMenu, renderSafariState } from "./safari-ui.js";
 
 let routeMapHardListenerInstalled = false;
 let currentState = null;
@@ -98,6 +99,7 @@ export function enhanceHardModeMarkup() {
     `);
   }
   installRouteMapHardRefresh();
+  enhanceSafariMarkup();
 }
 
 function progressCopy(progress, mode) {
@@ -128,6 +130,7 @@ export function renderCampaignMenu(state) {
       ? progressCopy(hardProgress, "hard")
       : `Bloqueado · conclua as ${TOTAL_ROUTES} rotas normais`;
   }
+  renderSafariMenu(state);
 }
 
 export function decorateHardCapturedRoster(state) {
@@ -198,10 +201,11 @@ export function renderHardModeState(state) {
 
   decorateHardBattle(state);
   if (document.querySelector("#route-map-dialog")?.open) refreshHardRouteMap();
+  renderSafariState(state);
 
   const dialog = document.querySelector("#hard-unlock-dialog");
   if (!dialog) return;
-  const shouldOpen = Boolean(state.hardUnlockCelebrationPending && state.campaignMode === "normal");
+  const shouldOpen = Boolean(state.hardUnlockCelebrationPending && state.campaignMode === "normal" && !state.safari?.active);
   if (shouldOpen && !dialog.open) dialog.showModal();
   if (!shouldOpen && dialog.open) dialog.close();
 }
