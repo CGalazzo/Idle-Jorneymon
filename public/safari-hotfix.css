@@ -1,0 +1,56 @@
+/* Mantém o HUD da Zona Safari fora da arena para não cobrir a vida do adversário. */
+body.safari-active main > #safari-hud {
+  position: relative !important;
+  z-index: 10 !important;
+  inset: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(120px, 1fr) minmax(76px, .55fr) minmax(96px, .65fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 10px !important;
+  padding: 10px 12px !important;
+}
+
+body.safari-active main > #safari-hud > span {
+  min-width: 0 !important;
+}
+
+/* Centraliza e limita o botão da Safari Ball dentro do painel de captura. */
+body.safari-active #capture-panel #capture-ball-options {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+body.safari-active #capture-panel #capture-ball-options > .safari-capture-button {
+  flex: 0 1 360px !important;
+  width: min(100%, 360px) !important;
+  max-width: 360px !important;
+  margin: 0 auto !important;
+  touch-action: manipulation;
+}
+
+@media (max-width: 700px) {
+  body.safari-active main > #safari-hud {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  body.safari-active main > #safari-hud > span:first-child,
+  body.safari-active main > #safari-hud > .safari-exit-button {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 460px) {
+  body.safari-active main > #safari-hud {
+    gap: 6px !important;
+    padding: 9px 10px !important;
+  }
+
+  body.safari-active #capture-panel #capture-ball-options > .safari-capture-button {
+    max-width: 100% !important;
+  }
+}
