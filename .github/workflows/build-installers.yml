@@ -2,63 +2,66 @@ name: Build downloadable apps
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
   push:
     branches: [main]
     paths:
       - "src/**"
       - "public/**"
+      - "scripts/prepare-packaged-build.mjs"
       - "index.html"
       - "package.json"
       - "package-lock.json"
       - "android-app/**"
       - "desktop-app/**"
       - ".github/workflows/build-installers.yml"
-  issues:
-    types: [opened]
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "scripts/prepare-packaged-build.mjs"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "android-app/**"
+      - "desktop-app/**"
+      - ".github/workflows/build-installers.yml"
 
 permissions:
   contents: write
-  issues: write
 
 concurrency:
-  group: downloadable-apps
+  group: downloadable-apps-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  started:
-    if: github.event_name == 'issues' && github.event.issue.title == 'Build downloadable apps'
-    name: Report build start
-    runs-on: ubuntu-latest
-    steps:
-      - name: Report start
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body "Compilação iniciada: Android e Windows."
-
   android:
-    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - run: npm install
       - run: npm run build -- --base=./
+      - run: node scripts/prepare-packaged-build.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
+
       - name: Place game inside Android app
         run: |
           rm -rf android-app/app/src/main/assets/www
@@ -66,10 +69,12 @@ jobs:
           cp -R dist/. android-app/app/src/main/assets/www/
           mkdir -p android-app/app/src/main/res/drawable
           cp public/icons/app-icon-512.png android-app/app/src/main/res/drawable/app_icon.png
+
       - name: Build APK
         run: gradle -p android-app assembleDebug --no-daemon
-      - name: Rename APK
-        run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
+
+      - run: cp android-app/app/build/outputs/apk/debug/app-debug.apk Idle-Jorneymon-Android.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -77,28 +82,34 @@ jobs:
           if-no-files-found: error
 
   windows:
-    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
     name: Build Windows installer
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - run: npm install
       - run: npm run build -- --base=./
+      - run: node scripts/prepare-packaged-build.mjs
+
       - name: Place game inside Windows app
         shell: pwsh
         run: |
           Remove-Item -Recurse -Force desktop-app/dist -ErrorAction SilentlyContinue
           Copy-Item -Recurse dist desktop-app/dist
+
       - name: Install desktop dependencies
         working-directory: desktop-app
         run: npm install
+
       - name: Build Windows installer
         working-directory: desktop-app
         run: npm run build:win
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
@@ -106,8 +117,8 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.event_name != 'issues' || github.event.issue.title == 'Build downloadable apps'
-    name: Publish downloads
+    name: Publish direct downloads
+    if: github.event_name != 'pull_request'
     needs: [android, windows]
     runs-on: ubuntu-latest
     steps:
@@ -115,31 +126,18 @@ jobs:
         with:
           path: release
           merge-multiple: true
-      - name: Create or update release
+
+      - name: Publish fixed download links
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view app-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit app-latest --repo "$GITHUB_REPOSITORY" --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+            gh release edit app-latest --repo "$GITHUB_REPOSITORY" --title "Idle Jorneymon - Download" --notes "APK Android e instalador Windows."
           else
-            gh release create app-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Idle Jorneymon - Aplicativos" --notes "Downloads atuais para Android e Windows."
+            gh release create app-latest --repo "$GITHUB_REPOSITORY" --target main --title "Idle Jorneymon - Download" --notes "APK Android e instalador Windows."
           fi
           gh release upload app-latest \
             release/Idle-Jorneymon-Android.apk \
             release/Idle-Jorneymon-Windows-Setup.exe \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
-
-  report:
-    if: always() && github.event_name == 'issues' && github.event.issue.title == 'Build downloadable apps'
-    name: Report build result
-    needs: [android, windows, publish]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Report result
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ANDROID_RESULT: ${{ needs.android.result }}
-          WINDOWS_RESULT: ${{ needs.windows.result }}
-          PUBLISH_RESULT: ${{ needs.publish.result }}
-        run: gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body "Resultado: Android=$ANDROID_RESULT | Windows=$WINDOWS_RESULT | Publicação=$PUBLISH_RESULT"
