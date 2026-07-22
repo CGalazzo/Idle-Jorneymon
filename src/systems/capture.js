@@ -1,9 +1,11 @@
 import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state.js";
 import { createCapturedPokemon } from "../data/pokemon.js";
+import { SAFARI_CAPTURE_CHANCE } from "../data/safari-data.js";
 import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
 import { completeActiveCampaign } from "./campaign.js";
 import { grantHardRouteEmblems } from "./hard-endgame.js";
+import { consumeSafariBall, finishSafariSession } from "./safari.js";
 import { consumeBall, getBallDefinition, isBallUnlocked } from "./shop.js";
 
 export const CAPTURE_DECISION_MS = 5000;
@@ -114,10 +116,41 @@ function returnToExploration(state) {
   resetEncounter(state);
 }
 
+function registerCaptureSuccess(state, pokemon, ballCopy = "") {
+  const entry = state.pokedex[pokemon.id] || { seen: 1, caught: 0, shinyCaught: 0 };
+  state.pokedex[pokemon.id] = {
+    ...entry,
+    caught: (entry.caught || 0) + 1,
+    shinyCaught: (entry.shinyCaught || 0) + (pokemon.isShiny ? 1 : 0)
+  };
+
+  const capturedSpecies = state.collection[pokemon.id];
+  state.collection[pokemon.id] = capturedSpecies
+    ? { ...capturedSpecies, count: capturedSpecies.count + 1, shinyCount: (capturedSpecies.shinyCount || 0) + (pokemon.isShiny ? 1 : 0) }
+    : { count: 1, shinyCount: pokemon.isShiny ? 1 : 0, firstCaughtAt: Date.now() };
+
+  const capturedPokemon = createCapturedPokemon(pokemon);
+  if (state.safari?.active || pokemon.safariEncounter) {
+    capturedPokemon.capturedInSafari = true;
+    capturedPokemon.safariHabitatId = pokemon.safariHabitatId || state.safari?.habitatId || null;
+  }
+  const shinyLabel = pokemon.isShiny ? " shiny" : "";
+  const hardLabel = capturedPokemon.capturedInHard ? " do Modo Hard" : "";
+  const safariLabel = capturedPokemon.capturedInSafari ? " da Zona Safari" : "";
+  if (state.team.length < MAX_TEAM_SIZE) {
+    state.team.push(capturedPokemon);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel} foi capturado${ballCopy} e entrou na equipe!`);
+  } else {
+    state.storage.push(capturedPokemon);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel} foi capturado${ballCopy} e enviado ao depósito.`);
+  }
+  if (state.safari?.active) state.safari.captures += 1;
+}
+
 export function updateCaptureDecision(state, now = Date.now()) {
   if (state.mode !== "capture" || !state.enemy) return false;
   if (!state.captureOffer) {
-    state.captureOffer = { chance: getCaptureChance(state.enemy) };
+    state.captureOffer = { chance: state.safari?.active ? SAFARI_CAPTURE_CHANCE : getCaptureChance(state.enemy) };
   }
   if (!Number.isFinite(state.captureOffer.expiresAt)) {
     state.captureOffer.startedAt = now;
@@ -126,7 +159,7 @@ export function updateCaptureDecision(state, now = Date.now()) {
   }
   if (now < state.captureOffer.expiresAt) return false;
 
-  addLog(state, `O tempo para capturar ${state.enemy.name} acabou. A jornada continua.`);
+  addLog(state, `O tempo para capturar ${state.enemy.name} acabou. A exploração continua.`);
   returnToExploration(state);
   return true;
 }
@@ -138,8 +171,30 @@ export function declineCapture(state) {
   return true;
 }
 
+function attemptSafariCapture(state, random = Math.random) {
+  if (!consumeSafariBall(state)) {
+    finishSafariSession(state, "balls");
+    return false;
+  }
+
+  const pokemon = state.enemy;
+  const success = random() * 100 < SAFARI_CAPTURE_CHANCE;
+  if (success) registerCaptureSuccess(state, pokemon, " usando Safari Ball");
+  else addLog(state, `${pokemon.name} escapou da Safari Ball.`);
+
+  if (state.safari.ballsRemaining <= 0) {
+    finishSafariSession(state, "balls");
+    return success;
+  }
+
+  returnToExploration(state);
+  return success;
+}
+
 export function attemptCapture(state, ballId = null, random = Math.random) {
   if (state.mode !== "capture" || !state.enemy) return false;
+  if (state.safari?.active) return attemptSafariCapture(state, random);
+
   const pokemon = state.enemy;
   const ball = getBallDefinition(ballId);
 
@@ -158,28 +213,7 @@ export function attemptCapture(state, ballId = null, random = Math.random) {
     return false;
   }
 
-  const entry = state.pokedex[pokemon.id] || { seen: 1, caught: 0, shinyCaught: 0 };
-  state.pokedex[pokemon.id] = {
-    ...entry,
-    caught: (entry.caught || 0) + 1,
-    shinyCaught: (entry.shinyCaught || 0) + (pokemon.isShiny ? 1 : 0)
-  };
-
-  const capturedSpecies = state.collection[pokemon.id];
-  state.collection[pokemon.id] = capturedSpecies
-    ? { ...capturedSpecies, count: capturedSpecies.count + 1, shinyCount: (capturedSpecies.shinyCount || 0) + (pokemon.isShiny ? 1 : 0) }
-    : { count: 1, shinyCount: pokemon.isShiny ? 1 : 0, firstCaughtAt: Date.now() };
-
-  const capturedPokemon = createCapturedPokemon(pokemon);
-  const shinyLabel = pokemon.isShiny ? " shiny" : "";
-  const hardLabel = capturedPokemon.capturedInHard ? " do Modo Hard" : "";
-  if (state.team.length < MAX_TEAM_SIZE) {
-    state.team.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel} foi capturado${ballCopy} e entrou na equipe!`);
-  } else {
-    state.storage.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel} foi capturado${ballCopy} e enviado ao depósito.`);
-  }
+  registerCaptureSuccess(state, pokemon, ballCopy);
   returnToExploration(state);
   return true;
 }
