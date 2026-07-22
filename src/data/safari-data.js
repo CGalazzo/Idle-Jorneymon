@@ -7,6 +7,39 @@ export const SAFARI_CAPTURE_CHANCE = 35;
 export const SAFARI_SHINY_CHANCE = 1 / 128;
 export const SAFARI_XP_MULTIPLIER = 0.25;
 
+export function createInitialSafariState() {
+  return {
+    active: false,
+    habitatId: null,
+    startedAt: 0,
+    expiresAt: 0,
+    ballsRemaining: 0,
+    encounters: 0,
+    victories: 0,
+    captures: 0,
+    originRuntime: null,
+    lastResult: null
+  };
+}
+
+export function normalizeSafariState(value = {}) {
+  const base = createInitialSafariState();
+  return {
+    ...base,
+    ...value,
+    active: Boolean(value.active),
+    habitatId: getSafariHabitat(value.habitatId)?.id || null,
+    startedAt: Math.max(0, Number(value.startedAt) || 0),
+    expiresAt: Math.max(0, Number(value.expiresAt) || 0),
+    ballsRemaining: Math.max(0, Math.min(SAFARI_BALLS_PER_SESSION, Number(value.ballsRemaining) || 0)),
+    encounters: Math.max(0, Number(value.encounters) || 0),
+    victories: Math.max(0, Number(value.victories) || 0),
+    captures: Math.max(0, Number(value.captures) || 0),
+    originRuntime: value.originRuntime || null,
+    lastResult: value.lastResult || null
+  };
+}
+
 const safariSpecies = (id, name, type, rarity = "rare", safariTier = "rare") => ({
   ...species(id, name, type, 3, rarity),
   safariExclusive: true,
