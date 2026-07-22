@@ -2,6 +2,7 @@ import { addLog, getActivePokemon, randomEncounterTarget } from "../core/game-st
 import { effectivenessLabel, getTypeEffectiveness } from "../data/battle-data.js";
 import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
+import { SAFARI_CAPTURE_CHANCE, SAFARI_XP_MULTIPLIER } from "../data/safari-data.js";
 import { createAreaState, getRouteDefinition } from "../data/worlds.js";
 import { grantTeamExperience } from "./progression.js";
 import { CAPTURE_DECISION_MS, getCaptureChance } from "./capture.js";
@@ -111,8 +112,33 @@ function finishHardChallenge(state, defeated) {
   }
 }
 
+function prepareCapture(state, defeated, now, chance) {
+  state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
+  state.mode = "capture";
+  state.captureOffer = {
+    chance,
+    startedAt: now,
+    expiresAt: now + CAPTURE_DECISION_MS
+  };
+  state.battleParticipants = [];
+}
+
+function finishSafariVictory(state, defeated, now) {
+  state.totals.victories += 1;
+  state.safari.victories = Math.max(0, Number(state.safari.victories) || 0) + 1;
+  clearMegaTransformationPause(state);
+  deactivateAllMegaEvolutions(state);
+  grantTeamExperience(state, Math.max(1, Math.round(defeated.xpReward * SAFARI_XP_MULTIPLIER)));
+  addLog(state, `${defeated.name} foi derrotado na Zona Safari. Nenhuma moeda foi recebida e a equipe ganhou 25% do XP normal.`);
+  prepareCapture(state, defeated, now, SAFARI_CAPTURE_CHANCE);
+}
+
 function finishVictory(state, now = Date.now()) {
   const defeated = state.enemy;
+  if (state.safari?.active || defeated?.safariEncounter) {
+    finishSafariVictory(state, defeated, now);
+    return;
+  }
   if (defeated?.hardChallengeBoss) {
     state.totals.victories += 1;
     finishHardChallenge(state, defeated);
@@ -146,14 +172,7 @@ function finishVictory(state, now = Date.now()) {
   delete defeated.hardSecondPhaseMultiplier;
   grantTeamExperience(state, defeated.xpReward);
   grantBattleCoins(state, defeated);
-  state.activeTeamIndex = Math.max(0, nextAvailablePokemon(state));
-  state.mode = "capture";
-  state.captureOffer = {
-    chance: getCaptureChance(defeated),
-    startedAt: now,
-    expiresAt: now + CAPTURE_DECISION_MS
-  };
-  state.battleParticipants = [];
+  prepareCapture(state, defeated, now, getCaptureChance(defeated));
 }
 
 function restartCurrentRouteAfterDefeat(state) {
@@ -184,6 +203,18 @@ function handleFaintedPokemon(state) {
   }
 
   addLog(state, "Toda a equipe desmaiou.");
+  if (state.safari?.active) {
+    clearMegaTransformationPause(state);
+    deactivateAllMegaEvolutions(state);
+    state.mode = "recovering";
+    state.recoveryCooldown = 5;
+    state.enemy = null;
+    state.captureOffer = null;
+    state.pendingRouteAdvance = false;
+    state.battleParticipants = [];
+    addLog(state, "A equipe será recuperada sem encerrar a sessão da Zona Safari.");
+    return;
+  }
   if (state.enemy?.hardChallengeBoss) {
     const challengeName = state.hardEndgame?.activeChallengeId || "Desafio Hard";
     state.hardEndgame.activeChallengeId = null;
@@ -280,5 +311,7 @@ export function updateRecovery(state, deltaSeconds) {
   state.battleParticipants = [];
   state.exploration = 0;
   state.nextEncounterAt = randomEncounterTarget();
-  addLog(state, "A equipe se recuperou e recomeçou a rota desde o início.");
+  addLog(state, state.safari?.active
+    ? "A equipe se recuperou e retomou a exploração da Zona Safari."
+    : "A equipe se recuperou e recomeçou a rota desde o início.");
 }
