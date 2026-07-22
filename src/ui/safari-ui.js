@@ -123,6 +123,11 @@ function renderSafariCaptureOptions(state) {
   if (captureCopy) captureCopy.textContent = "Use uma Safari Ball ou deixe este Pokémon seguir. Poké Bolas do inventário não são usadas aqui.";
 }
 
+function restoreNormalCaptureCopy() {
+  const captureCopy = document.querySelector("#capture-panel > p");
+  if (captureCopy) captureCopy.textContent = "Escolha como tentar adicionar este Pokémon à sua equipe.";
+}
+
 function installEvents() {
   if (installed) return;
   installed = true;
@@ -266,6 +271,11 @@ export function renderSafariState(state, now = Date.now()) {
     const habitat = getSafariHabitat(state.safari.habitatId) || SAFARI_HABITATS[0];
     const scene = document.querySelector("#scene");
     const background = SCENE_BACKGROUNDS.bosque;
+    if (scene) {
+      scene.classList.remove("journey-complete", "boss-ready");
+      const completePanel = document.querySelector("#journey-complete-panel");
+      if (completePanel) completePanel.hidden = true;
+    }
     if (scene && background) {
       scene.style.setProperty("--route-background", `url("${background}")`);
       scene.dataset.environmentBackground = `safari:${habitat.id}`;
@@ -279,6 +289,8 @@ export function renderSafariState(state, now = Date.now()) {
     document.querySelector("#safari-hud-time").textContent = formatTime(safariRemainingMs(state, now));
     document.querySelector("#safari-hud-balls").textContent = state.safari.ballsRemaining;
     renderSafariCaptureOptions(state);
+  } else {
+    restoreNormalCaptureCopy();
   }
 
   const result = state.safari?.lastResult;
@@ -294,6 +306,9 @@ export function renderSafariState(state, now = Date.now()) {
     document.querySelector("#safari-result-encounters").textContent = result.encounters;
     document.querySelector("#safari-result-captures").textContent = result.captures;
     document.querySelector("#safari-result-balls").textContent = result.ballsUsed;
-    if (!resultDialog.open) resultDialog.showModal();
+    if (!resultDialog.open) {
+      document.querySelector("#menu-button")?.click();
+      resultDialog.showModal();
+    }
   }
 }
