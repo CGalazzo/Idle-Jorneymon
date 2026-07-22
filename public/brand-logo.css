@@ -1,5 +1,5 @@
 /* Substitui o antigo losango azul pelo logo oficial do Idle Jorneymon. */
-.brand-mark {
+.topbar .brand .brand-mark {
   flex: 0 0 auto;
   display: block;
   width: 72px;
@@ -15,15 +15,15 @@
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, .34));
 }
 
-.brand-mark::first-letter {
+.topbar .brand .brand-mark::first-letter {
   transform: none;
 }
 
 @media (max-width: 720px) {
-  .brand { gap: 8px; }
-  .brand-mark { width: 60px; height: 42px; }
+  .topbar .brand { gap: 8px; }
+  .topbar .brand .brand-mark { width: 60px; height: 42px; }
 }
 
 @media (max-width: 480px) {
-  .brand-mark { width: 52px; height: 36px; }
+  .topbar .brand .brand-mark { width: 52px; height: 36px; }
 }
