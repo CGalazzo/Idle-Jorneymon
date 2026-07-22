@@ -102,6 +102,7 @@ jobs:
 
   publish:
     name: Publish direct downloads
+    if: github.event_name != 'pull_request'
     needs: [android, windows]
     runs-on: ubuntu-latest
     steps:
