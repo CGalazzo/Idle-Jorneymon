@@ -113,6 +113,16 @@ function updateSafariStartState() {
   }
 }
 
+function renderSafariCaptureOptions(state) {
+  if (!state.safari?.active || state.mode !== "capture") return;
+  const root = document.querySelector("#capture-ball-options");
+  if (root) {
+    root.innerHTML = `<button id="try-capture" class="safari-capture-button">Usar Safari Ball — ${SAFARI_CAPTURE_CHANCE}%<span>${state.safari.ballsRemaining} restantes · a sessão acaba ao usar a última</span></button>`;
+  }
+  const captureCopy = document.querySelector("#capture-panel > p");
+  if (captureCopy) captureCopy.textContent = "Use uma Safari Ball ou deixe este Pokémon seguir. Poké Bolas do inventário não são usadas aqui.";
+}
+
 function installEvents() {
   if (installed) return;
   installed = true;
@@ -268,6 +278,7 @@ export function renderSafariState(state, now = Date.now()) {
     document.querySelector("#safari-hud-habitat").textContent = habitat.name;
     document.querySelector("#safari-hud-time").textContent = formatTime(safariRemainingMs(state, now));
     document.querySelector("#safari-hud-balls").textContent = state.safari.ballsRemaining;
+    renderSafariCaptureOptions(state);
   }
 
   const result = state.safari?.lastResult;
