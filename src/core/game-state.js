@@ -1,6 +1,6 @@
 import { createInitialChampionsHallState } from "../data/champions-hall-data.js";
 import { createInitialHardEndgameState } from "../data/hard-endgame-data.js";
-import { createStarter } from "../data/pokemon.js";
+import { createStarter, normalizePokemonInstance, SHINY_CHANCE } from "../data/pokemon.js";
 import { createInitialSafariState } from "../data/safari-data.js";
 import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
@@ -10,7 +10,11 @@ export const SAVE_VERSION = 10;
 export const MAX_TEAM_SIZE = 3;
 
 export function createInitialState(starterId = 4, hasStarted = false) {
-  const starter = createStarter(starterId);
+  const starter = normalizePokemonInstance({
+    ...createStarter(starterId),
+    isShiny: Math.random() < SHINY_CHANCE
+  }, { heal: true });
+  const starterShinyCount = starter.isShiny ? 1 : 0;
   return {
     saveVersion: SAVE_VERSION,
     gameVersion: GAME_VERSION,
@@ -50,12 +54,12 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     recoveryCooldown: 0,
     totalSteps: 0,
     pokedex: {
-      [starter.id]: { seen: 1, caught: 1 }
+      [starter.id]: { seen: 1, caught: 1, shinyCaught: starterShinyCount }
     },
     collection: {
-      [starter.id]: { count: 1, firstCaughtAt: Date.now() }
+      [starter.id]: { count: 1, shinyCount: starterShinyCount, firstCaughtAt: Date.now() }
     },
-    log: hasStarted ? [`A jornada começou! ${starter.name} entrou no Bosque — Rota 1.`] : []
+    log: hasStarted ? [`A jornada começou! ${starter.name}${starter.isShiny ? " shiny" : ""} entrou no Bosque — Rota 1.`] : []
   };
 }
 
