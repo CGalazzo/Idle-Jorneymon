@@ -4,6 +4,33 @@ export const CHAMPIONS_HALL_CAPTURE_CHANCE = 5;
 export const CHAMPIONS_HALL_LEVEL = 100;
 export const CHAMPIONS_HALL_IV = 31;
 
+export function createInitialChampionsHallState() {
+  return {
+    unlocked: false,
+    unlockCelebrationPending: false,
+    unlockAcknowledged: false,
+    active: false,
+    originRuntime: null,
+    encounters: 0,
+    captures: 0
+  };
+}
+
+export function normalizeChampionsHallState(value = {}, hardComplete = false) {
+  const base = createInitialChampionsHallState();
+  return {
+    ...base,
+    ...value,
+    unlocked: Boolean(value.unlocked || hardComplete),
+    unlockCelebrationPending: Boolean(value.unlockCelebrationPending),
+    unlockAcknowledged: Boolean(value.unlockAcknowledged),
+    active: Boolean(value.active),
+    originRuntime: value.originRuntime || null,
+    encounters: Math.max(0, Number(value.encounters) || 0),
+    captures: Math.max(0, Number(value.captures) || 0)
+  };
+}
+
 const legendary = (id, name, type, rarity = "legendary") => ({
   ...species(id, name, type, 3, rarity),
   rarity,
