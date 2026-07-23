@@ -1,0 +1,52 @@
+name: Validate Starter Shiny and Safari Lake
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Testar inicial shiny e Lago Safari
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createInitialState, startNewJourney } from './src/core/game-state.js';
+          import { SHINY_CHANCE } from './src/data/pokemon.js';
+          import { getSafariHabitat } from './src/data/safari-data.js';
+
+          assert.equal(SHINY_CHANCE, 1 / 256);
+
+          const originalRandom = Math.random;
+          Math.random = () => 0;
+          const shinyJourney = startNewJourney(4);
+          assert.equal(shinyJourney.team[0].isShiny, true);
+          assert.equal(shinyJourney.pokedex[4].shinyCaught, 1);
+          assert.equal(shinyJourney.collection[4].shinyCount, 1);
+          assert.match(shinyJourney.team[0].sprite, /shiny/);
+
+          const baseState = createInitialState(4, true);
+          assert.equal(baseState.team[0].isShiny, false);
+
+          Math.random = () => 1;
+          const normalJourney = startNewJourney(4);
+          assert.equal(normalJourney.team[0].isShiny, false);
+          assert.equal(normalJourney.pokedex[4].shinyCaught, 0);
+          assert.equal(normalJourney.collection[4].shinyCount, 0);
+          Math.random = originalRandom;
+
+          const lake = getSafariHabitat('lago-safari');
+          const names = lake.encounters.map((entry) => entry.pokemon.name);
+          assert.equal(names.includes('Magikarp'), true);
+          assert.equal(names.includes('Clamperl'), false);
+          assert.equal(lake.encounters.find((entry) => entry.pokemon.name === 'Magikarp').weight, 14);
+          NODE
