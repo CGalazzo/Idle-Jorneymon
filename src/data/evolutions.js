@@ -56,6 +56,7 @@ export const EVOLUTION_RULES = {
   322: { to: 323, level: 33 },
   328: { to: 329, level: 35 }, 329: { to: 330, level: 45 },
   333: { to: 334, level: 35 },
+  349: { to: 350, level: 35 },
   353: { to: 354, level: 37 },
   355: { to: 356, level: 37 }, 356: { to: 477, level: 50 },
   361: { to: 362, level: 42 }, 362: { to: 478, level: 50 },
