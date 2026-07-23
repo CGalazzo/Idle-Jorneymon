@@ -19,3 +19,19 @@
   transform: translateY(1px);
   filter: brightness(.96);
 }
+
+/* A Master Ball usa uma identidade roxa clara no momento da captura. */
+#capture-panel .ball-capture[data-capture-ball="master-ball"]:not(:disabled) {
+  color: #2b1238 !important;
+  background: linear-gradient(145deg, #f1c6ff, #c891f2) !important;
+  border: 1px solid #f7dcff !important;
+  box-shadow: 0 7px 16px rgba(147, 82, 184, .28);
+  text-shadow: 0 1px rgba(255, 255, 255, .45);
+}
+
+#capture-panel .ball-capture[data-capture-ball="master-ball"]:not(:disabled):hover,
+#capture-panel .ball-capture[data-capture-ball="master-ball"]:not(:disabled):focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 9px 20px rgba(147, 82, 184, .38);
+  outline: none;
+}
