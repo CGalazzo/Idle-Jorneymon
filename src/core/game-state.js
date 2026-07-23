@@ -9,10 +9,10 @@ export const GAME_VERSION = "0.6.1";
 export const SAVE_VERSION = 10;
 export const MAX_TEAM_SIZE = 3;
 
-export function createInitialState(starterId = 4, hasStarted = false) {
+export function createInitialState(starterId = 4, hasStarted = false, rollStarterShiny = false) {
   const starter = normalizePokemonInstance({
     ...createStarter(starterId),
-    isShiny: Math.random() < SHINY_CHANCE
+    isShiny: rollStarterShiny && Math.random() < SHINY_CHANCE
   }, { heal: true });
   const starterShinyCount = starter.isShiny ? 1 : 0;
   return {
@@ -64,7 +64,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
 }
 
 export function startNewJourney(starterId) {
-  return createInitialState(starterId, true);
+  return createInitialState(starterId, true, true);
 }
 
 export function getActivePokemon(state) {
