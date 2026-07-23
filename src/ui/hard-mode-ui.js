@@ -5,6 +5,12 @@ import { getHardBossTemplate } from "../data/hard-mode-data.js";
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
 import { getRouteDefinition, getRouteLevelRange, TOTAL_ROUTES } from "../data/worlds.js";
 import { getCampaignProgress } from "../systems/campaign.js";
+import {
+  enhanceChampionsHallMarkup,
+  isChampionsHallUnlockOpen,
+  renderChampionsHallMenu,
+  renderChampionsHallState
+} from "./champions-hall-ui.js";
 import { enhanceSafariMarkup, renderSafariMenu, renderSafariState } from "./safari-ui.js";
 
 let routeMapHardListenerInstalled = false;
@@ -50,6 +56,7 @@ function battleStatus(pokemon) {
   if (pokemon.isMega) labels.push("MEGA EVOLUÇÃO");
   if (pokemon.hardSecondPhase) labels.push("FASE 2");
   if (pokemon.hardExclusive) labels.push("EXCLUSIVO HARD");
+  if (pokemon.championsHallEncounter) labels.push("CAMPEÃO SHINY");
   return labels.join(" · ");
 }
 
@@ -100,6 +107,7 @@ export function enhanceHardModeMarkup() {
   }
   installRouteMapHardRefresh();
   enhanceSafariMarkup();
+  enhanceChampionsHallMarkup();
 }
 
 function progressCopy(progress, mode) {
@@ -119,6 +127,15 @@ export function renderCampaignMenu(state) {
   const hardProgress = getCampaignProgress(state, "hard");
   const hasStarted = Boolean(state.hasStarted);
 
+  if (!state.championsHall) state.championsHall = {};
+  if (hardProgress.complete && !state.championsHall.unlocked) {
+    state.championsHall.unlocked = true;
+    state.championsHall.unlockCelebrationPending = !state.championsHall.unlockAcknowledged;
+    state.championsHall.active = false;
+    state.championsHall.encounters = Math.max(0, Number(state.championsHall.encounters) || 0);
+    state.championsHall.captures = Math.max(0, Number(state.championsHall.captures) || 0);
+  }
+
   normalButton.disabled = !hasStarted;
   normalButton.classList.toggle("active", state.campaignMode === "normal");
   hardButton.disabled = !hasStarted || !state.hardModeUnlocked;
@@ -131,6 +148,7 @@ export function renderCampaignMenu(state) {
       : `Bloqueado · conclua as ${TOTAL_ROUTES} rotas normais`;
   }
   renderSafariMenu(state);
+  renderChampionsHallMenu(state);
 }
 
 export function decorateHardCapturedRoster(state) {
@@ -138,9 +156,11 @@ export function decorateHardCapturedRoster(state) {
     document.querySelectorAll(`${selector} .team-card`).forEach((card, index) => {
       card.querySelector(".hard-caught-label")?.remove();
       const pokemon = roster[index];
-      if (!pokemon?.capturedInHard) return;
+      if (!pokemon?.capturedInHard && !pokemon?.capturedInChampionsHall) return;
       const info = card.querySelector(".team-card-info");
-      const copy = pokemon.hardExclusive ? "◆ EXCLUSIVO DO HARD" : "◆ CAPTURADO NO HARD";
+      const copy = pokemon.capturedInChampionsHall
+        ? "◆ CAPTURADO NO SALÃO DOS CAMPEÕES"
+        : pokemon.hardExclusive ? "◆ EXCLUSIVO DO HARD" : "◆ CAPTURADO NO HARD";
       info?.insertAdjacentHTML("beforeend", `<span class="hard-caught-label">${copy}</span>`);
     });
   };
@@ -202,14 +222,15 @@ export function renderHardModeState(state) {
   decorateHardBattle(state);
   if (document.querySelector("#route-map-dialog")?.open) refreshHardRouteMap();
   renderSafariState(state);
+  renderChampionsHallState(state);
 
   const dialog = document.querySelector("#hard-unlock-dialog");
   if (!dialog) return;
-  const shouldOpen = Boolean(state.hardUnlockCelebrationPending && state.campaignMode === "normal" && !state.safari?.active);
+  const shouldOpen = Boolean(state.hardUnlockCelebrationPending && state.campaignMode === "normal" && !state.safari?.active && !state.championsHall?.active);
   if (shouldOpen && !dialog.open) dialog.showModal();
   if (!shouldOpen && dialog.open) dialog.close();
 }
 
 export function isHardUnlockScreenOpen() {
-  return Boolean(document.querySelector("#hard-unlock-dialog")?.open);
+  return Boolean(document.querySelector("#hard-unlock-dialog")?.open || isChampionsHallUnlockOpen());
 }

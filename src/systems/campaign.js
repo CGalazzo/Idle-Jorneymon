@@ -138,12 +138,13 @@ export function ensureCampaignState(state) {
   state.hardUnlockCelebrationPending = Boolean(state.hardUnlockCelebrationPending);
   state.hardUnlockAcknowledged = Boolean(state.hardUnlockAcknowledged);
   if (state.hardEndgame && hardComplete) state.hardEndgame.postGameUnlocked = true;
+  if (state.championsHall && hardComplete) state.championsHall.unlocked = true;
   return state;
 }
 
 export function syncActiveCampaign(state) {
   ensureCampaignState(state);
-  if (state.safari?.active) return state;
+  if (state.safari?.active || state.championsHall?.active) return state;
   state.campaigns[state.campaignMode] = snapshotFromState(state);
   return state;
 }
@@ -151,6 +152,7 @@ export function syncActiveCampaign(state) {
 export function switchCampaign(state, targetMode) {
   const target = CAMPAIGN_MODES.includes(targetMode) ? targetMode : "normal";
   ensureCampaignState(state);
+  if (state.championsHall?.active && target !== state.campaignMode) return false;
   if (target === "hard" && !state.hardModeUnlocked) return false;
   if (target === state.campaignMode) return true;
 
