@@ -1,9 +1,11 @@
 import { addLog, MAX_TEAM_SIZE, randomEncounterTarget } from "../core/game-state.js";
+import { CHAMPIONS_HALL_CAPTURE_CHANCE } from "../data/champions-hall-data.js";
 import { createCapturedPokemon } from "../data/pokemon.js";
 import { SAFARI_CAPTURE_CHANCE } from "../data/safari-data.js";
 import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import { createAreaState, getNextRoutePosition, getRouteDefinition, TOTAL_ROUTES } from "../data/worlds.js";
 import { completeActiveCampaign } from "./campaign.js";
+import { unlockChampionsHall } from "./champions-hall.js";
 import { grantHardRouteEmblems } from "./hard-endgame.js";
 import { consumeSafariBall, finishSafariSession } from "./safari.js";
 import { consumeBall, getBallDefinition, isBallUnlocked } from "./shop.js";
@@ -100,11 +102,13 @@ function advanceJourney(state) {
   state.activeTeamIndex = Math.max(0, state.team.findIndex((pokemon) => pokemon.hp > 0));
 
   if (!nextPosition) {
+    const completedMode = state.campaignMode;
     completeActiveCampaign(state);
-    if (state.campaignMode === "normal") {
+    if (completedMode === "normal") {
       addLog(state, `Jornada Normal concluída! Você venceu as ${TOTAL_ROUTES} rotas e desbloqueou o Modo Hard.`);
     } else {
-      addLog(state, `Modo Hard concluído! Você venceu novamente as ${TOTAL_ROUTES} rotas e liberou os Desafios Hard.`);
+      unlockChampionsHall(state);
+      addLog(state, `Modo Hard concluído! Você venceu novamente as ${TOTAL_ROUTES} rotas e desbloqueou o Salão dos Campeões.`);
     }
     return;
   }
@@ -150,23 +154,34 @@ function registerCaptureSuccess(state, pokemon, ballCopy = "") {
     capturedPokemon.capturedInSafari = true;
     capturedPokemon.safariHabitatId = pokemon.safariHabitatId || state.safari?.habitatId || null;
   }
+  if (state.championsHall?.active || pokemon.championsHallEncounter) {
+    capturedPokemon.capturedInChampionsHall = true;
+  }
   const shinyLabel = pokemon.isShiny ? " shiny" : "";
   const hardLabel = capturedPokemon.capturedInHard ? " do Modo Hard" : "";
   const safariLabel = capturedPokemon.capturedInSafari ? " da Zona Safari" : "";
+  const hallLabel = capturedPokemon.capturedInChampionsHall ? " do Salão dos Campeões" : "";
   if (state.team.length < MAX_TEAM_SIZE) {
     state.team.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel} foi capturado${ballCopy} e entrou na equipe!`);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel}${hallLabel} foi capturado${ballCopy} e entrou na equipe!`);
   } else {
     state.storage.push(capturedPokemon);
-    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel} foi capturado${ballCopy} e enviado ao depósito.`);
+    addLog(state, `${pokemon.name}${shinyLabel}${hardLabel}${safariLabel}${hallLabel} foi capturado${ballCopy} e enviado ao depósito.`);
   }
   if (state.safari?.active) state.safari.captures += 1;
+  if (state.championsHall?.active) state.championsHall.captures += 1;
 }
 
 export function updateCaptureDecision(state, now = Date.now()) {
   if (state.mode !== "capture" || !state.enemy) return false;
   if (!state.captureOffer) {
-    state.captureOffer = { chance: state.safari?.active ? SAFARI_CAPTURE_CHANCE : getCaptureChance(state.enemy) };
+    state.captureOffer = {
+      chance: state.championsHall?.active
+        ? CHAMPIONS_HALL_CAPTURE_CHANCE
+        : state.safari?.active
+          ? SAFARI_CAPTURE_CHANCE
+          : getCaptureChance(state.enemy)
+    };
   }
   if (!Number.isFinite(state.captureOffer.expiresAt)) {
     state.captureOffer.startedAt = now;
@@ -185,6 +200,15 @@ export function declineCapture(state) {
   addLog(state, `Você decidiu não capturar ${state.enemy.name}.`);
   returnToExploration(state);
   return true;
+}
+
+function attemptChampionsHallCapture(state, random = Math.random) {
+  const pokemon = state.enemy;
+  const success = random() * 100 < CHAMPIONS_HALL_CAPTURE_CHANCE;
+  if (success) registerCaptureSuccess(state, pokemon, " no desafio dos Campeões");
+  else addLog(state, `${pokemon.name} shiny resistiu à captura do Salão dos Campeões.`);
+  returnToExploration(state);
+  return success;
 }
 
 function attemptSafariCapture(state, random = Math.random) {
@@ -209,6 +233,7 @@ function attemptSafariCapture(state, random = Math.random) {
 
 export function attemptCapture(state, ballId = null, random = Math.random) {
   if (state.mode !== "capture" || !state.enemy) return false;
+  if (state.championsHall?.active) return attemptChampionsHallCapture(state, random);
   if (state.safari?.active) return attemptSafariCapture(state, random);
 
   const pokemon = state.enemy;
