@@ -90,6 +90,34 @@ function queueEeveeEvolutionChoice(state, pokemon, random = Math.random) {
   return true;
 }
 
+function isValidPendingEeveeChoice(state, choice) {
+  const pokemon = findOwnedPokemon(state, choice?.pokemonUid);
+  const targetId = Number(choice?.targetId);
+  const environmentId = String(choice?.environmentId || "");
+  if (!pokemon || pokemon.id !== EEVEE_ID || pokemon.level < 20) return false;
+  if (!POKEDEX_SPECIES.some((entry) => entry.id === targetId)) return false;
+  if (!getEeveeEvolutionTargets(environmentId).includes(targetId)) return false;
+  return !normalizeDeclinedTargets(pokemon).includes(targetId);
+}
+
+export function ensureEeveeEvolutionChoices(state, random = Math.random) {
+  const previousQueue = Array.isArray(state.pendingEvolutionChoices) ? state.pendingEvolutionChoices : [];
+  const validQueue = previousQueue.filter((choice) => isValidPendingEeveeChoice(state, choice));
+  let changed = validQueue.length !== previousQueue.length || !Array.isArray(state.pendingEvolutionChoices);
+  state.pendingEvolutionChoices = validQueue;
+
+  const environmentId = currentEnvironmentId(state);
+  if (!getEeveeEvolutionTargets(environmentId).length) return changed;
+
+  (state.team || []).forEach((pokemon) => {
+    const alreadyQueued = state.pendingEvolutionChoices.some((choice) => choice.pokemonUid === pokemon.uid);
+    if (alreadyQueued || pokemon.id !== EEVEE_ID || pokemon.level < 20) return;
+    if (queueEeveeEvolutionChoice(state, pokemon, random)) changed = true;
+  });
+
+  return changed;
+}
+
 function resolveEvolutions(state, pokemon) {
   if (pokemon.id === EEVEE_ID) return;
   const context = {
@@ -187,4 +215,6 @@ export function grantTeamExperience(state, amount) {
       grantPokemonExperience(state, pokemon, Math.max(1, Math.round(amount * passiveMultiplier)));
     }
   });
+
+  ensureEeveeEvolutionChoices(state);
 }
