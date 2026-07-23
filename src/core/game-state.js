@@ -1,9 +1,9 @@
+import { createInitialChampionsHallState } from "../data/champions-hall-data.js";
 import { createInitialHardEndgameState } from "../data/hard-endgame-data.js";
 import { createStarter } from "../data/pokemon.js";
 import { createInitialSafariState } from "../data/safari-data.js";
 import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
-import { createInitialChampionsHallState } from "../systems/champions-hall.js";
 
 export const GAME_VERSION = "0.6.1";
 export const SAVE_VERSION = 11;
