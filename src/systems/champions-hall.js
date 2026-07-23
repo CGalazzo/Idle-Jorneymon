@@ -1,5 +1,5 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
-import { normalizeChampionsHallState } from "../data/champions-hall-data.js";
+import { createInitialChampionsHallState, normalizeChampionsHallState } from "../data/champions-hall-data.js";
 import { deactivateAllMegaEvolutions } from "./mega.js";
 
 function cloneValue(value) {
@@ -58,9 +58,20 @@ export function acknowledgeChampionsHallUnlock(state) {
   state.championsHall.unlockAcknowledged = true;
 }
 
+export function canStartChampionsHall(state) {
+  return Boolean(
+    state?.hasStarted
+    && state.championsHall?.unlocked
+    && !state.championsHall?.active
+    && !state.safari?.active
+    && state.mode === "exploring"
+    && !state.pendingEvolutionChoices?.length
+  );
+}
+
 export function startChampionsHall(state) {
   state.championsHall = normalizeChampionsHallState(state.championsHall, false);
-  if (!state.championsHall.unlocked || state.championsHall.active || state.safari?.active) return false;
+  if (!canStartChampionsHall(state)) return false;
 
   deactivateAllMegaEvolutions(state);
   state.championsHall = {
@@ -96,6 +107,7 @@ export function finishChampionsHall(state) {
   state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
   state.activeTeamIndex = Math.max(0, state.team.findIndex((pokemon) => pokemon.hp > 0));
   state.championsHall = {
+    ...createInitialChampionsHallState(),
     ...normalizeChampionsHallState(hall, true),
     active: false,
     originRuntime: null
