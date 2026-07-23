@@ -79,6 +79,26 @@ function restoreCaptureCopy() {
   }
 }
 
+function syncHardCompletionCelebration(state, active) {
+  const hardJourneyComplete = state.campaignMode === "hard"
+    && Boolean(state.journey?.complete)
+    && !state.revisit?.active;
+  if (!hardJourneyComplete) return;
+
+  const shouldShow = Boolean(state.championsHall?.unlockCelebrationPending) && !active;
+  const scene = document.querySelector("#scene");
+  const completePanel = document.querySelector("#journey-complete-panel");
+  scene?.classList.toggle("journey-complete", shouldShow);
+  if (completePanel) completePanel.hidden = !shouldShow;
+}
+
+function closeCompletionDialogs() {
+  const hallUnlockDialog = document.querySelector("#champions-hall-unlock-dialog");
+  const hardUnlockDialog = document.querySelector("#hard-unlock-dialog");
+  if (hallUnlockDialog?.open) hallUnlockDialog.close();
+  if (hardUnlockDialog?.open) hardUnlockDialog.close();
+}
+
 function installEvents() {
   if (installed) return;
   installed = true;
@@ -96,6 +116,7 @@ function installEvents() {
     if (!currentState || !startChampionsHall(currentState)) return;
     saveGame(currentState);
     document.querySelector("#champions-hall-entry-dialog")?.close();
+    closeCompletionDialogs();
     document.querySelector("#hard-mode-button")?.click();
   });
 
@@ -121,7 +142,7 @@ function installEvents() {
 export function enhanceChampionsHallMarkup() {
   const actions = document.querySelector(".journey-menu-actions");
   if (actions && !document.querySelector("#champions-hall-menu-button")) {
-    actions.insertAdjacentHTML("afterbegin", `<button id="champions-hall-menu-button" class="champions-hall-menu-button" hidden><strong>SALÃO DOS CAMPEÕES</strong><small>Lendários e Míticos shiny · NV. 100 · captura 5%</small></button>`);
+    actions.insertAdjacentHTML("afterbegin", `<button id="champions-hall-menu-button" class="champions-hall-menu-button" hidden><strong>SALÃO DOS CAMPEÕES</strong></button>`);
   }
 
   if (!document.querySelector("#champions-hall-entry-dialog")) {
@@ -160,8 +181,10 @@ export function renderChampionsHallState(state) {
   const hud = document.querySelector("#champions-hall-hud");
   if (hud) hud.hidden = !active;
   applyBackground(active);
+  syncHardCompletionCelebration(state, active);
 
   if (active) {
+    closeCompletionDialogs();
     document.querySelector("#environment-label").textContent = "SALÃO DOS CAMPEÕES";
     document.querySelector("#area-name").textContent = "Salão dos Campeões";
     document.querySelector("#route-levels").textContent = "NV. 100 · TODOS SHINY";
@@ -179,7 +202,7 @@ export function renderChampionsHallState(state) {
   }
 
   const dialog = document.querySelector("#champions-hall-unlock-dialog");
-  const shouldOpen = Boolean(state.championsHall?.unlockCelebrationPending && !state.championsHall?.active);
+  const shouldOpen = Boolean(state.championsHall?.unlockCelebrationPending && !active);
   if (shouldOpen && !dialog?.open) dialog?.showModal();
   if (!shouldOpen && dialog?.open) dialog.close();
 }
