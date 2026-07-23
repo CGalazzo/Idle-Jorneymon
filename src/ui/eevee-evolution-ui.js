@@ -1,4 +1,5 @@
 import { POKEDEX_SPECIES } from "../data/pokemon.js";
+import { ensureEeveeEvolutionChoices } from "../systems/progression.js";
 
 let latestState = null;
 let latestCanOpen = false;
@@ -33,6 +34,7 @@ export function enhanceEeveeEvolutionMarkup() {
 export function renderEeveeEvolutionChoice(state, canOpen = true) {
   latestState = state;
   latestCanOpen = canOpen;
+  ensureEeveeEvolutionChoices(state);
 
   const dialog = document.querySelector("#eevee-evolution-dialog");
   if (!dialog) return;
