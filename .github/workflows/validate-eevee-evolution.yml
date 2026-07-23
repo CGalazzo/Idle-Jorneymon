@@ -1,0 +1,63 @@
+name: Validate Eevee Evolution
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Testar ofertas de evolução do Eevee
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { ensureEeveeEvolutionChoices } from './src/systems/progression.js';
+
+          function state(environmentId, team, pendingEvolutionChoices = []) {
+            return {
+              area: { environmentId },
+              journey: { worldIndex: 0 },
+              team,
+              storage: [],
+              pendingEvolutionChoices,
+              log: []
+            };
+          }
+
+          const inactiveEevee = { id: 133, uid: 'eevee-inativo', name: 'Eevee', level: 20 };
+          const activePokemon = { id: 25, uid: 'ativo', name: 'Pikachu', level: 20 };
+          const beach = state('praia', [activePokemon, inactiveEevee]);
+          assert.equal(ensureEeveeEvolutionChoices(beach), true);
+          assert.equal(beach.pendingEvolutionChoices.length, 1);
+          assert.equal(beach.pendingEvolutionChoices[0].pokemonUid, 'eevee-inativo');
+          assert.equal(beach.pendingEvolutionChoices[0].targetId, 134);
+          assert.equal(ensureEeveeEvolutionChoices(beach), false);
+          assert.equal(beach.pendingEvolutionChoices.length, 1);
+
+          const recovered = state('praia', [inactiveEevee], [{
+            pokemonUid: 'eevee-inativo',
+            targetId: 999,
+            environmentId: 'praia'
+          }]);
+          assert.equal(ensureEeveeEvolutionChoices(recovered), true);
+          assert.equal(recovered.pendingEvolutionChoices.length, 1);
+          assert.equal(recovered.pendingEvolutionChoices[0].targetId, 134);
+
+          const electric = state('usina-eletrica', [{ ...inactiveEevee, uid: 'eevee-jolteon' }]);
+          ensureEeveeEvolutionChoices(electric);
+          assert.equal(electric.pendingEvolutionChoices[0].targetId, 135);
+
+          const storageOnly = state('praia', []);
+          storageOnly.storage = [{ ...inactiveEevee, uid: 'eevee-storage' }];
+          assert.equal(ensureEeveeEvolutionChoices(storageOnly), false);
+          assert.equal(storageOnly.pendingEvolutionChoices.length, 0);
+          NODE
