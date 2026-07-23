@@ -1,0 +1,26 @@
+body.champions-hall-active #scene.capture .capture-panel {
+  left: auto;
+  right: 16px;
+  width: min(520px, 64%);
+  transform: none;
+}
+
+body.champions-hall-active #scene.capture .capture-pokemon {
+  left: 18%;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 700px) {
+  body.champions-hall-active #scene.capture .capture-panel {
+    right: 8px;
+    bottom: 12px;
+    width: 64%;
+  }
+
+  body.champions-hall-active #scene.capture .capture-pokemon {
+    left: 18%;
+    top: 47%;
+  }
+}
