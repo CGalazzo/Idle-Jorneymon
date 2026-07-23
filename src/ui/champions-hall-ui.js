@@ -58,15 +58,25 @@ function renderCaptureOptions(state) {
   if (!state.championsHall?.active || state.mode !== "capture") return;
   const root = document.querySelector("#capture-ball-options");
   if (root) {
-    root.innerHTML = `<button id="try-capture" class="champions-hall-capture-button">TENTAR CAPTURA — ${CHAMPIONS_HALL_CAPTURE_CHANCE}%<span>Chance fixa do Salão dos Campeões · nenhuma bola é consumida</span></button>`;
+    root.innerHTML = `<button id="try-capture" class="champions-hall-capture-button">CAPTURAR — ${CHAMPIONS_HALL_CAPTURE_CHANCE}%<span>Chance fixa do Salão dos Campeões · nenhuma bola é consumida</span></button>`;
   }
   const copy = document.querySelector("#capture-panel > p");
-  if (copy) copy.textContent = "Tente capturar este Campeão shiny ou deixe-o seguir. A chance é sempre de 5%.";
+  if (copy) copy.textContent = "Escolha capturar este Campeão shiny ou deixá-lo seguir. A chance é sempre de 5%.";
+  const declineButton = document.querySelector("#decline-capture");
+  if (declineButton) {
+    declineButton.textContent = "NÃO CAPTURAR";
+    declineButton.setAttribute("aria-label", "Não capturar este Pokémon e continuar no Salão dos Campeões");
+  }
 }
 
 function restoreCaptureCopy() {
   const copy = document.querySelector("#capture-panel > p");
   if (copy) copy.textContent = "Escolha como tentar adicionar este Pokémon à sua equipe.";
+  const declineButton = document.querySelector("#decline-capture");
+  if (declineButton) {
+    declineButton.textContent = "Não capturar";
+    declineButton.setAttribute("aria-label", "Não capturar este Pokémon");
+  }
 }
 
 function installEvents() {
