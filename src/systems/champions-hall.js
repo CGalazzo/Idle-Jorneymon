@@ -1,32 +1,6 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
+import { normalizeChampionsHallState } from "../data/champions-hall-data.js";
 import { deactivateAllMegaEvolutions } from "./mega.js";
-
-export function createInitialChampionsHallState() {
-  return {
-    unlocked: false,
-    unlockCelebrationPending: false,
-    unlockAcknowledged: false,
-    active: false,
-    originRuntime: null,
-    encounters: 0,
-    captures: 0
-  };
-}
-
-export function normalizeChampionsHallState(value = {}, hardComplete = false) {
-  const base = createInitialChampionsHallState();
-  return {
-    ...base,
-    ...value,
-    unlocked: Boolean(value.unlocked || hardComplete),
-    unlockCelebrationPending: Boolean(value.unlockCelebrationPending),
-    unlockAcknowledged: Boolean(value.unlockAcknowledged),
-    active: Boolean(value.active),
-    originRuntime: value.originRuntime || null,
-    encounters: Math.max(0, Number(value.encounters) || 0),
-    captures: Math.max(0, Number(value.captures) || 0)
-  };
-}
 
 function cloneValue(value) {
   if (value == null) return value;
