@@ -70,7 +70,7 @@ const ENTRIES = {
   larvesta: safariSpecies(636, "Larvesta", "Inseto/Fogo", "epic", "special"),
 
   feebas: safariSpecies(349, "Feebas", "Água"),
-  clamperl: safariSpecies(366, "Clamperl", "Água"),
+  magikarp: safariSpecies(129, "Magikarp", "Água"),
   corsola: safariSpecies(222, "Corsola", "Água/Pedra"),
   mantine: safariSpecies(226, "Mantine", "Água/Voador"),
   wishiwashi: safariSpecies(746, "Wishiwashi", "Água"),
@@ -136,7 +136,7 @@ export const SAFARI_HABITATS = [
     types: "Água · Gelo · Dragão",
     description: "Águas profundas com espécies aquáticas raras e épicas ausentes das praias comuns.",
     encounters: [
-      weighted(ENTRIES.feebas, 14), weighted(ENTRIES.clamperl, 14),
+      weighted(ENTRIES.feebas, 14), weighted(ENTRIES.magikarp, 14),
       weighted(ENTRIES.corsola, 14), weighted(ENTRIES.mantine, 14), weighted(ENTRIES.wishiwashi, 14),
       weighted(ENTRIES.relicanth, 7), weighted(ENTRIES.alomomola, 7),
       weighted(ENTRIES.bruxish, 7), weighted(ENTRIES.tatsugiri, 7), weighted(ENTRIES.dhelmise, 2)
