@@ -73,6 +73,7 @@ export function startChampionsHall(state) {
   state.championsHall = normalizeChampionsHallState(state.championsHall, false);
   if (!canStartChampionsHall(state)) return false;
 
+  acknowledgeChampionsHallUnlock(state);
   deactivateAllMegaEvolutions(state);
   state.championsHall = {
     ...state.championsHall,
