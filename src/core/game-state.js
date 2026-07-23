@@ -3,9 +3,10 @@ import { createStarter } from "../data/pokemon.js";
 import { createInitialSafariState } from "../data/safari-data.js";
 import { createInitialShopState } from "../data/shop-data.js";
 import { createAreaState } from "../data/worlds.js";
+import { createInitialChampionsHallState } from "../systems/champions-hall.js";
 
 export const GAME_VERSION = "0.6.1";
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 export const MAX_TEAM_SIZE = 3;
 
 export function createInitialState(starterId = 4, hasStarted = false) {
@@ -23,6 +24,7 @@ export function createInitialState(starterId = 4, hasStarted = false) {
     hardUnlockAcknowledged: false,
     hardEndgame: createInitialHardEndgameState(),
     safari: createInitialSafariState(),
+    championsHall: createInitialChampionsHallState(),
     journey: {
       worldIndex: 0,
       routeIndex: 0,
