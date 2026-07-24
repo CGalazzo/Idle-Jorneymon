@@ -5,7 +5,12 @@ import {
   getOfficialBaseStats,
   parseTypes
 } from "../data/battle-data.js";
-import { getMegaStone, getMegaStonesForSpecies } from "../data/mega-data.js";
+import {
+  getMegaFormData,
+  getMegaSpriteUrls,
+  getMegaStone,
+  getMegaStonesForSpecies
+} from "../data/mega-data.js";
 import { SHINY_STAT_MULTIPLIER, getPokemonSpriteUrls } from "../data/pokemon.js";
 import { normalizeShopState } from "../data/shop-data.js";
 
@@ -58,7 +63,10 @@ function applyMegaForm(pokemon, stone, { statMultiplier = 1, preserveHpRatio = f
   const previousHp = Math.max(0, Number(pokemon.hp) || 0);
   const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
   const hpRatio = previousHp / previousMaxHp;
-  const megaBaseStats = getOfficialBaseStats(stone.formId, fallbackMegaTemplate(pokemon));
+  const customForm = getMegaFormData(stone);
+  const megaBaseStats = customForm?.baseStats
+    || getOfficialBaseStats(stone.formId, fallbackMegaTemplate(pokemon));
+  const megaType = customForm?.type || stone.type;
   const calculated = applyShinyBonus(
     calculatePokemonStats(megaBaseStats, pokemon.level, pokemon.iv),
     Boolean(pokemon.isShiny)
@@ -70,12 +78,13 @@ function applyMegaForm(pokemon, stone, { statMultiplier = 1, preserveHpRatio = f
     });
   }
 
-  const sprites = getPokemonSpriteUrls(stone.formId, Boolean(pokemon.isShiny));
+  const sprites = getMegaSpriteUrls(stone, Boolean(pokemon.isShiny))
+    || getPokemonSpriteUrls(stone.formId, Boolean(pokemon.isShiny));
   pokemon.megaOriginal = createMegaSnapshot(pokemon);
   Object.assign(pokemon, {
     name: stone.megaName,
-    type: stone.type,
-    types: parseTypes(stone.type),
+    type: megaType,
+    types: parseTypes(megaType),
     baseStats: megaBaseStats,
     ...calculated,
     hp: preserveHpRatio
@@ -83,7 +92,8 @@ function applyMegaForm(pokemon, stone, { statMultiplier = 1, preserveHpRatio = f
       : Math.min(previousHp, calculated.maxHp),
     sprite: sprites.sprite,
     backSprite: sprites.backSprite,
-    moves: buildMoveSet(stone.type, megaBaseStats),
+    moves: buildMoveSet(megaType, megaBaseStats),
+    heightDm: Math.max(1, Number(customForm?.heightDm) || Number(pokemon.heightDm) || 10),
     isMega: true,
     megaFormId: stone.formId,
     activeMegaStoneId: stone.id
