@@ -12,6 +12,12 @@ function captureAnimationEnabled() {
   return localStorage.getItem(CAPTURE_ANIMATION_SETTING_KEY) !== "false";
 }
 
+function isCaptureButton(target) {
+  const button = target?.closest?.("#try-capture, [data-capture-ball]");
+  if (!button || button.disabled || !button.closest("#capture-ball-options")) return null;
+  return button;
+}
+
 function restoreCountdownClock() {
   if (!countdownPaused) return;
 
@@ -39,8 +45,8 @@ function watchAnimationCompletion() {
 
     if (animationLayer) sawAnimationLayer = true;
 
-    // O módulo da animação remove a camada e, no mesmo fluxo, executa a
-    // captura real. O observer só roda depois disso, quando o painel já fechou.
+    // A captura real é executada logo após a camada visual ser removida.
+    // O relógio só volta quando a animação terminou ou o painel já foi fechado.
     if ((sawAnimationLayer && !animationLayer) || capturePanel?.hidden) {
       restoreCountdownClock();
     }
@@ -55,7 +61,7 @@ function watchAnimationCompletion() {
 }
 
 function pauseCountdownClock() {
-  if (countdownPaused) return;
+  if (countdownPaused || !captureAnimationEnabled()) return;
 
   countdownPaused = true;
   frozenTimestamp = originalDateNow();
@@ -66,15 +72,18 @@ function pauseCountdownClock() {
   cleanupTimer = window.setTimeout(restoreCountdownClock, MAX_PAUSE_MS);
 }
 
+// O Safari e o Salão dos Campeões possuem tratamentos próprios de pointerdown
+// que podem interromper o evento antes de chegar ao document. Escutar no window,
+// durante a captura, garante a pausa antes de qualquer modo especial agir.
+window.addEventListener("pointerdown", (event) => {
+  if (!event.isTrusted || !isCaptureButton(event.target)) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  pauseCountdownClock();
+}, true);
+
+// Mantém suporte a teclado e dispositivos que disparam apenas click.
 document.addEventListener("click", (event) => {
-  // Ignora o clique programático usado pela animação para concluir a captura.
-  if (!event.isTrusted || !captureAnimationEnabled()) return;
-
-  const button = event.target.closest("#try-capture, [data-capture-ball]");
-  if (!button || button.disabled || !button.closest("#capture-ball-options")) return;
-
-  // Este listener é carregado antes do interceptor visual. Assim, o relógio
-  // congela no exato instante do clique, antes do primeiro frame da animação.
+  if (!event.isTrusted || !isCaptureButton(event.target)) return;
   pauseCountdownClock();
 }, true);
 
