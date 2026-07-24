@@ -12,19 +12,13 @@ body.champions-hall-active #scene.capture .capture-pokemon {
   transform: translate(-50%, -50%);
 }
 
-/* No Salão, a Poké Bola comum mantém as partes brancas e escuras,
-   mas a faixa vermelha ganha aparência dourada. */
+/* Mantém as cores originais da Luxury Ball e apenas reforça a leitura no cenário. */
 body.champions-hall-active .capture-throw-ball img {
-  filter:
-    hue-rotate(43deg)
-    saturate(1.55)
-    brightness(1.1)
-    contrast(1.06)
-    drop-shadow(0 9px 6px rgba(0, 0, 0, .38));
+  filter: drop-shadow(0 9px 6px rgba(0, 0, 0, .42));
 }
 
 body.champions-hall-active .capture-throw-ball::after {
-  background: linear-gradient(90deg, transparent, rgba(255, 221, 103, .82));
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 94, .82));
 }
 
 @media (max-width: 700px) {
