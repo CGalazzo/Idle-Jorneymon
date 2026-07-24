@@ -1,10 +1,35 @@
 import { addLog, getActivePokemon } from "../core/game-state.js";
 import { createChampionsHallPokemon } from "../data/champions-hall-pokemon.js";
-import { createWildPokemon } from "../data/pokemon.js";
+import {
+  evolutionLevelCapsReady,
+  getEvolutionSafeEncounterLevel
+} from "../data/evolution-level-cap.js";
+import { createWildPokemon, normalizePokemonInstance } from "../data/pokemon.js";
 import { createSafariPokemon } from "../data/safari-pokemon.js";
 import { registerPokedexSeen } from "./pokedex.js";
 
 const APPROACH_DURATION_SECONDS = 2.8;
+
+function applyEvolutionSafeEncounterLevel(pokemon) {
+  if (!pokemon) return pokemon;
+  const previousLevel = Math.max(1, Math.min(100, Number(pokemon.level) || 1));
+  const safeLevel = getEvolutionSafeEncounterLevel(pokemon.id, previousLevel);
+  if (safeLevel >= previousLevel) return pokemon;
+
+  const previousReward = Math.max(0, Number(pokemon.xpReward) || 0);
+  const normalized = normalizePokemonInstance({
+    ...pokemon,
+    level: safeLevel
+  }, { refreshExperienceCurve: true, heal: true });
+
+  if (previousReward > 0) {
+    const previousScale = 1 + previousLevel * 0.12;
+    const safeScale = 1 + safeLevel * 0.12;
+    normalized.xpReward = Math.max(1, Math.round(previousReward * safeScale / previousScale));
+  }
+
+  return normalized;
+}
 
 export function updateExploration(state, deltaSeconds, random = Math.random) {
   const completedJourneyWithoutActiveMode = state.journey?.complete
@@ -16,12 +41,17 @@ export function updateExploration(state, deltaSeconds, random = Math.random) {
   state.exploration += deltaSeconds * 7.5;
   if (state.exploration < state.nextEncounterAt) return;
 
+  // Aguarda a tabela oficial de cadeias evolutivas antes de criar o encontro.
+  // Em caso de falha de rede, o módulo libera automaticamente as regras locais.
+  if (!evolutionLevelCapsReady()) return;
+
   const activePokemon = getActivePokemon(state);
-  state.enemy = state.championsHall?.active
+  const generatedPokemon = state.championsHall?.active
     ? createChampionsHallPokemon(random)
     : state.safari?.active
       ? createSafariPokemon(state, random)
       : createWildPokemon(state, activePokemon.level, random);
+  state.enemy = applyEvolutionSafeEncounterLevel(generatedPokemon);
   state.battleParticipants = [activePokemon.uid];
   state.approachProgress = 0;
   if (state.championsHall?.active) state.championsHall.encounters += 1;
