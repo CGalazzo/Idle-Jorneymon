@@ -1,26 +1,42 @@
 body.champions-hall-active #scene.capture .capture-panel {
-  left: auto;
-  right: 16px;
+  left: 16px;
+  right: auto;
   width: min(520px, 64%);
   transform: none;
 }
 
 body.champions-hall-active #scene.capture .capture-pokemon {
-  left: 18%;
+  left: 82%;
   top: 50%;
   z-index: 6;
   transform: translate(-50%, -50%);
 }
 
+/* No Salão, a Poké Bola comum mantém as partes brancas e escuras,
+   mas a faixa vermelha ganha aparência dourada. */
+body.champions-hall-active .capture-throw-ball img {
+  filter:
+    hue-rotate(43deg)
+    saturate(1.55)
+    brightness(1.1)
+    contrast(1.06)
+    drop-shadow(0 9px 6px rgba(0, 0, 0, .38));
+}
+
+body.champions-hall-active .capture-throw-ball::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 221, 103, .82));
+}
+
 @media (max-width: 700px) {
   body.champions-hall-active #scene.capture .capture-panel {
-    right: 8px;
+    left: 8px;
+    right: auto;
     bottom: 12px;
     width: 64%;
   }
 
   body.champions-hall-active #scene.capture .capture-pokemon {
-    left: 18%;
+    left: 82%;
     top: 47%;
   }
 }
