@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1830" />
+    <title>Voltando ao Idle Jorneymon</title>
+    <style>
+      *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#0b1830;color:#edf7ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.card{width:min(420px,100%);padding:24px;border:1px solid #5aa8d955;border-radius:20px;background:#112843;text-align:center;box-shadow:0 20px 60px #0007}.spinner{width:48px;height:48px;margin:0 auto 16px;border:5px solid #ffffff2e;border-top-color:#62c7ff;border-radius:50%;animation:spin .8s linear infinite}.ok{color:#8ff0b9}.error{color:#ff9da3}button{width:100%;min-height:48px;margin-top:16px;border:0;border-radius:12px;background:#2d82ba;color:white;font-weight:900;font-size:14px}@keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div id="spinner" class="spinner"></div>
+      <h1 id="title">Concluindo login…</h1>
+      <p id="message">O Google será fechado e o Idle Jorneymon abrirá automaticamente.</p>
+      <button id="return-button" type="button" hidden>Voltar ao aplicativo</button>
+    </main>
+    <script>
+      (() => {
+        const PACKAGE_NAME = "com.caiogalazzo.idlejorneymon";
+        const title = document.querySelector("#title");
+        const message = document.querySelector("#message");
+        const spinner = document.querySelector("#spinner");
+        const button = document.querySelector("#return-button");
+        const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+        const accessToken = hash.get("access_token") || "";
+        const refreshToken = hash.get("refresh_token") || "";
+        const error = hash.get("error_description") || hash.get("error") || "";
+
+        function buildIntentUrl() {
+          const query = new URLSearchParams({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          return `intent://auth-callback?${query.toString()}#Intent;scheme=idlejorneymon;package=${PACKAGE_NAME};end`;
+        }
+
+        function returnToApp() {
+          location.href = buildIntentUrl();
+        }
+
+        history.replaceState({}, document.title, location.pathname);
+
+        if (error || !accessToken || !refreshToken) {
+          spinner.hidden = true;
+          title.textContent = "Não foi possível entrar";
+          title.className = "error";
+          message.textContent = error || "O Google não devolveu uma sessão válida. Volte ao aplicativo e tente novamente.";
+          return;
+        }
+
+        title.textContent = "Conta conectada";
+        title.className = "ok";
+        message.textContent = "Voltando ao Idle Jorneymon…";
+        button.hidden = false;
+        button.addEventListener("click", returnToApp);
+
+        window.setTimeout(returnToApp, 120);
+        window.setTimeout(() => {
+          spinner.hidden = true;
+          message.textContent = "Toque abaixo caso o aplicativo não tenha aberto automaticamente.";
+        }, 1600);
+      })();
+    </script>
+  </body>
+</html>
