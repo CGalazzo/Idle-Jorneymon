@@ -40,7 +40,7 @@
 
     try {
       if (button.classList.contains("champions-hall-capture-button")) {
-        button.dataset.captureBall = "poke-ball";
+        button.dataset.captureBall = "luxury-ball";
       }
       button.click();
     } finally {
