@@ -1,5 +1,5 @@
 const CAPTURE_ANIMATION_SETTING_KEY = "idle-jorneymon-capture-animation-enabled";
-const MAX_PAUSE_MS = 5000;
+const MAX_PAUSE_MS = 7000;
 
 const originalDateNow = Date.now.bind(Date);
 let countdownPaused = false;
@@ -7,6 +7,8 @@ let frozenTimestamp = 0;
 let sawAnimationLayer = false;
 let cleanupTimer = null;
 let animationObserver = null;
+
+window.__idleJorneymonCaptureTimerPaused = false;
 
 function captureAnimationEnabled() {
   return localStorage.getItem(CAPTURE_ANIMATION_SETTING_KEY) !== "false";
@@ -22,6 +24,7 @@ function restoreCountdownClock() {
   if (!countdownPaused) return;
 
   countdownPaused = false;
+  window.__idleJorneymonCaptureTimerPaused = false;
   Date.now = originalDateNow;
   document.body.classList.remove("capture-countdown-paused");
 
@@ -64,6 +67,7 @@ function pauseCountdownClock() {
   if (countdownPaused || !captureAnimationEnabled()) return;
 
   countdownPaused = true;
+  window.__idleJorneymonCaptureTimerPaused = true;
   frozenTimestamp = originalDateNow();
   Date.now = () => frozenTimestamp;
   document.body.classList.add("capture-countdown-paused");
@@ -75,6 +79,7 @@ function pauseCountdownClock() {
 // Permite que modos com tratamento próprio de toque, como o Salão dos
 // Campeões, pausem o relógio antes de gerar o clique programático.
 window.__idleJorneymonPauseCaptureTimer = pauseCountdownClock;
+window.__idleJorneymonRestoreCaptureTimer = restoreCountdownClock;
 
 // O Safari e o Salão dos Campeões possuem tratamentos próprios de pointerdown
 // que podem interromper o evento antes de chegar ao document. Escutar no window,
