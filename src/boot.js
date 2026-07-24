@@ -1,4 +1,8 @@
 import { loadMegaFormData } from "./data/mega-data.js";
 
-await loadMegaFormData();
+const megaDataRequest = loadMegaFormData();
+await Promise.race([
+  megaDataRequest,
+  new Promise((resolve) => window.setTimeout(resolve, 6000))
+]);
 await import("./main.js");
