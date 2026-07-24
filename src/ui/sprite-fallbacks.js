@@ -3,7 +3,7 @@ const SHOWDOWN_SPRITE_BASE = "https://play.pokemonshowdown.com/sprites";
 const SHOWDOWN_PATTERN = /\/sprites\/pokemon\/other\/showdown\/(back\/)?(shiny\/)?(\d+)\.gif(?:\?.*)?$/i;
 const STATIC_BACK_PATTERN = /\/sprites\/pokemon\/back\/(shiny\/)?(\d+)\.png(?:\?.*)?$/i;
 const NAMED_SHOWDOWN_ANIMATED_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(ani|ani-back|ani-shiny|ani-back-shiny)\/([^/?]+)\.gif(?:\?.*)?$/i;
-const NAMED_SHOWDOWN_STATIC_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(afd|afd-back|afd-shiny|afd-back-shiny)\/([^/?]+)\.png(?:\?.*)?$/i;
+const NAMED_SHOWDOWN_STATIC_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(gen5|gen5-back|gen5-shiny|gen5-back-shiny)\/([^/?]+)\.png(?:\?.*)?$/i;
 
 function staticSpriteUrl(id, { shiny = false, back = false } = {}) {
   const backPath = back ? "back/" : "";
@@ -17,17 +17,17 @@ function namedShowdownUrl(directory, slug) {
 
 function namedStaticDirectory(animatedDirectory) {
   return {
-    ani: "afd",
-    "ani-back": "afd-back",
-    "ani-shiny": "afd-shiny",
-    "ani-back-shiny": "afd-back-shiny"
-  }[animatedDirectory] || "afd";
+    ani: "gen5",
+    "ani-back": "gen5-back",
+    "ani-shiny": "gen5-shiny",
+    "ani-back-shiny": "gen5-back-shiny"
+  }[animatedDirectory] || "gen5";
 }
 
 function nextNamedStaticFallback(directory) {
-  if (directory === "afd-back-shiny") return "afd-back";
-  if (directory === "afd-shiny") return "afd";
-  if (directory === "afd-back") return "afd";
+  if (directory === "gen5-back-shiny") return "gen5-back";
+  if (directory === "gen5-shiny") return "gen5";
+  if (directory === "gen5-back") return "gen5";
   return null;
 }
 
