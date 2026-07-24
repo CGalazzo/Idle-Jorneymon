@@ -15,6 +15,7 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
+    // Marcador sem efeito funcional para validar a compilação do APK no pull request.
     private static final String APP_URL = "https://idle-jorneymon.vercel.app/";
     private static final String APP_HOST = Uri.parse(APP_URL).getHost();
     private static final String AUTH_SCHEME = "idlejorneymon";
