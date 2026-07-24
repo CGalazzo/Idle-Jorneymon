@@ -7,7 +7,11 @@ import { registerPokedexSeen } from "./pokedex.js";
 const APPROACH_DURATION_SECONDS = 2.8;
 
 export function updateExploration(state, deltaSeconds, random = Math.random) {
-  if (state.journey?.complete && !state.safari?.active && !state.championsHall?.active) return;
+  const completedJourneyWithoutActiveMode = state.journey?.complete
+    && !state.revisit?.active
+    && !state.safari?.active
+    && !state.championsHall?.active;
+  if (completedJourneyWithoutActiveMode) return;
 
   state.exploration += deltaSeconds * 7.5;
   if (state.exploration < state.nextEncounterAt) return;
