@@ -39,6 +39,9 @@
     event.stopImmediatePropagation();
 
     try {
+      if (button.classList.contains("champions-hall-capture-button")) {
+        button.dataset.captureBall = "poke-ball";
+      }
       button.click();
     } finally {
       window.setTimeout(() => {
