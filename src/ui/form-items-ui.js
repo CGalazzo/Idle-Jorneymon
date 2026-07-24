@@ -1,5 +1,6 @@
 import "../styles/form-items.css";
 import { FORM_ITEMS, getFormItem } from "../data/form-items-data.js";
+import { HARD_SHOP_ITEMS } from "../data/hard-endgame-data.js";
 import { BALL_DEFINITIONS } from "../data/shop-data.js";
 import {
   getOwnedFormItemsForSpecies,
@@ -21,6 +22,10 @@ function itemSpriteUrl(itemId) {
 
 function formItemSprite(item) {
   return `<img class="item-sprite" src="${itemSpriteUrl(item?.id || "reveal-glass")}" data-fallback-src="${itemSpriteUrl("mega-stone")}" alt="${item?.name || "Item de Forma"}" loading="lazy" decoding="async" />`;
+}
+
+function hardItemSprite(item) {
+  return `<img class="item-sprite" src="${itemSpriteUrl(item?.spriteId || "master-ball")}" data-fallback-src="${itemSpriteUrl("master-ball")}" alt="${item?.name || "Item Hard"}" loading="lazy" decoding="async" />`;
 }
 
 function compatibleNames(item) {
@@ -148,6 +153,9 @@ export function enhanceFormItemsMarkup() {
   if (summary && !document.querySelector("#inventory-form-item-total")) {
     summary.insertAdjacentHTML("beforeend", '<div><small>ITENS DE FORMA</small><strong id="inventory-form-item-total">0</strong></div>');
   }
+  if (summary && !document.querySelector("#inventory-hard-item-total")) {
+    summary.insertAdjacentHTML("beforeend", '<div><small>ITENS HARD</small><strong id="inventory-hard-item-total">0</strong></div>');
+  }
 
   const inventoryScroll = document.querySelector(".inventory-scroll");
   if (inventoryScroll && !document.querySelector("#inventory-form-item-grid")) {
@@ -155,6 +163,14 @@ export function enhanceFormItemsMarkup() {
       <section class="inventory-section">
         <div class="inventory-heading"><span class="inventory-icon mega">${formItemSprite()}</span><div><small>FORMAS ESPECIAIS</small><h3>Itens de Forma</h3></div></div>
         <div id="inventory-form-item-grid" class="inventory-grid"></div>
+      </section>
+    `);
+  }
+  if (inventoryScroll && !document.querySelector("#inventory-hard-item-grid")) {
+    inventoryScroll.insertAdjacentHTML("beforeend", `
+      <section class="inventory-section">
+        <div class="inventory-heading"><span class="inventory-icon ball">${hardItemSprite(HARD_SHOP_ITEMS[0])}</span><div><small>RECOMPENSAS DO MODO HARD</small><h3>Itens Hard</h3></div></div>
+        <div id="inventory-hard-item-grid" class="inventory-grid"></div>
       </section>
     `);
   }
@@ -230,8 +246,45 @@ function renderFormItemInventory(state) {
     : '<div class="inventory-empty"><span>□</span><strong>Nenhum item de forma comprado</strong><p>Os itens adquiridos na loja aparecerão aqui.</p></div>';
 }
 
+function getOwnedHardItems(state) {
+  const hardEndgame = state.hardEndgame || {};
+  const masterBallStock = Math.max(0, Number(state.shop?.balls?.["master-ball"]) || 0);
+
+  return HARD_SHOP_ITEMS.flatMap((item) => {
+    if (item.id === "master-ball") {
+      return masterBallStock > 0 ? [{ ...item, quantity: masterBallStock, status: "CONSUMÍVEL HARD" }] : [];
+    }
+    if (item.id === "hard-shiny-charm") {
+      return hardEndgame.shinyCharmOwned ? [{ ...item, quantity: 1, status: "ATIVO PERMANENTEMENTE" }] : [];
+    }
+    if (item.id === "hard-champion-badge") {
+      return hardEndgame.championBadgeOwned ? [{ ...item, quantity: 1, status: "ITEM COSMÉTICO PERMANENTE" }] : [];
+    }
+    return [];
+  });
+}
+
+function renderHardItemInventory(state) {
+  const root = document.querySelector("#inventory-hard-item-grid");
+  if (!root) return;
+  const owned = getOwnedHardItems(state);
+
+  root.innerHTML = owned.length
+    ? owned.map((item) => `<article class="inventory-item featured">
+        <span class="inventory-item-icon ball ${item.id}">${hardItemSprite(item)}</span>
+        <div><small>${item.status}</small><strong>${item.name}</strong><p>${item.description}</p></div>
+        <em>${item.id === "master-ball" ? `x${item.quantity}` : "ADQUIRIDO"}</em>
+      </article>`).join("")
+    : '<div class="inventory-empty"><span>□</span><strong>Nenhum item Hard comprado</strong><p>Master Ball, Amuleto Shiny e Insígnia do Campeão adquiridos na Loja Hard aparecerão aqui.</p></div>';
+
+  const summary = document.querySelector("#inventory-hard-item-total");
+  if (summary) summary.textContent = String(owned.reduce((total, item) => total + item.quantity, 0));
+}
+
 export function renderFormItems(state) {
   const ownedTotal = Array.isArray(state.shop?.ownedFormItems) ? state.shop.ownedFormItems.length : 0;
+  const hardPermanentTotal = Number(Boolean(state.hardEndgame?.shinyCharmOwned))
+    + Number(Boolean(state.hardEndgame?.championBadgeOwned));
   const summary = document.querySelector("#inventory-form-item-total");
   if (summary) summary.textContent = String(ownedTotal);
 
@@ -239,9 +292,11 @@ export function renderFormItems(state) {
   const inventoryCount = ballTotal
     + (Number(state.shop?.expShareLevel) > 0 ? 1 : 0)
     + (Array.isArray(state.shop?.ownedMegaStones) ? state.shop.ownedMegaStones.length : 0)
-    + ownedTotal;
+    + ownedTotal
+    + hardPermanentTotal;
   const itemsCount = document.querySelector("#items-count");
   if (itemsCount) itemsCount.textContent = String(inventoryCount);
   renderFormItemShop(state);
   renderFormItemInventory(state);
+  renderHardItemInventory(state);
 }
