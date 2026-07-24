@@ -8,15 +8,31 @@
 
 .capture-throw-ball {
   position: absolute;
-  left: var(--capture-start-x, 10%);
-  top: var(--capture-start-y, 88%);
-  z-index: 2;
-  width: 48px;
-  height: 48px;
+  left: var(--capture-start-x, 88%);
+  top: var(--capture-start-y, 78%);
+  z-index: 3;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
   transform: translate(-50%, -50%);
-  animation: captureBallThrow 1450ms cubic-bezier(.18, .64, .22, 1) forwards;
+  animation: captureBallOfficialThrow 2250ms cubic-bezier(.2, .58, .2, 1) forwards;
+}
+
+.capture-throw-ball::after {
+  content: "";
+  position: absolute;
+  right: 60%;
+  top: 50%;
+  z-index: -1;
+  width: 54px;
+  height: 13px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.68));
+  filter: blur(3px);
+  opacity: 0;
+  transform: translateY(-50%);
+  animation: captureThrowTrail 1450ms ease-out forwards;
 }
 
 .capture-throw-ball img {
@@ -24,53 +40,118 @@
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
-  filter: drop-shadow(0 8px 5px rgba(0, 0, 0, .32));
-  animation: captureBallSpin 260ms linear infinite;
+  filter: drop-shadow(0 9px 6px rgba(0, 0, 0, .38));
+  animation: captureBallSpin 240ms linear infinite;
+}
+
+.capture-impact-flash,
+.capture-impact-ring {
+  position: absolute;
+  left: var(--capture-target-x, 50%);
+  top: var(--capture-target-y, 36%);
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.2);
 }
 
 .capture-impact-flash {
+  z-index: 4;
+  width: 38px;
+  height: 38px;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 0 26px 15px rgba(255,255,255,.78), 0 0 48px 24px rgba(255,86,86,.36);
+  animation: captureImpactFlash 390ms 1420ms ease-out forwards;
+}
+
+.capture-impact-ring {
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border: 5px solid rgba(255,243,196,.92);
+  box-shadow: 0 0 20px rgba(255,86,86,.85), inset 0 0 18px rgba(255,255,255,.65);
+  animation: captureImpactRing 520ms 1435ms ease-out forwards;
+}
+
+.capture-drop-shadow {
   position: absolute;
-  left: var(--capture-target-x, 50%);
-  top: var(--capture-target-y, 34%);
-  width: 30px;
-  height: 30px;
+  left: var(--capture-drop-x, 50%);
+  top: var(--capture-drop-y, 64%);
+  z-index: 1;
+  width: 56px;
+  height: 13px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .95);
-  box-shadow: 0 0 0 0 rgba(117, 224, 255, .7), 0 0 28px 12px rgba(255, 255, 255, .65);
+  background: rgba(24,42,31,.32);
+  filter: blur(2px);
   opacity: 0;
-  transform: translate(-50%, -50%) scale(.25);
-  animation: captureImpactFlash 350ms 1370ms ease-out forwards;
+  transform: translate(-50%, -50%) scale(.35);
+  animation: captureDropShadow 620ms 1650ms ease-out forwards;
 }
 
 .capture-animation-target .capture-pokemon {
-  animation: captureTargetHit 430ms 1320ms ease-out both;
+  animation: capturePokemonIntoBall 650ms 1370ms ease-in forwards;
 }
 
 .capture-animation-running {
   pointer-events: none;
 }
 
-@keyframes captureBallThrow {
+@keyframes captureBallOfficialThrow {
   0% {
-    left: var(--capture-start-x, 10%);
-    top: var(--capture-start-y, 88%);
-    transform: translate(-50%, -50%) scale(.72);
+    left: var(--capture-start-x, 88%);
+    top: var(--capture-start-y, 78%);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.72) rotate(0deg);
   }
-  31% {
-    left: var(--capture-clear-x, 18%);
-    top: var(--capture-clear-y, 58%);
-    transform: translate(-50%, -50%) scale(.92);
+  5% {
+    opacity: 1;
   }
-  68% {
-    left: var(--capture-arc-x, 34%);
-    top: var(--capture-arc-y, 20%);
-    transform: translate(-50%, -50%) scale(1.12);
+  14% {
+    left: var(--capture-start-x, 88%);
+    top: var(--capture-start-y, 78%);
+    transform: translate(-50%, -50%) scale(.86) rotate(-18deg);
+  }
+  29% {
+    left: var(--capture-clear-x, 87%);
+    top: var(--capture-clear-y, 53%);
+    transform: translate(-50%, -50%) scale(1) rotate(35deg);
+  }
+  53% {
+    left: var(--capture-arc-x, 69%);
+    top: var(--capture-arc-y, 18%);
+    transform: translate(-50%, -50%) scale(1.13) rotate(160deg);
+  }
+  65% {
+    left: var(--capture-target-x, 50%);
+    top: var(--capture-target-y, 36%);
+    transform: translate(-50%, -50%) scale(.92) rotate(250deg);
+  }
+  72% {
+    left: var(--capture-target-x, 50%);
+    top: var(--capture-target-y, 36%);
+    transform: translate(-50%, -50%) scale(.98) rotate(285deg);
+  }
+  83% {
+    left: var(--capture-drop-x, 50%);
+    top: var(--capture-drop-y, 64%);
+    transform: translate(-50%, -50%) scale(.94) rotate(355deg);
+  }
+  91% {
+    left: var(--capture-drop-x, 50%);
+    top: var(--capture-bounce-y, 59%);
+    transform: translate(-50%, -50%) scale(.97) rotate(385deg);
   }
   100% {
-    left: var(--capture-target-x, 50%);
-    top: var(--capture-target-y, 34%);
-    transform: translate(-50%, -50%) scale(.9);
+    left: var(--capture-drop-x, 50%);
+    top: var(--capture-drop-y, 64%);
+    transform: translate(-50%, -50%) scale(.94) rotate(410deg);
   }
+}
+
+@keyframes captureThrowTrail {
+  0%, 9% { opacity: 0; transform: translateY(-50%) scaleX(.3); }
+  28% { opacity: .7; transform: translateY(-50%) scaleX(1); }
+  72% { opacity: .42; transform: translateY(-50%) scaleX(.72); }
+  100% { opacity: 0; transform: translateY(-50%) scaleX(.2); }
 }
 
 @keyframes captureBallSpin {
@@ -78,14 +159,44 @@
 }
 
 @keyframes captureImpactFlash {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
-  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); box-shadow: 0 0 0 12px rgba(117, 224, 255, .34), 0 0 34px 18px rgba(255, 255, 255, .75); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); box-shadow: 0 0 0 28px rgba(117, 224, 255, 0), 0 0 38px 20px rgba(255, 255, 255, 0); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.15); }
+  34% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.8); }
 }
 
-@keyframes captureTargetHit {
-  0%, 100% { opacity: 1; filter: brightness(1); transform: translateX(-50%) scale(1); }
-  55% { opacity: .3; filter: brightness(2.4); transform: translateX(-50%) scale(.82); }
+@keyframes captureImpactRing {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  24% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3.1); }
+}
+
+@keyframes capturePokemonIntoBall {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+    transform: translateX(-50%) scale(1);
+  }
+  22% {
+    opacity: 1;
+    filter: brightness(3) saturate(.4);
+    transform: translateX(-50%) scale(1.04);
+  }
+  58% {
+    opacity: .72;
+    filter: brightness(3.8) saturate(.1);
+    transform: translateX(-50%) scale(.68);
+  }
+  100% {
+    opacity: 0;
+    filter: brightness(4) saturate(0);
+    transform: translateX(-50%) scale(.16);
+  }
+}
+
+@keyframes captureDropShadow {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
+  55% { opacity: .28; transform: translate(-50%, -50%) scale(1.08); }
+  100% { opacity: .38; transform: translate(-50%, -50%) scale(.92); }
 }
 
 .capture-animation-setting {
@@ -167,7 +278,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .capture-throw-ball { animation-duration: 900ms; }
-  .capture-impact-flash { animation-delay: 820ms; animation-duration: 180ms; }
-  .capture-animation-target .capture-pokemon { animation-delay: 790ms; animation-duration: 220ms; }
+  .capture-throw-ball { animation-duration: 1450ms; }
+  .capture-impact-flash { animation-delay: 900ms; animation-duration: 260ms; }
+  .capture-impact-ring { animation-delay: 910ms; animation-duration: 310ms; }
+  .capture-animation-target .capture-pokemon { animation-delay: 860ms; animation-duration: 390ms; }
+  .capture-drop-shadow { animation-delay: 1080ms; animation-duration: 360ms; }
 }
