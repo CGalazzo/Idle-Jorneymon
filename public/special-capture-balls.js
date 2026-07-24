@@ -8,8 +8,8 @@
       button.setAttribute("aria-label", "Usar Safari Ball");
     }
     if (button.classList.contains("champions-hall-capture-button")) {
-      button.dataset.captureBall = "poke-ball";
-      button.setAttribute("aria-label", "Usar Poké Bola dourada do Salão dos Campeões");
+      button.dataset.captureBall = "luxury-ball";
+      button.setAttribute("aria-label", "Usar Luxury Ball no Salão dos Campeões");
     }
   }
 
