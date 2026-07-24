@@ -135,11 +135,11 @@
         ...options,
         auth: {
           ...authOptions,
-          storage: durableStorage,
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          flowType: "pkce"
+          storage: authOptions.storage || durableStorage,
+          persistSession: authOptions.persistSession ?? true,
+          autoRefreshToken: authOptions.autoRefreshToken ?? true,
+          detectSessionInUrl: authOptions.detectSessionInUrl ?? true,
+          flowType: authOptions.flowType || "pkce"
         }
       });
     };
