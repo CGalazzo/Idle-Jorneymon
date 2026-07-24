@@ -1,0 +1,949 @@
+name: Apply Legendary Form Items
+
+on:
+  push:
+    branches: [feat/legendary-form-items]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/legendary-form-items
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Aplicar sistema de itens de forma
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Trecho não encontrado em {path}: {old[:100]!r}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          def write(path, content):
+              file = Path(path)
+              file.parent.mkdir(parents=True, exist_ok=True)
+              file.write_text(content.strip() + "\n", encoding="utf-8")
+
+          write("src/data/form-items-data.js", r'''
+          export const FORM_ITEMS = [
+            {
+              id: "red-orb",
+              name: "Orbe Vermelho",
+              price: 36000,
+              description: "Desperta o poder ancestral de Groudon e ativa sua Reversão Primal.",
+              forms: [
+                { baseSpeciesId: 383, baseName: "Groudon", formId: 10078, formName: "Groudon Primal", type: "Terra/Fogo" }
+              ]
+            },
+            {
+              id: "blue-orb",
+              name: "Orbe Azul",
+              price: 36000,
+              description: "Desperta o poder ancestral de Kyogre e ativa sua Reversão Primal.",
+              forms: [
+                { baseSpeciesId: 382, baseName: "Kyogre", formId: 10077, formName: "Kyogre Primal", type: "Água" }
+              ]
+            },
+            {
+              id: "griseous-core",
+              name: "Núcleo Griseous",
+              price: 30000,
+              description: "Permite que Giratina assuma permanentemente sua Forma Origem enquanto estiver equipado.",
+              forms: [
+                { baseSpeciesId: 487, baseName: "Giratina", formId: 10007, formName: "Giratina Forma Origem", type: "Fantasma/Dragão" }
+              ]
+            },
+            {
+              id: "reveal-glass",
+              name: "Espelho da Verdade",
+              price: 28000,
+              description: "Revela a Forma Therian das Forças da Natureza. Pode ficar equipado em apenas uma delas por vez.",
+              forms: [
+                { baseSpeciesId: 641, baseName: "Tornadus", formId: 10019, formName: "Tornadus Forma Therian", type: "Voador" },
+                { baseSpeciesId: 642, baseName: "Thundurus", formId: 10020, formName: "Thundurus Forma Therian", type: "Elétrico/Voador" },
+                { baseSpeciesId: 645, baseName: "Landorus", formId: 10021, formName: "Landorus Forma Therian", type: "Terra/Voador" }
+              ]
+            },
+            {
+              id: "rusted-sword",
+              name: "Espada Enferrujada",
+              price: 34000,
+              description: "Restaura a Espada Coroada de Zacian, mudando sua forma, tipo e atributos.",
+              forms: [
+                { baseSpeciesId: 888, baseName: "Zacian", formId: 10188, formName: "Zacian Espada Coroada", type: "Fada/Aço" }
+              ]
+            },
+            {
+              id: "rusted-shield",
+              name: "Escudo Enferrujado",
+              price: 34000,
+              description: "Restaura o Escudo Coroado de Zamazenta, mudando sua forma, tipo e atributos.",
+              forms: [
+                { baseSpeciesId: 889, baseName: "Zamazenta", formId: 10189, formName: "Zamazenta Escudo Coroado", type: "Lutador/Aço" }
+              ]
+            },
+            {
+              id: "adamant-crystal",
+              name: "Cristal Adamante",
+              price: 30000,
+              description: "Faz Dialga assumir sua Forma Origem com os atributos oficiais dessa forma.",
+              forms: [
+                { baseSpeciesId: 483, baseName: "Dialga", formId: 10245, formName: "Dialga Forma Origem", type: "Aço/Dragão" }
+              ]
+            },
+            {
+              id: "lustrous-globe",
+              name: "Globo Lustroso",
+              price: 30000,
+              description: "Faz Palkia assumir sua Forma Origem com os atributos oficiais dessa forma.",
+              forms: [
+                { baseSpeciesId: 484, baseName: "Palkia", formId: 10246, formName: "Palkia Forma Origem", type: "Água/Dragão" }
+              ]
+            }
+          ];
+
+          export const FORM_ITEM_FORM_IDS = [...new Set(
+            FORM_ITEMS.flatMap((item) => item.forms.map((form) => form.formId))
+          )];
+
+          export function getFormItem(itemId) {
+            return FORM_ITEMS.find((item) => item.id === String(itemId || "")) || null;
+          }
+
+          export function getFormItemForm(itemId, speciesId) {
+            const item = getFormItem(itemId);
+            return item?.forms.find((form) => form.baseSpeciesId === Number(speciesId)) || null;
+          }
+
+          export function getFormItemsForSpecies(speciesId) {
+            const id = Number(speciesId);
+            return FORM_ITEMS.filter((item) => item.forms.some((form) => form.baseSpeciesId === id));
+          }
+          ''')
+
+          write("src/systems/form-items.js", r'''
+          import { addLog } from "../core/game-state.js";
+          import {
+            buildMoveSet,
+            calculatePokemonStats,
+            getOfficialBaseStats,
+            parseTypes
+          } from "../data/battle-data.js";
+          import {
+            FORM_ITEMS,
+            getFormItem,
+            getFormItemForm,
+            getFormItemsForSpecies
+          } from "../data/form-items-data.js";
+          import {
+            SHINY_STAT_MULTIPLIER,
+            getPokemonSpriteUrls,
+            recalculatePokemonForLevel
+          } from "../data/pokemon.js";
+          import { normalizeShopState } from "../data/shop-data.js";
+          import { isLegendaryMegaUnlocked, isSpeciesOwned } from "./shop.js";
+
+          const FORM_SNAPSHOT_KEYS = [
+            "name",
+            "type",
+            "types",
+            "baseStats",
+            "maxHp",
+            "attack",
+            "defense",
+            "specialAttack",
+            "specialDefense",
+            "speed",
+            "sprite",
+            "backSprite",
+            "moves",
+            "heightDm"
+          ];
+
+          function ensureShopState(state) {
+            state.shop = normalizeShopState(state.shop);
+            return state.shop;
+          }
+
+          function applyShinyBonus(stats, isShiny) {
+            if (!isShiny) return stats;
+            return Object.fromEntries(
+              Object.entries(stats).map(([key, value]) => [
+                key,
+                Math.max(1, Math.round((Number(value) || 1) * SHINY_STAT_MULTIPLIER))
+              ])
+            );
+          }
+
+          function createFormSnapshot(pokemon) {
+            return Object.fromEntries(FORM_SNAPSHOT_KEYS.map((key) => [key, pokemon[key]]));
+          }
+
+          function fallbackFormTemplate(pokemon) {
+            const base = pokemon.baseStats || {};
+            return {
+              rarity: "legendary",
+              baseHp: Math.max(20, Math.round((Number(base.hp) || 100) / 2)),
+              attack: Math.max(8, Math.round((Number(base.attack) || 100) / 5)),
+              defense: Math.max(8, Math.round((Number(base.defense) || 100) / 5))
+            };
+          }
+
+          function findRosterPokemon(state, pokemonUid) {
+            return [...(state.team || []), ...(state.storage || [])]
+              .find((pokemon) => pokemon.uid === String(pokemonUid || "")) || null;
+          }
+
+          function applyFormDefinition(pokemon, item, form, { preserveHpRatio = true } = {}) {
+            const previousHp = Math.max(0, Number(pokemon.hp) || 0);
+            const previousMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
+            const hpRatio = previousHp / previousMaxHp;
+            const formBaseStats = getOfficialBaseStats(form.formId, fallbackFormTemplate(pokemon));
+            const calculated = applyShinyBonus(
+              calculatePokemonStats(formBaseStats, pokemon.level, pokemon.iv),
+              Boolean(pokemon.isShiny)
+            );
+            const sprites = getPokemonSpriteUrls(form.formId, Boolean(pokemon.isShiny));
+
+            pokemon.formItemOriginal = createFormSnapshot(pokemon);
+            Object.assign(pokemon, {
+              name: form.formName,
+              type: form.type,
+              types: parseTypes(form.type),
+              baseStats: formBaseStats,
+              ...calculated,
+              hp: preserveHpRatio
+                ? Math.max(previousHp > 0 ? 1 : 0, Math.min(calculated.maxHp, Math.round(calculated.maxHp * hpRatio)))
+                : Math.min(previousHp, calculated.maxHp),
+              sprite: sprites.sprite,
+              backSprite: sprites.backSprite,
+              moves: buildMoveSet(form.type, formBaseStats),
+              isFormItemActive: true,
+              formItemFormId: form.formId,
+              activeFormItemId: item.id
+            });
+            return true;
+          }
+
+          export function deactivateFormItem(pokemon) {
+            if (!pokemon?.isFormItemActive || !pokemon.formItemOriginal) return false;
+            const currentHp = Math.max(0, Number(pokemon.hp) || 0);
+            const currentMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
+            const hpRatio = currentHp / currentMaxHp;
+            const snapshot = pokemon.formItemOriginal;
+            Object.assign(pokemon, snapshot);
+            pokemon.hp = Math.max(
+              currentHp > 0 ? 1 : 0,
+              Math.min(Number(pokemon.maxHp) || 1, Math.round((Number(pokemon.maxHp) || 1) * hpRatio))
+            );
+            delete pokemon.isFormItemActive;
+            delete pokemon.formItemFormId;
+            delete pokemon.activeFormItemId;
+            delete pokemon.formItemOriginal;
+            return true;
+          }
+
+          export function isFormItemShopUnlocked(state) {
+            return isLegendaryMegaUnlocked(state);
+          }
+
+          export function getVisibleFormItems(state) {
+            return FORM_ITEMS.filter((item) => item.forms.some((form) => isSpeciesOwned(state, form.baseSpeciesId)));
+          }
+
+          export function buyFormItem(state, itemId) {
+            const shop = ensureShopState(state);
+            const item = getFormItem(itemId);
+            if (!item || !isFormItemShopUnlocked(state)) return false;
+            if (!item.forms.some((form) => isSpeciesOwned(state, form.baseSpeciesId))) return false;
+            if (shop.ownedFormItems.includes(item.id)) return false;
+            if (shop.coins < item.price) return false;
+
+            shop.coins -= item.price;
+            shop.totalCoinsSpent += item.price;
+            shop.ownedFormItems.push(item.id);
+            addLog(state, `${item.name} foi comprado e adicionado aos Itens.`);
+            return true;
+          }
+
+          export function equipFormItem(state, itemId, pokemonUid) {
+            if (state.mode === "battle") return false;
+            const shop = ensureShopState(state);
+            const item = getFormItem(itemId);
+            const pokemon = (state.team || []).find((member) => member.uid === String(pokemonUid || ""));
+            const form = item && pokemon ? getFormItemForm(item.id, pokemon.id) : null;
+            if (!item || !pokemon || !form || !shop.ownedFormItems.includes(item.id)) return false;
+
+            const currentUid = shop.equippedFormItems[item.id];
+            if (currentUid === pokemon.uid && pokemon.activeFormItemId === item.id) {
+              deactivateFormItem(pokemon);
+              delete shop.equippedFormItems[item.id];
+              addLog(state, `${item.name} foi retirado de ${form.baseName}. A forma normal foi restaurada.`);
+              return true;
+            }
+
+            if (pokemon.activeFormItemId) {
+              delete shop.equippedFormItems[pokemon.activeFormItemId];
+              deactivateFormItem(pokemon);
+            }
+
+            if (currentUid && currentUid !== pokemon.uid) {
+              const previousPokemon = findRosterPokemon(state, currentUid);
+              if (previousPokemon) deactivateFormItem(previousPokemon);
+              delete shop.equippedFormItems[item.id];
+            }
+
+            applyFormDefinition(pokemon, item, form, { preserveHpRatio: true });
+            shop.equippedFormItems[item.id] = pokemon.uid;
+            addLog(state, `${item.name} foi usado em ${form.baseName}. ${form.formName} foi ativado!`);
+            return true;
+          }
+
+          export function clearFormEquipmentForPokemon(state, pokemonUid) {
+            const shop = ensureShopState(state);
+            const uid = String(pokemonUid || "");
+            const pokemon = findRosterPokemon(state, uid);
+            let changed = false;
+
+            Object.entries(shop.equippedFormItems).forEach(([itemId, equippedUid]) => {
+              if (equippedUid !== uid) return;
+              delete shop.equippedFormItems[itemId];
+              changed = true;
+            });
+            if (pokemon && deactivateFormItem(pokemon)) changed = true;
+            return changed;
+          }
+
+          export function restorePersistedFormPokemon(pokemon) {
+            if (!pokemon?.isFormItemActive || !pokemon.formItemOriginal) return pokemon;
+            const currentHp = Math.max(0, Number(pokemon.hp) || 0);
+            const currentMaxHp = Math.max(1, Number(pokemon.maxHp) || 1);
+            const hpRatio = currentHp / currentMaxHp;
+            const restored = { ...pokemon, ...pokemon.formItemOriginal };
+            restored.hp = Math.max(
+              currentHp > 0 ? 1 : 0,
+              Math.min(Number(restored.maxHp) || 1, Math.round((Number(restored.maxHp) || 1) * hpRatio))
+            );
+            delete restored.isFormItemActive;
+            delete restored.formItemFormId;
+            delete restored.activeFormItemId;
+            delete restored.formItemOriginal;
+            return restored;
+          }
+
+          export function restoreEquippedFormItems(shop, team) {
+            const clean = {};
+            const assignedPokemon = new Set();
+            Object.entries(shop.equippedFormItems || {}).forEach(([itemId, pokemonUid]) => {
+              const item = getFormItem(itemId);
+              const pokemon = (team || []).find((member) => member.uid === pokemonUid);
+              const form = item && pokemon ? getFormItemForm(item.id, pokemon.id) : null;
+              const valid = item
+                && pokemon
+                && form
+                && shop.ownedFormItems.includes(item.id)
+                && !assignedPokemon.has(pokemon.uid);
+              if (!valid) return;
+              applyFormDefinition(pokemon, item, form, { preserveHpRatio: true });
+              clean[item.id] = pokemon.uid;
+              assignedPokemon.add(pokemon.uid);
+            });
+            shop.equippedFormItems = clean;
+            return shop;
+          }
+
+          export function recalculateActiveFormItemForLevel(pokemon, heal = true) {
+            const itemId = pokemon?.activeFormItemId;
+            const item = getFormItem(itemId);
+            const form = item ? getFormItemForm(item.id, pokemon.id) : null;
+            if (!item || !form || !pokemon.formItemOriginal) return recalculatePokemonForLevel(pokemon, heal);
+
+            deactivateFormItem(pokemon);
+            recalculatePokemonForLevel(pokemon, heal);
+            applyFormDefinition(pokemon, item, form, { preserveHpRatio: true });
+            return pokemon;
+          }
+
+          export function getOwnedFormItemsForSpecies(state, speciesId) {
+            const owned = new Set(state.shop?.ownedFormItems || []);
+            return getFormItemsForSpecies(speciesId).filter((item) => owned.has(item.id));
+          }
+          ''')
+
+          write("src/ui/form-items-ui.js", r'''
+          import "../styles/form-items.css";
+          import { FORM_ITEMS, getFormItem } from "../data/form-items-data.js";
+          import { BALL_DEFINITIONS } from "../data/shop-data.js";
+          import {
+            getOwnedFormItemsForSpecies,
+            getVisibleFormItems,
+            isFormItemShopUnlocked
+          } from "../systems/form-items.js";
+
+          const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
+          let selectedFormItemId = null;
+          let listenersInstalled = false;
+
+          function formatCoins(value) {
+            return Math.max(0, Math.floor(Number(value) || 0)).toLocaleString("pt-BR");
+          }
+
+          function itemSpriteUrl(itemId) {
+            return `${ITEM_SPRITE_BASE}/${itemId}.png`;
+          }
+
+          function formItemSprite(item) {
+            return `<img class="item-sprite" src="${itemSpriteUrl(item?.id || "reveal-glass")}" data-fallback-src="${itemSpriteUrl("mega-stone")}" alt="${item?.name || "Item de Forma"}" loading="lazy" decoding="async" />`;
+          }
+
+          function compatibleNames(item) {
+            return item.forms.map((form) => form.baseName).join(", ");
+          }
+
+          function selectFormItemsTab() {
+            document.querySelectorAll("[data-shop-tab]").forEach((button) => {
+              button.classList.toggle("selected", button.dataset.shopTab === "forms");
+            });
+            document.querySelectorAll("[data-shop-panel]").forEach((panel) => {
+              panel.hidden = panel.dataset.shopPanel !== "forms";
+            });
+          }
+
+          function clearFormTeamSelection() {
+            selectedFormItemId = null;
+            document.querySelector("#form-item-selection-banner")?.remove();
+            const teamList = document.querySelector("#team-list");
+            teamList?.classList.remove("mega-selection-active");
+            teamList?.querySelectorAll(".team-card").forEach((card) => {
+              card.classList.remove("mega-selection-compatible", "mega-selection-blocked");
+            });
+          }
+
+          function decorateFormTeamSelection(itemId) {
+            const item = getFormItem(itemId);
+            const teamDialog = document.querySelector("#team-dialog");
+            const teamList = document.querySelector("#team-list");
+            if (!item || !teamDialog?.open || !teamList) return;
+
+            document.querySelector("#form-item-selection-banner")?.remove();
+            const banner = document.createElement("div");
+            banner.id = "form-item-selection-banner";
+            banner.className = "mega-selection-banner";
+
+            teamList.classList.add("mega-selection-active");
+            let compatibleCount = 0;
+            teamList.querySelectorAll(".team-card").forEach((card) => {
+              const compatibleButton = [...card.querySelectorAll("[data-equip-form-item]")]
+                .find((button) => button.dataset.equipFormItem === item.id);
+              const compatible = Boolean(compatibleButton);
+              card.classList.toggle("mega-selection-compatible", compatible);
+              card.classList.toggle("mega-selection-blocked", !compatible);
+              if (!compatibleButton) return;
+              compatibleCount += 1;
+              compatibleButton.classList.add("mega-selection-action");
+              if (!compatibleButton.classList.contains("selected")) {
+                compatibleButton.textContent = `EQUIPAR ${item.name.toUpperCase()}`;
+              }
+            });
+
+            banner.innerHTML = compatibleCount
+              ? `Você está usando <strong>${item.name}</strong>. Escolha um Pokémon compatível abaixo.`
+              : `<strong>${compatibleNames(item)}</strong> não está na equipe. Adicione o Pokémon pelo depósito para usar este item.`;
+            const teamHelp = teamDialog.querySelector(".team-help");
+            if (teamHelp) teamHelp.insertAdjacentElement("afterend", banner);
+            else teamDialog.querySelector(".dialog-heading")?.insertAdjacentElement("afterend", banner);
+          }
+
+          function openFormItemTeamSelection(itemId) {
+            const item = getFormItem(itemId);
+            if (!item) return;
+            selectedFormItemId = item.id;
+            const itemsDialog = document.querySelector("#items-dialog");
+            if (itemsDialog?.open) itemsDialog.close();
+            document.querySelector("#team-button")?.click();
+            requestAnimationFrame(() => decorateFormTeamSelection(item.id));
+          }
+
+          function installListeners() {
+            if (listenersInstalled) return;
+            listenersInstalled = true;
+            const shopDialog = document.querySelector("#shop-dialog");
+            const itemsDialog = document.querySelector("#items-dialog");
+            const teamDialog = document.querySelector("#team-dialog");
+
+            shopDialog?.addEventListener("click", (event) => {
+              const formTab = event.target.closest('[data-shop-tab="forms"]');
+              if (!formTab) return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              selectFormItemsTab();
+            }, true);
+
+            itemsDialog?.addEventListener("click", (event) => {
+              const useButton = event.target.closest("[data-use-form-item]");
+              if (!useButton || useButton.disabled) return;
+              openFormItemTeamSelection(useButton.dataset.useFormItem);
+            });
+
+            teamDialog?.addEventListener("click", (event) => {
+              if (!selectedFormItemId) return;
+              const actionButton = event.target.closest("button");
+              if (!actionButton) return;
+              const selectedItem = selectedFormItemId;
+              window.setTimeout(() => {
+                if (actionButton.dataset.equipFormItem === selectedItem) {
+                  clearFormTeamSelection();
+                  return;
+                }
+                decorateFormTeamSelection(selectedItem);
+              }, 0);
+            });
+            teamDialog?.addEventListener("close", clearFormTeamSelection);
+          }
+
+          export function enhanceFormItemsMarkup() {
+            const tabs = document.querySelector(".shop-tabs");
+            if (tabs && !tabs.querySelector('[data-shop-tab="forms"]')) {
+              tabs.insertAdjacentHTML("beforeend", '<button data-shop-tab="forms">ITENS DE FORMA</button>');
+            }
+
+            const megaPanel = document.querySelector('[data-shop-panel="mega"]');
+            if (megaPanel && !document.querySelector('[data-shop-panel="forms"]')) {
+              megaPanel.insertAdjacentHTML("afterend", `
+                <section class="shop-panel" data-shop-panel="forms" hidden>
+                  <div class="shop-panel-heading"><div><small>FORMAS LENDÁRIAS</small><h3>Itens de Forma</h3></div><p>Itens permanentes que mudam sprite, tipo, golpes e atributos oficiais enquanto estiverem equipados.</p></div>
+                  <div id="shop-form-item-grid" class="shop-grid mega-shop-grid"></div>
+                </section>
+              `);
+            }
+
+            const summary = document.querySelector(".inventory-summary");
+            if (summary && !document.querySelector("#inventory-form-item-total")) {
+              summary.insertAdjacentHTML("beforeend", '<div><small>ITENS DE FORMA</small><strong id="inventory-form-item-total">0</strong></div>');
+            }
+
+            const inventoryScroll = document.querySelector(".inventory-scroll");
+            if (inventoryScroll && !document.querySelector("#inventory-form-item-grid")) {
+              inventoryScroll.insertAdjacentHTML("beforeend", `
+                <section class="inventory-section">
+                  <div class="inventory-heading"><span class="inventory-icon mega">${formItemSprite()}</span><div><small>FORMAS ESPECIAIS</small><h3>Itens de Forma</h3></div></div>
+                  <div id="inventory-form-item-grid" class="inventory-grid"></div>
+                </section>
+              `);
+            }
+            installListeners();
+          }
+
+          export function decorateFormItemTeam(state) {
+            const cards = [...document.querySelectorAll("#team-list .team-card")];
+            const equipped = state.shop?.equippedFormItems || {};
+            cards.forEach((card, index) => {
+              card.querySelector(".form-item-picker")?.remove();
+              card.querySelector(".form-item-ready-label")?.remove();
+              const pokemon = state.team?.[index];
+              if (!pokemon) return;
+              const compatible = getOwnedFormItemsForSpecies(state, pokemon.id);
+              if (!compatible.length) return;
+              const actions = card.querySelector(".team-card-actions");
+              const info = card.querySelector(".team-card-info");
+              if (!actions) return;
+              const buttons = compatible.map((item) => {
+                const selected = equipped[item.id] === pokemon.uid;
+                return `<button class="mega-equip-button form-item-equip-button ${selected ? "selected" : ""}" data-equip-form-item="${item.id}" data-form-item-pokemon="${pokemon.uid}">${selected ? "EQUIPADO" : item.name}</button>`;
+              }).join("");
+              actions.insertAdjacentHTML("beforeend", `<span class="mega-picker form-item-picker"><small>ITEM DE FORMA</small>${buttons}</span>`);
+              if (pokemon.isFormItemActive && info) {
+                info.insertAdjacentHTML("beforeend", '<span class="mega-ready-label form-item-ready-label">◆ FORMA ESPECIAL ATIVA</span>');
+              }
+            });
+          }
+
+          function renderFormItemShop(state) {
+            const root = document.querySelector("#shop-form-item-grid");
+            if (!root) return;
+            const visible = getVisibleFormItems(state);
+            if (!visible.length) {
+              root.innerHTML = `<div class="shop-empty"><span>${formItemSprite()}</span><strong>Nenhum item de forma descoberto</strong><p>Capture Groudon, Kyogre, Giratina, Tornadus, Thundurus, Landorus, Zacian, Zamazenta, Dialga ou Palkia para revelar o item correspondente.</p></div>`;
+              return;
+            }
+            const unlocked = isFormItemShopUnlocked(state);
+            const coins = Number(state.shop?.coins) || 0;
+            const owned = new Set(state.shop?.ownedFormItems || []);
+            root.innerHTML = visible.map((item) => {
+              const purchased = owned.has(item.id);
+              const disabled = purchased || !unlocked || coins < item.price;
+              const status = purchased ? "COMPRADO" : unlocked ? "DISPONÍVEL" : "LIBERA NA ELITE 4";
+              return `<article class="shop-item mega-item ${purchased ? "purchased" : ""} ${unlocked ? "unlocked" : "locked"}">
+                <span class="shop-item-icon mega-icon">${formItemSprite(item)}</span>
+                <div class="shop-item-copy"><small>${status}</small><h4>${item.name}</h4><p>${item.description}</p><em>Compatível com: ${compatibleNames(item)}</em></div>
+                ${purchased
+                  ? '<button disabled><span>ADQUIRIDO</span><b>✓</b></button>'
+                  : `<button data-buy-form-item="${item.id}" ${disabled ? "disabled" : ""}><span>COMPRAR</span><b>◉ ${formatCoins(item.price)}</b></button>`}
+              </article>`;
+            }).join("");
+          }
+
+          function renderFormItemInventory(state) {
+            const root = document.querySelector("#inventory-form-item-grid");
+            if (!root) return;
+            const ownedIds = new Set(state.shop?.ownedFormItems || []);
+            const owned = FORM_ITEMS.filter((item) => ownedIds.has(item.id));
+            const equipped = state.shop?.equippedFormItems || {};
+            root.innerHTML = owned.length
+              ? owned.map((item) => {
+                  const pokemon = (state.team || []).find((member) => member.uid === equipped[item.id]);
+                  const active = Boolean(pokemon);
+                  return `<article class="inventory-item has-action ${active ? "featured" : ""}">
+                    <span class="inventory-item-icon mega">${formItemSprite(item)}</span>
+                    <div><small>${active ? "EQUIPADO" : "DESBLOQUEIO PERMANENTE"}</small><strong>${item.name}</strong><p>${compatibleNames(item)}${active ? ` · equipado em <b>${pokemon.name}</b>` : ""}.</p></div>
+                    <em>${active ? "ATIVO" : "GUARDADO"}</em>
+                    <button class="inventory-use-button" data-use-form-item="${item.id}" ${active ? "disabled" : ""}>${active ? "EQUIPADO" : "USAR"}</button>
+                  </article>`;
+                }).join("")
+              : '<div class="inventory-empty"><span>□</span><strong>Nenhum item de forma comprado</strong><p>Os itens adquiridos na loja aparecerão aqui.</p></div>';
+          }
+
+          export function renderFormItems(state) {
+            const ownedTotal = Array.isArray(state.shop?.ownedFormItems) ? state.shop.ownedFormItems.length : 0;
+            const summary = document.querySelector("#inventory-form-item-total");
+            if (summary) summary.textContent = String(ownedTotal);
+
+            const ballTotal = BALL_DEFINITIONS.reduce((total, ball) => total + Math.max(0, Number(state.shop?.balls?.[ball.id]) || 0), 0);
+            const inventoryCount = ballTotal
+              + (Number(state.shop?.expShareLevel) > 0 ? 1 : 0)
+              + (Array.isArray(state.shop?.ownedMegaStones) ? state.shop.ownedMegaStones.length : 0)
+              + ownedTotal;
+            const itemsCount = document.querySelector("#items-count");
+            if (itemsCount) itemsCount.textContent = String(inventoryCount);
+            renderFormItemShop(state);
+            renderFormItemInventory(state);
+          }
+          ''')
+
+          write("src/styles/form-items.css", r'''
+          .shop-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .inventory-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .form-item-picker { margin-top: 7px; }
+          @media (max-width: 700px) {
+            .shop-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .inventory-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          }
+          ''')
+
+          replace_once("src/data/shop-data.js",
+          '''    ownedMegaStones: [],
+              equippedMegaStoneId: null,
+              equippedMegaPokemonUid: null,''',
+          '''    ownedMegaStones: [],
+              equippedMegaStoneId: null,
+              equippedMegaPokemonUid: null,
+              ownedFormItems: [],
+              equippedFormItems: {},''')
+
+          replace_once("src/data/shop-data.js",
+          '''    equippedMegaStoneId: saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null,
+              equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null,
+              purchaseRepairApplied: true,''',
+          '''    equippedMegaStoneId: saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null,
+              equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null,
+              ownedFormItems: [...new Set(Array.isArray(saved.ownedFormItems) ? saved.ownedFormItems.map(String) : [])],
+              equippedFormItems: Object.fromEntries(
+                Object.entries(saved.equippedFormItems && typeof saved.equippedFormItems === "object" ? saved.equippedFormItems : {})
+                  .map(([itemId, pokemonUid]) => [String(itemId), String(pokemonUid || "")])
+                  .filter(([, pokemonUid]) => pokemonUid)
+              ),
+              purchaseRepairApplied: true,''')
+
+          replace_once("src/systems/save.js",
+          '''import { restorePersistedMegaPokemon } from "./mega.js";''',
+          '''import { restorePersistedMegaPokemon } from "./mega.js";
+          import { restoreEquippedFormItems, restorePersistedFormPokemon } from "./form-items.js";''')
+
+          replace_once("src/systems/save.js",
+          '''  const restored = restorePersistedMegaPokemon(pokemon);''',
+          '''  const restored = restorePersistedFormPokemon(restorePersistedMegaPokemon(pokemon));''')
+
+          replace_once("src/systems/save.js",
+          '''  const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), migratedTeam);
+            registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);''',
+          '''  const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), migratedTeam);
+            restoreEquippedFormItems(shop, migratedTeam);
+            registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);''')
+
+          replace_once("src/systems/save.js",
+          '''    const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), team);
+              registerRosterEntries(pokedex, collection, [...team, ...storage]);''',
+          '''    const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), team);
+              restoreEquippedFormItems(shop, team);
+              registerRosterEntries(pokedex, collection, [...team, ...storage]);''')
+
+          replace_once("src/systems/team.js",
+          '''import { clearMegaEquipmentForPokemon } from "./mega.js";''',
+          '''import { clearMegaEquipmentForPokemon } from "./mega.js";
+          import { clearFormEquipmentForPokemon } from "./form-items.js";''')
+
+          replace_once("src/systems/team.js",
+          '''  clearMegaEquipmentForPokemon(state, uid);
+            state.storage.push(state.team.splice(index, 1)[0]);''',
+          '''  clearMegaEquipmentForPokemon(state, uid);
+            clearFormEquipmentForPokemon(state, uid);
+            state.storage.push(state.team.splice(index, 1)[0]);''')
+
+          replace_once("src/systems/progression.js",
+          '''  evolvePokemonIfReady,
+            experienceToNextLevel,
+            recalculatePokemonForLevel
+          } from "../data/pokemon.js";''',
+          '''  evolvePokemonIfReady,
+            experienceToNextLevel
+          } from "../data/pokemon.js";''')
+
+          replace_once("src/systems/progression.js",
+          '''import { CAPTURE_DECISION_MS } from "./capture.js";''',
+          '''import { CAPTURE_DECISION_MS } from "./capture.js";
+          import { recalculateActiveFormItemForLevel } from "./form-items.js";''')
+
+          replace_once("src/systems/progression.js",
+          '''    recalculatePokemonForLevel(pokemon, true);''',
+          '''    recalculateActiveFormItemForLevel(pokemon, true);''')
+
+          replace_once("src/data/exploration-sprites.js",
+          '''  const speciesId = Math.max(1, Number(pokemon?.megaFormId || pokemon?.id) || 1);''',
+          '''  const speciesId = Math.max(1, Number(pokemon?.megaFormId || pokemon?.formItemFormId || pokemon?.id) || 1);''')
+
+          replace_once("src/main.js",
+          '''import { MEGA_FORM_IDS } from "./data/mega-data.js";''',
+          '''import { MEGA_FORM_IDS } from "./data/mega-data.js";
+          import { FORM_ITEM_FORM_IDS } from "./data/form-items-data.js";''')
+
+          replace_once("src/main.js",
+          '''} from "./ui/shop-ui.js";
+          import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";''',
+          '''} from "./ui/shop-ui.js";
+          import { decorateFormItemTeam, enhanceFormItemsMarkup, renderFormItems } from "./ui/form-items-ui.js";
+          import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";''')
+
+          replace_once("src/main.js",
+          '''import { equipMegaStone } from "./systems/mega.js";
+          import { buyBall, buyExpShare, buyMegaStone } from "./systems/shop.js";''',
+          '''import { equipMegaStone } from "./systems/mega.js";
+          import { buyFormItem, equipFormItem } from "./systems/form-items.js";
+          import { buyBall, buyExpShare, buyMegaStone } from "./systems/shop.js";''')
+
+          replace_once("src/main.js",
+          '''    ...POKEDEX_SPECIES.map((pokemon) => pokemon.id),
+              ...MEGA_FORM_IDS
+            ])];''',
+          '''    ...POKEDEX_SPECIES.map((pokemon) => pokemon.id),
+              ...MEGA_FORM_IDS,
+              ...FORM_ITEM_FORM_IDS
+            ])];''')
+
+          replace_once("src/main.js",
+          '''  enhanceShopMarkup();
+            enhanceHardModeMarkup();''',
+          '''  enhanceShopMarkup();
+            enhanceFormItemsMarkup();
+            enhanceHardModeMarkup();''')
+
+          replace_once("src/main.js",
+          '''    "#shop-mega-grid",
+              "#inventory-ball-grid",''',
+          '''    "#shop-mega-grid",
+              "#shop-form-item-grid",
+              "#inventory-ball-grid",''')
+
+          replace_once("src/main.js",
+          '''    "#inventory-mega-grid",
+              "#hard-shop-grid",''',
+          '''    "#inventory-mega-grid",
+              "#inventory-form-item-grid",
+              "#hard-shop-grid",''')
+
+          replace_once("src/main.js",
+          '''    const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.isShiny ? 1 : 0}`).join(",");''',
+          '''    const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.formItemFormId || 0}:${pokemon.isShiny ? 1 : 0}`).join(",");''')
+
+          replace_once("src/main.js",
+          '''        const sprites = getPokemonSpriteUrls(entry.megaFormId || entry.id, isShiny);''',
+          '''        const sprites = getPokemonSpriteUrls(entry.megaFormId || entry.formItemFormId || entry.id, isShiny);''')
+
+          replace_once("src/main.js",
+          '''    if (teamDialog.open) decorateHardCapturedRoster(state);
+              renderEeveeEvolutionChoice(state,''',
+          '''    if (teamDialog.open) {
+                decorateHardCapturedRoster(state);
+                decorateFormItemTeam(state);
+              }
+              if (shopDialog.open || itemsDialog.open) renderFormItems(state);
+              renderEeveeEvolutionChoice(state,''')
+
+          replace_once("src/main.js",
+          '''    renderTeam(state);
+              decorateHardCapturedRoster(state);
+              teamDialog.showModal();''',
+          '''    renderTeam(state);
+              decorateFormItemTeam(state);
+              decorateHardCapturedRoster(state);
+              teamDialog.showModal();''')
+
+          replace_once("src/main.js",
+          '''    if (actionButton.dataset.equipMega) changed = equipMegaStone(state, actionButton.dataset.equipMega, actionButton.dataset.megaPokemon);
+              if (changed) {''',
+          '''    if (actionButton.dataset.equipMega) changed = equipMegaStone(state, actionButton.dataset.equipMega, actionButton.dataset.megaPokemon);
+              if (actionButton.dataset.equipFormItem) changed = equipFormItem(state, actionButton.dataset.equipFormItem, actionButton.dataset.formItemPokemon);
+              if (changed) {''')
+
+          replace_once("src/main.js",
+          '''      renderTeam(state);
+                decorateHardCapturedRoster(state);
+                renderGame();''',
+          '''      renderTeam(state);
+                decorateFormItemTeam(state);
+                decorateHardCapturedRoster(state);
+                renderGame();''')
+
+          replace_once("src/main.js",
+          '''    renderShop(state);
+              shopDialog.showModal();''',
+          '''    renderShop(state);
+              renderFormItems(state);
+              shopDialog.showModal();''')
+
+          replace_once("src/main.js",
+          '''    if (actionButton.dataset.buyMegaStone) changed = buyMegaStone(state, actionButton.dataset.buyMegaStone);
+              if (changed) {''',
+          '''    if (actionButton.dataset.buyMegaStone) changed = buyMegaStone(state, actionButton.dataset.buyMegaStone);
+              if (actionButton.dataset.buyFormItem) changed = buyFormItem(state, actionButton.dataset.buyFormItem);
+              if (changed) {''')
+
+          replace_once("src/main.js",
+          '''      renderShop(state);
+                showShopFeedback("Compra concluída! O item já aparece no botão ITENS.");''',
+          '''      renderShop(state);
+                renderFormItems(state);
+                showShopFeedback("Compra concluída! O item já aparece no botão ITENS.");''')
+
+          replace_once("src/main.js",
+          '''    renderItems(state);
+              itemsDialog.showModal();''',
+          '''    renderItems(state);
+              renderFormItems(state);
+              itemsDialog.showModal();''')
+
+          replace_once("src/main.js",
+          '''      renderItems(state);
+                showHardShopFeedback("Compra concluída! A recompensa foi aplicada e salva.");''',
+          '''      renderItems(state);
+                renderFormItems(state);
+                showHardShopFeedback("Compra concluída! A recompensa foi aplicada e salva.");''')
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Validar dados e mecânicas dos itens de forma
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { FORM_ITEMS, FORM_ITEM_FORM_IDS } from './src/data/form-items-data.js';
+          import { loadOfficialPokemonData, getOfficialBaseStats } from './src/data/battle-data.js';
+          import { normalizePokemonInstance } from './src/data/pokemon.js';
+          import { normalizeShopState } from './src/data/shop-data.js';
+          import {
+            deactivateFormItem,
+            equipFormItem,
+            recalculateActiveFormItemForLevel,
+            restoreEquippedFormItems,
+            restorePersistedFormPokemon
+          } from './src/systems/form-items.js';
+
+          assert.equal(FORM_ITEMS.length, 8);
+          assert.equal(FORM_ITEM_FORM_IDS.length, 10);
+          assert.equal(FORM_ITEMS.every((item) => item.price > 20000), true);
+
+          const expectedNames = new Map([
+            [10077, 'kyogre-primal'], [10078, 'groudon-primal'], [10007, 'giratina-origin'],
+            [10019, 'tornadus-therian'], [10020, 'thundurus-therian'], [10021, 'landorus-therian'],
+            [10188, 'zacian-crowned'], [10189, 'zamazenta-crowned'],
+            [10245, 'dialga-origin'], [10246, 'palkia-origin']
+          ]);
+          await Promise.all([...expectedNames].map(async ([id, name]) => {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+            assert.equal(response.ok, true, `Forma ${id} não encontrada`);
+            const data = await response.json();
+            assert.equal(data.name, name);
+          }));
+
+          await loadOfficialPokemonData([383, 641, 645, ...FORM_ITEM_FORM_IDS]);
+          assert.equal(getOfficialBaseStats(10078).attack, 180);
+          assert.equal(getOfficialBaseStats(10077).specialAttack, 180);
+
+          const groudon = normalizePokemonInstance({ id: 383, name: 'Groudon', type: 'Terra', level: 70, iv: 31, uid: 'groudon', xp: 0, xpToNext: 1000 }, { heal: true });
+          const state = {
+            mode: 'exploring',
+            team: [groudon],
+            storage: [],
+            collection: { 383: { count: 1 } },
+            journey: { complete: true, worldIndex: 14, completedRoutes: 150 },
+            area: { environmentId: 'elite-4' },
+            campaigns: null,
+            log: [],
+            shop: normalizeShopState({ coins: 100000, ownedFormItems: ['red-orb'], equippedFormItems: {} })
+          };
+          const originalMaxHp = groudon.maxHp;
+          assert.equal(equipFormItem(state, 'red-orb', 'groudon'), true);
+          assert.equal(groudon.name, 'Groudon Primal');
+          assert.equal(groudon.formItemFormId, 10078);
+          assert.equal(groudon.type, 'Terra/Fogo');
+          assert.equal(groudon.attack > groudon.formItemOriginal.attack, true);
+          assert.equal(state.shop.equippedFormItems['red-orb'], 'groudon');
+
+          groudon.level += 1;
+          recalculateActiveFormItemForLevel(groudon, true);
+          assert.equal(groudon.name, 'Groudon Primal');
+          assert.equal(groudon.formItemOriginal.maxHp > originalMaxHp, true);
+
+          const persisted = structuredClone(groudon);
+          const restoredBase = restorePersistedFormPokemon(persisted);
+          assert.equal(restoredBase.isFormItemActive, undefined);
+          const reloadedShop = normalizeShopState(state.shop);
+          restoreEquippedFormItems(reloadedShop, [restoredBase]);
+          assert.equal(restoredBase.name, 'Groudon Primal');
+          assert.equal(restoredBase.formItemFormId, 10078);
+          assert.equal(deactivateFormItem(restoredBase), true);
+          assert.equal(restoredBase.name, 'Groudon');
+
+          const tornadus = normalizePokemonInstance({ id: 641, name: 'Tornadus', type: 'Voador', level: 70, iv: 31, uid: 'tornadus', xp: 0, xpToNext: 1000 }, { heal: true });
+          const landorus = normalizePokemonInstance({ id: 645, name: 'Landorus', type: 'Terra/Voador', level: 70, iv: 31, uid: 'landorus', xp: 0, xpToNext: 1000 }, { heal: true });
+          state.team = [tornadus, landorus];
+          state.shop = normalizeShopState({ ownedFormItems: ['reveal-glass'], equippedFormItems: {} });
+          assert.equal(equipFormItem(state, 'reveal-glass', 'tornadus'), true);
+          assert.equal(tornadus.formItemFormId, 10019);
+          assert.equal(equipFormItem(state, 'reveal-glass', 'landorus'), true);
+          assert.equal(tornadus.isFormItemActive, undefined);
+          assert.equal(landorus.formItemFormId, 10021);
+          assert.equal(state.shop.equippedFormItems['reveal-glass'], 'landorus');
+          NODE
+      - name: Commitar implementação validada
+        run: |
+          if git diff --quiet; then
+            echo "Nenhuma alteração nova para commitar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Adicionar itens de forma lendários"
+          git push origin HEAD:feat/legendary-form-items
