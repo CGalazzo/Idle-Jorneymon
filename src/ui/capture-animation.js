@@ -2,10 +2,12 @@ import "../styles/capture-animation.css";
 
 const SETTING_KEY = "idle-jorneymon-capture-animation-enabled";
 const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
-const ANIMATION_MS = 2400;
+const ANIMATION_MS = 2700;
+const SPRITE_MEASURE_TIMEOUT_MS = 650;
 
 let bypassNextCapture = false;
 let captureAnimating = false;
+const visibleBoundsCache = new Map();
 
 function animationEnabled() {
   return localStorage.getItem(SETTING_KEY) !== "false";
@@ -20,19 +22,128 @@ function selectedBallId(button) {
   return button?.dataset.captureBall || "poke-ball";
 }
 
-function setTrajectory(layer, scene) {
+function displayedCaptureChance(button) {
+  const matches = [...String(button?.textContent || "").matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)];
+  if (!matches.length) return 50;
+  const value = Number(matches.at(-1)[1].replace(",", "."));
+  return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 50));
+}
+
+function rollCaptureResult(button) {
+  return Math.random() * 100 < displayedCaptureChance(button);
+}
+
+function scanVisibleBounds(image) {
+  if (!image?.naturalWidth || !image?.naturalHeight) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+
+  try {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        if (pixels[(y * canvas.width + x) * 4 + 3] <= 16) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX < minX || maxY < minY) return null;
+    return {
+      centerX: ((minX + maxX + 1) / 2) / canvas.width,
+      centerY: ((minY + maxY + 1) / 2) / canvas.height,
+      naturalWidth: canvas.width,
+      naturalHeight: canvas.height
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadVisibleBounds(url) {
+  if (!url) return Promise.resolve(null);
+  if (visibleBoundsCache.has(url)) return visibleBoundsCache.get(url);
+
+  const promise = new Promise((resolve) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.decoding = "async";
+    let settled = false;
+
+    const finish = (bounds = null) => {
+      if (settled) return;
+      settled = true;
+      resolve(bounds);
+    };
+
+    const timeout = window.setTimeout(() => finish(null), SPRITE_MEASURE_TIMEOUT_MS);
+    image.addEventListener("load", () => {
+      window.clearTimeout(timeout);
+      finish(scanVisibleBounds(image));
+    }, { once: true });
+    image.addEventListener("error", () => {
+      window.clearTimeout(timeout);
+      finish(null);
+    }, { once: true });
+    image.src = url;
+  });
+
+  visibleBoundsCache.set(url, promise);
+  return promise;
+}
+
+async function getVisibleTargetPoint(target, sceneRect) {
+  const targetRect = target?.getBoundingClientRect();
+  if (!targetRect) {
+    return { x: sceneRect.width * 0.5, y: sceneRect.height * 0.36 };
+  }
+
+  const fallback = {
+    x: targetRect.left - sceneRect.left + targetRect.width / 2,
+    y: targetRect.top - sceneRect.top + targetRect.height / 2
+  };
+  if (!(target instanceof HTMLImageElement)) return fallback;
+
+  const bounds = await loadVisibleBounds(target.currentSrc || target.src);
+  if (!bounds) return fallback;
+
+  const naturalRatio = bounds.naturalWidth / bounds.naturalHeight;
+  const boxRatio = targetRect.width / targetRect.height;
+  const renderedWidth = boxRatio > naturalRatio
+    ? targetRect.height * naturalRatio
+    : targetRect.width;
+  const renderedHeight = boxRatio > naturalRatio
+    ? targetRect.height
+    : targetRect.width / naturalRatio;
+  const offsetX = (targetRect.width - renderedWidth) / 2;
+  const offsetY = (targetRect.height - renderedHeight) / 2;
+
+  return {
+    x: targetRect.left - sceneRect.left + offsetX + renderedWidth * bounds.centerX,
+    y: targetRect.top - sceneRect.top + offsetY + renderedHeight * bounds.centerY
+  };
+}
+
+async function setTrajectory(layer, scene) {
   const sceneRect = scene.getBoundingClientRect();
   const panelRect = document.querySelector("#capture-panel")?.getBoundingClientRect();
   const target = document.querySelector("#battle-stage .capture-pokemon img")
     || document.querySelector("#battle-stage .capture-pokemon");
-  const targetRect = target?.getBoundingClientRect();
-
-  const targetX = targetRect
-    ? targetRect.left - sceneRect.left + targetRect.width / 2
-    : sceneRect.width * 0.5;
-  const targetY = targetRect
-    ? targetRect.top - sceneRect.top + targetRect.height / 2
-    : sceneRect.height * 0.36;
+  const targetPoint = await getVisibleTargetPoint(target, sceneRect);
+  const targetX = targetPoint.x;
+  const targetY = targetPoint.y;
 
   const panelRight = panelRect ? panelRect.right - sceneRect.left : sceneRect.width * 0.75;
   const panelTop = panelRect ? panelRect.top - sceneRect.top : sceneRect.height * 0.58;
@@ -40,8 +151,6 @@ function setTrajectory(layer, scene) {
   const rightSpace = Math.max(0, sceneRect.width - panelRight);
   const hasRightLane = rightSpace >= 74;
 
-  // A bola nasce sempre fora do painel. Quando há espaço, ela aparece
-  // claramente à direita da caixa; em telas estreitas, nasce acima do canto direito.
   const startX = hasRightLane
     ? panelRight + Math.min(112, Math.max(42, rightSpace * 0.52))
     : sceneRect.width - 30;
@@ -49,16 +158,12 @@ function setTrajectory(layer, scene) {
     ? Math.min(sceneRect.height - 34, panelTop + Math.min(78, panelHeight * 0.52))
     : Math.max(34, panelTop - 34);
 
-  // Primeiro a bola sobe pela lateral direita, sem cruzar a caixa de captura.
   const clearX = Math.min(sceneRect.width - 28, startX - (hasRightLane ? 8 : 0));
   const clearY = Math.max(28, panelTop - 42);
+  const arcX = targetX + (clearX - targetX) * 0.44;
+  const arcY = Math.max(22, targetY - Math.min(72, sceneRect.height * 0.22));
 
-  // Depois faz o arco em direção ao centro real do Pokémon.
-  const arcX = targetX + (clearX - targetX) * 0.48;
-  const arcY = Math.max(24, targetY - Math.min(76, sceneRect.height * 0.23));
-
-  // Após o impacto, a bola cai no chão logo abaixo do Pokémon, acima do painel.
-  const dropX = targetX + 5;
+  const dropX = targetX + 4;
   const dropLimit = Math.max(targetY + 56, panelTop - 28);
   const dropY = Math.min(dropLimit, targetY + 102);
   const bounceY = Math.max(targetY + 38, dropY - 16);
@@ -82,13 +187,13 @@ function setTrajectory(layer, scene) {
   });
 }
 
-function createAnimationLayer(ballId) {
+async function createAnimationLayer(ballId, captureSucceeded) {
   const scene = document.querySelector("#scene");
   if (!scene) return null;
 
   scene.querySelector(".capture-throw-layer")?.remove();
   const layer = document.createElement("div");
-  layer.className = "capture-throw-layer";
+  layer.className = `capture-throw-layer ${captureSucceeded ? "capture-result-success" : "capture-result-failure"}`;
   layer.setAttribute("aria-hidden", "true");
   layer.innerHTML = `
     <span class="capture-drop-shadow"></span>
@@ -97,27 +202,44 @@ function createAnimationLayer(ballId) {
     </span>
     <span class="capture-impact-flash"></span>
     <span class="capture-impact-ring"></span>
+    <span class="capture-result-flash"></span>
   `;
-  setTrajectory(layer, scene);
+  await setTrajectory(layer, scene);
   scene.appendChild(layer);
   return layer;
 }
 
-function playCaptureAnimation(ballId) {
-  const layer = createAnimationLayer(ballId);
-  if (!layer) return Promise.resolve();
+async function playCaptureAnimation(ballId, captureSucceeded) {
+  const layer = await createAnimationLayer(ballId, captureSucceeded);
+  if (!layer) return;
 
   document.querySelector("#capture-panel")?.classList.add("capture-animation-running");
   document.querySelector("#battle-stage")?.classList.add("capture-animation-target");
 
-  return new Promise((resolve) => {
-    window.setTimeout(() => {
-      layer.remove();
-      document.querySelector("#capture-panel")?.classList.remove("capture-animation-running");
-      document.querySelector("#battle-stage")?.classList.remove("capture-animation-target");
-      resolve();
-    }, ANIMATION_MS);
-  });
+  await new Promise((resolve) => window.setTimeout(resolve, ANIMATION_MS));
+  layer.remove();
+  document.querySelector("#capture-panel")?.classList.remove("capture-animation-running");
+  document.querySelector("#battle-stage")?.classList.remove("capture-animation-target");
+}
+
+function executeCaptureWithResult(button, captureSucceeded) {
+  const originalRandom = Math.random;
+  let firstRandomCall = true;
+  bypassNextCapture = true;
+  Math.random = () => {
+    if (firstRandomCall) {
+      firstRandomCall = false;
+      return captureSucceeded ? 0 : 0.999999;
+    }
+    return originalRandom();
+  };
+
+  try {
+    button.click();
+  } finally {
+    Math.random = originalRandom;
+    bypassNextCapture = false;
+  }
 }
 
 function toggleMarkup() {
@@ -126,7 +248,7 @@ function toggleMarkup() {
       <div class="capture-animation-setting-copy">
         <small>PREFERÊNCIA VISUAL</small>
         <h3>Animação de captura</h3>
-        <p>Mostra a Poké Bola sendo lançada, atingindo o Pokémon e caindo no chão antes do resultado.</p>
+        <p>Mostra a Poké Bola atingindo o Pokémon e indica o resultado com um clarão verde ou vermelho.</p>
       </div>
       <button id="capture-animation-toggle" type="button" role="switch" aria-checked="true">
         <span class="capture-animation-toggle-dot"></span>
@@ -176,23 +298,23 @@ function installCaptureInterceptor() {
     if (captureAnimating) return;
 
     captureAnimating = true;
-    button.closest("#capture-ball-options")?.querySelectorAll("button").forEach((entry) => {
+    const options = button.closest("#capture-ball-options");
+    options?.querySelectorAll("button").forEach((entry) => {
       entry.dataset.captureAnimationDisabled = entry.disabled ? "true" : "false";
       entry.disabled = true;
     });
 
-    await playCaptureAnimation(selectedBallId(button));
+    const captureSucceeded = rollCaptureResult(button);
+    await playCaptureAnimation(selectedBallId(button), captureSucceeded);
 
-    button.closest("#capture-ball-options")?.querySelectorAll("button").forEach((entry) => {
+    options?.querySelectorAll("button").forEach((entry) => {
       entry.disabled = entry.dataset.captureAnimationDisabled === "true";
       delete entry.dataset.captureAnimationDisabled;
     });
 
-    bypassNextCapture = true;
     try {
-      button.click();
+      executeCaptureWithResult(button, captureSucceeded);
     } finally {
-      bypassNextCapture = false;
       captureAnimating = false;
     }
   }, true);
