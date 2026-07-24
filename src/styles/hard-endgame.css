@@ -94,6 +94,52 @@
 .hard-emblem-wallet strong { font-size: 19px; }
 .hard-emblem-wallet small { color: #c49198; font-size: 9px; }
 
+.hard-challenge-rotation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 14px;
+  align-items: center;
+  margin: -4px 0 16px;
+  padding: 12px 15px;
+  background: linear-gradient(145deg, rgba(25, 55, 80, .72), rgba(91, 18, 32, .48));
+  border: 1px solid rgba(108, 194, 255, .22);
+  border-radius: 13px;
+}
+
+.hard-challenge-rotation div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hard-challenge-rotation small {
+  color: #79cfff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.hard-challenge-rotation strong {
+  color: #eef8ff;
+  font-size: 13px;
+}
+
+.hard-challenge-rotation b {
+  color: #bfeaff;
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .06em;
+  text-shadow: 0 0 18px rgba(95, 196, 255, .25);
+}
+
+.hard-challenge-rotation p {
+  grid-column: 1 / -1;
+  margin: 3px 0 0;
+  color: #9db5c6;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
 .hard-shop-grid,
 .hard-challenge-grid {
   display: grid;
@@ -254,6 +300,9 @@ body.hard-mode .journey-heading > div:first-of-type {
   .hard-endgame-heading h2 { font-size: 22px; }
   .hard-endgame-button { width: 39px; padding: 0; font-size: 0; }
   .hard-endgame-button::before { content: "◆"; font-size: 13px; }
+  .hard-challenge-rotation { grid-template-columns: 1fr; gap: 5px; }
+  .hard-challenge-rotation b { font-size: 21px; }
+  .hard-challenge-rotation p { grid-column: 1; }
 }
 
 @media (max-width: 520px) {
