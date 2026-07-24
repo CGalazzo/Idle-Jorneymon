@@ -1,0 +1,106 @@
+name: Apply Item Sprite Fixes Safe
+
+on:
+  push:
+    branches: [fix/item-sprites-and-mega-symbol]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-build:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/item-sprites-and-mega-symbol
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Aplicar mapeamento seguro de sprites
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Trecho não encontrado em {path}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once('src/ui/shop-ui.js',
+          'const GENERIC_MEGA_STONE_ID = "mega-stone";\n',
+          'const GENERIC_MEGA_STONE_ID = "mega-stone";\nconst MEGA_EVOLUTION_SYMBOL_URL = "/assets/mega-evolution-symbol.svg";\nconst MEGA_STONE_SPRITE_IDS = { rayquazite: null };\n')
+
+          replace_once('src/ui/shop-ui.js',
+          '''function megaStoneSprite(stone) {
+  return itemSprite(stone?.id || GENERIC_MEGA_STONE_ID, stone?.name || "Mega Stone", GENERIC_MEGA_STONE_ID);
+}''',
+          '''function megaStoneSprite(stone) {
+  if (!stone) {
+    return `<img class="item-sprite mega-evolution-symbol" src="${MEGA_EVOLUTION_SYMBOL_URL}" alt="Símbolo da Mega Evolução" loading="lazy" decoding="async" />`;
+  }
+  const mappedId = Object.prototype.hasOwnProperty.call(MEGA_STONE_SPRITE_IDS, stone.id)
+    ? MEGA_STONE_SPRITE_IDS[stone.id]
+    : stone.id;
+  const src = mappedId ? itemSpriteUrl(mappedId) : MEGA_EVOLUTION_SYMBOL_URL;
+  return `<img class="item-sprite" src="${src}" data-fallback-src="${MEGA_EVOLUTION_SYMBOL_URL}" alt="${stone.name}" loading="lazy" decoding="async" />`;
+}''')
+
+          replace_once('src/ui/form-items-ui.js',
+          'const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";\n',
+          '''const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
+const MEGA_EVOLUTION_SYMBOL_URL = "/assets/mega-evolution-symbol.svg";
+const FORM_ITEM_SPRITE_IDS = {
+  "red-orb": "red-orb",
+  "blue-orb": "blue-orb",
+  "griseous-core": "griseous-orb",
+  "reveal-glass": "reveal-glass",
+  "rusted-sword": "rusted-sword",
+  "rusted-shield": "rusted-shield",
+  "adamant-crystal": "adamant-crystal",
+  "lustrous-globe": "lustrous-globe"
+};
+''')
+
+          replace_once('src/ui/form-items-ui.js',
+          '''function formItemSprite(item) {
+  return `<img class="item-sprite" src="${itemSpriteUrl(item?.id || "reveal-glass")}" data-fallback-src="${itemSpriteUrl("mega-stone")}" alt="${item?.name || "Item de Forma"}" loading="lazy" decoding="async" />`;
+}''',
+          '''function formItemSprite(item) {
+  const spriteId = FORM_ITEM_SPRITE_IDS[item?.id] || "reveal-glass";
+  return `<img class="item-sprite" src="${itemSpriteUrl(spriteId)}" data-fallback-src="${MEGA_EVOLUTION_SYMBOL_URL}" alt="${item?.name || "Item de Forma"}" loading="lazy" decoding="async" />`;
+}''')
+
+          css = Path('src/styles/item-sprites.css')
+          text = css.read_text(encoding='utf-8')
+          addition = '''
+.item-sprite.mega-evolution-symbol {
+  object-fit: contain;
+  filter: none;
+}
+'''
+          if addition.strip() not in text:
+              css.write_text(text.rstrip() + '\n' + addition, encoding='utf-8')
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Validar referências locais
+        run: |
+          test -s public/assets/mega-evolution-symbol.svg
+          grep -q 'rayquazite: null' src/ui/shop-ui.js
+          grep -q '"griseous-core": "griseous-orb"' src/ui/form-items-ui.js
+          grep -q 'mega-evolution-symbol' src/ui/shop-ui.js
+      - name: Commitar correção
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/ui/shop-ui.js src/ui/form-items-ui.js src/styles/item-sprites.css
+          git commit -m "Corrigir sprites de Mega Stones e itens de forma"
+          git push
