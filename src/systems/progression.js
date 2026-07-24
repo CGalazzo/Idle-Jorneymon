@@ -3,12 +3,12 @@ import { getEeveeEvolutionTargets } from "../data/evolutions.js";
 import {
   POKEDEX_SPECIES,
   evolvePokemonIfReady,
-  experienceToNextLevel,
-  recalculatePokemonForLevel
+  experienceToNextLevel
 } from "../data/pokemon.js";
 import { getExpShareMultiplier } from "../data/shop-data.js";
 import { ENVIRONMENTS } from "../data/worlds.js";
 import { CAPTURE_DECISION_MS } from "./capture.js";
+import { recalculateActiveFormItemForLevel } from "./form-items.js";
 
 const EEVEE_ID = 133;
 
@@ -149,7 +149,7 @@ function grantPokemonExperience(state, pokemon, amount) {
     pokemon.xp -= pokemon.xpToNext;
     pokemon.level += 1;
     pokemon.xpToNext = experienceToNextLevel(pokemon.level);
-    recalculatePokemonForLevel(pokemon, true);
+    recalculateActiveFormItemForLevel(pokemon, true);
     addLog(state, `${pokemon.name} subiu para o nível ${pokemon.level}!`);
 
     if (queueEeveeEvolutionChoice(state, pokemon)) break;

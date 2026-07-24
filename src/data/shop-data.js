@@ -85,6 +85,8 @@ export function createInitialShopState() {
     ownedMegaStones: [],
     equippedMegaStoneId: null,
     equippedMegaPokemonUid: null,
+    ownedFormItems: [],
+    equippedFormItems: {},
     purchaseRepairApplied: true,
     legacyRefundCoins: 0,
     testCoinGrantApplied: true
@@ -117,6 +119,12 @@ export function normalizeShopState(saved = {}) {
     ownedMegaStones: [...new Set(Array.isArray(saved.ownedMegaStones) ? saved.ownedMegaStones.map(String) : [])],
     equippedMegaStoneId: saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null,
     equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null,
+    ownedFormItems: [...new Set(Array.isArray(saved.ownedFormItems) ? saved.ownedFormItems.map(String) : [])],
+    equippedFormItems: Object.fromEntries(
+      Object.entries(saved.equippedFormItems && typeof saved.equippedFormItems === "object" ? saved.equippedFormItems : {})
+        .map(([itemId, pokemonUid]) => [String(itemId), String(pokemonUid || "")])
+        .filter(([, pokemonUid]) => pokemonUid)
+    ),
     purchaseRepairApplied: true,
     legacyRefundCoins: Math.max(0, Math.floor(Number(saved.legacyRefundCoins) || 0)) + legacyRefund,
     testCoinGrantApplied: true

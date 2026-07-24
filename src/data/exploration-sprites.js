@@ -3,7 +3,7 @@ const SHOWDOWN_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/
 const LAST_GENERATION_FIVE_SPECIES_ID = 649;
 
 export function getExplorationSpriteUrl(pokemon, forceShiny = Boolean(pokemon?.isShiny)) {
-  const speciesId = Math.max(1, Number(pokemon?.megaFormId || pokemon?.id) || 1);
+  const speciesId = Math.max(1, Number(pokemon?.megaFormId || pokemon?.formItemFormId || pokemon?.id) || 1);
   const shinyPath = forceShiny ? "shiny/" : "";
 
   if (speciesId <= LAST_GENERATION_FIVE_SPECIES_ID) {
