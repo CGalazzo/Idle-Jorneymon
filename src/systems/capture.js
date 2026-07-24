@@ -172,6 +172,10 @@ function registerCaptureSuccess(state, pokemon, ballCopy = "") {
   if (state.championsHall?.active) state.championsHall.captures += 1;
 }
 
+function captureAnimationPaused() {
+  return typeof window !== "undefined" && Boolean(window.__idleJorneymonCaptureTimerPaused);
+}
+
 export function updateCaptureDecision(state, now = Date.now()) {
   if (state.mode !== "capture" || !state.enemy) return false;
   if (!state.captureOffer) {
@@ -188,6 +192,21 @@ export function updateCaptureDecision(state, now = Date.now()) {
     state.captureOffer.expiresAt = now + CAPTURE_DECISION_MS;
     return false;
   }
+
+  if (captureAnimationPaused()) {
+    if (!Number.isFinite(state.captureOffer.animationPausedAt)) {
+      state.captureOffer.animationPausedAt = now;
+    }
+    return false;
+  }
+
+  if (Number.isFinite(state.captureOffer.animationPausedAt)) {
+    const pausedFor = Math.max(0, now - state.captureOffer.animationPausedAt);
+    state.captureOffer.expiresAt += pausedFor;
+    if (Number.isFinite(state.captureOffer.startedAt)) state.captureOffer.startedAt += pausedFor;
+    delete state.captureOffer.animationPausedAt;
+  }
+
   if (now < state.captureOffer.expiresAt) return false;
 
   addLog(state, `O tempo para capturar ${state.enemy.name} acabou. A exploração continua.`);
@@ -205,8 +224,8 @@ export function declineCapture(state) {
 function attemptChampionsHallCapture(state, random = Math.random) {
   const pokemon = state.enemy;
   const success = random() * 100 < CHAMPIONS_HALL_CAPTURE_CHANCE;
-  if (success) registerCaptureSuccess(state, pokemon, " no desafio dos Campeões");
-  else addLog(state, `${pokemon.name} shiny resistiu à captura do Salão dos Campeões.`);
+  if (success) registerCaptureSuccess(state, pokemon, " usando Luxury Ball no desafio dos Campeões");
+  else addLog(state, `${pokemon.name} shiny escapou da Luxury Ball no Salão dos Campeões.`);
   returnToExploration(state);
   return success;
 }
