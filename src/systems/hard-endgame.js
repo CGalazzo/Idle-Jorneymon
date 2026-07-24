@@ -155,24 +155,12 @@ function legendaryTemplatesForCycle(cycle) {
   const pool = legendaryChallengePool();
   if (!pool.length) return [];
 
-  const currentOrder = shuffled(pool, cycle.index ^ 0x45d9f3b);
-  const previousOrder = shuffled(pool, (cycle.index - 1) ^ 0x45d9f3b);
-  const previousIds = new Set(
-    previousOrder.slice(0, CHALLENGES_PER_ROTATION).map((pokemon) => Number(pokemon.id))
-  );
-
-  const selected = currentOrder
-    .filter((pokemon) => !previousIds.has(Number(pokemon.id)))
-    .slice(0, CHALLENGES_PER_ROTATION);
-
-  if (selected.length < CHALLENGES_PER_ROTATION) {
-    currentOrder.forEach((pokemon) => {
-      if (selected.length >= CHALLENGES_PER_ROTATION) return;
-      if (!selected.some((entry) => Number(entry.id) === Number(pokemon.id))) selected.push(pokemon);
-    });
-  }
-
-  return selected;
+  // Uma ordem fixa e embaralhada, avançando três posições a cada ciclo.
+  // Como o conjunto possui mais de seis Lendários, ciclos consecutivos não se sobrepõem.
+  const orderedPool = shuffled(pool, 0x6c656765);
+  const start = ((cycle.index * CHALLENGES_PER_ROTATION) % orderedPool.length + orderedPool.length) % orderedPool.length;
+  const count = Math.min(CHALLENGES_PER_ROTATION, orderedPool.length);
+  return Array.from({ length: count }, (_, offset) => orderedPool[(start + offset) % orderedPool.length]);
 }
 
 function multiplierLabel(multiplier) {
