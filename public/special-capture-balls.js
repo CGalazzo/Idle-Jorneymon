@@ -1,18 +1,21 @@
 (() => {
   let scheduled = false;
 
-  function applySpecialCaptureBalls() {
-    const safariButton = document.querySelector("#try-capture.safari-capture-button");
-    if (safariButton) {
-      safariButton.dataset.captureBall = "safari-ball";
-      safariButton.setAttribute("aria-label", "Usar Safari Ball");
+  function decorateButton(button) {
+    if (!button) return;
+    if (button.classList.contains("safari-capture-button")) {
+      button.dataset.captureBall = "safari-ball";
+      button.setAttribute("aria-label", "Usar Safari Ball");
     }
+    if (button.classList.contains("champions-hall-capture-button")) {
+      button.dataset.captureBall = "poke-ball";
+      button.setAttribute("aria-label", "Usar Poké Bola dourada do Salão dos Campeões");
+    }
+  }
 
-    const championsButton = document.querySelector("#try-capture.champions-hall-capture-button");
-    if (championsButton) {
-      championsButton.dataset.captureBall = "poke-ball";
-      championsButton.setAttribute("aria-label", "Usar Poké Bola dourada do Salão dos Campeões");
-    }
+  function applySpecialCaptureBalls() {
+    decorateButton(document.querySelector("#try-capture.safari-capture-button"));
+    decorateButton(document.querySelector("#try-capture.champions-hall-capture-button"));
   }
 
   function scheduleApply() {
@@ -26,6 +29,13 @@
 
   function start() {
     applySpecialCaptureBalls();
+
+    // Este listener roda antes do módulo visual e garante que a animação receba
+    // a sprite correta mesmo quando o botão acabou de ser recriado pela interface.
+    document.addEventListener("click", (event) => {
+      decorateButton(event.target.closest?.("#try-capture"));
+    }, true);
+
     const observer = new MutationObserver(scheduleApply);
     observer.observe(document.body, {
       childList: true,
