@@ -59,7 +59,7 @@
   width: 38px;
   height: 38px;
   background: rgba(255,255,255,.98);
-  box-shadow: 0 0 26px 15px rgba(255,255,255,.78), 0 0 48px 24px rgba(255,86,86,.36);
+  box-shadow: 0 0 26px 15px rgba(255,255,255,.82), 0 0 48px 24px rgba(116,196,255,.38);
   animation: captureImpactFlash 390ms 1420ms ease-out forwards;
 }
 
@@ -67,8 +67,8 @@
   z-index: 3;
   width: 34px;
   height: 34px;
-  border: 5px solid rgba(255,243,196,.92);
-  box-shadow: 0 0 20px rgba(255,86,86,.85), inset 0 0 18px rgba(255,255,255,.65);
+  border: 5px solid rgba(255,243,196,.94);
+  box-shadow: 0 0 20px rgba(103,195,255,.9), inset 0 0 18px rgba(255,255,255,.68);
   animation: captureImpactRing 520ms 1435ms ease-out forwards;
 }
 
@@ -87,8 +87,58 @@
   animation: captureDropShadow 620ms 1650ms ease-out forwards;
 }
 
-.capture-animation-target .capture-pokemon {
-  animation: capturePokemonIntoBall 650ms 1370ms ease-in forwards;
+.capture-result-flash {
+  position: absolute;
+  left: var(--capture-drop-x, 50%);
+  top: var(--capture-drop-y, 64%);
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 5px solid rgba(var(--capture-result-rgb), .96);
+  border-radius: 50%;
+  color: rgb(var(--capture-result-rgb));
+  background: rgba(255,255,255,.96);
+  box-shadow:
+    0 0 20px 10px rgba(var(--capture-result-rgb), .82),
+    0 0 52px 28px rgba(var(--capture-result-rgb), .48);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.25);
+  animation: captureResultFlash 520ms 2180ms ease-out forwards;
+}
+
+.capture-result-flash::after {
+  font-size: 25px;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.8);
+}
+
+.capture-result-success {
+  --capture-result-rgb: 55, 224, 124;
+}
+
+.capture-result-success .capture-result-flash::after {
+  content: "✓";
+}
+
+.capture-result-failure {
+  --capture-result-rgb: 255, 77, 77;
+}
+
+.capture-result-failure .capture-result-flash::after {
+  content: "×";
+}
+
+.capture-animation-target .capture-pokemon img {
+  transform-origin: center center;
+  animation: capturePokemonIntoBall 420ms 1430ms ease-in forwards;
+}
+
+.capture-animation-target .capture-pokemon::before,
+.capture-animation-target .capture-pokemon::after {
+  animation: captureSparkleAway 280ms 1430ms ease-in forwards;
 }
 
 .capture-animation-running {
@@ -174,29 +224,55 @@
   0% {
     opacity: 1;
     filter: brightness(1);
-    transform: translateX(-50%) scale(1);
+    transform: scale(1);
   }
-  22% {
+  24% {
     opacity: 1;
-    filter: brightness(3) saturate(.4);
-    transform: translateX(-50%) scale(1.04);
+    filter: brightness(3.2) saturate(.35);
+    transform: scale(1.03);
   }
-  58% {
-    opacity: .72;
-    filter: brightness(3.8) saturate(.1);
-    transform: translateX(-50%) scale(.68);
+  62% {
+    opacity: .58;
+    filter: brightness(4) saturate(.05);
+    transform: scale(.58);
   }
   100% {
     opacity: 0;
-    filter: brightness(4) saturate(0);
-    transform: translateX(-50%) scale(.16);
+    filter: brightness(4.5) saturate(0);
+    transform: scale(.08);
   }
+}
+
+@keyframes captureSparkleAway {
+  to { opacity: 0; transform: scale(.35); }
 }
 
 @keyframes captureDropShadow {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
   55% { opacity: .28; transform: translate(-50%, -50%) scale(1.08); }
   100% { opacity: .38; transform: translate(-50%, -50%) scale(.92); }
+}
+
+@keyframes captureResultFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.22);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(.96);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.35);
+    box-shadow:
+      0 0 36px 18px rgba(var(--capture-result-rgb), 0),
+      0 0 70px 38px rgba(var(--capture-result-rgb), 0);
+  }
 }
 
 .capture-animation-setting {
@@ -281,6 +357,7 @@
   .capture-throw-ball { animation-duration: 1450ms; }
   .capture-impact-flash { animation-delay: 900ms; animation-duration: 260ms; }
   .capture-impact-ring { animation-delay: 910ms; animation-duration: 310ms; }
-  .capture-animation-target .capture-pokemon { animation-delay: 860ms; animation-duration: 390ms; }
+  .capture-animation-target .capture-pokemon img { animation-delay: 900ms; animation-duration: 260ms; }
   .capture-drop-shadow { animation-delay: 1080ms; animation-duration: 360ms; }
+  .capture-result-flash { animation-delay: 1370ms; animation-duration: 360ms; }
 }
