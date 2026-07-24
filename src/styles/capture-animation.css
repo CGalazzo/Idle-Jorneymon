@@ -1,0 +1,153 @@
+.capture-throw-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.capture-throw-ball {
+  position: absolute;
+  left: 12%;
+  top: 76%;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  animation: captureBallThrow 560ms cubic-bezier(.22, .7, .2, 1) forwards;
+}
+
+.capture-throw-ball img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 8px 5px rgba(0, 0, 0, .32));
+  animation: captureBallSpin 180ms linear infinite;
+}
+
+.capture-impact-flash {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 0 0 0 rgba(117, 224, 255, .7), 0 0 28px 12px rgba(255, 255, 255, .65);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.25);
+  animation: captureImpactFlash 230ms 500ms ease-out forwards;
+}
+
+.capture-animation-target .capture-pokemon {
+  animation: captureTargetHit 260ms 470ms ease-out both;
+}
+
+.capture-animation-running {
+  pointer-events: none;
+}
+
+@keyframes captureBallThrow {
+  0% { left: 12%; top: 76%; transform: translate(-50%, -50%) scale(.75); }
+  48% { left: 32%; top: 29%; transform: translate(-50%, -50%) scale(1.12); }
+  100% { left: 50%; top: 34%; transform: translate(-50%, -50%) scale(.9); }
+}
+
+@keyframes captureBallSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes captureImpactFlash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); box-shadow: 0 0 0 12px rgba(117, 224, 255, .34), 0 0 34px 18px rgba(255, 255, 255, .75); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); box-shadow: 0 0 0 28px rgba(117, 224, 255, 0), 0 0 38px 20px rgba(255, 255, 255, 0); }
+}
+
+@keyframes captureTargetHit {
+  0%, 100% { opacity: 1; filter: brightness(1); transform: translateX(-50%) scale(1); }
+  55% { opacity: .3; filter: brightness(2.4); transform: translateX(-50%) scale(.82); }
+}
+
+.capture-animation-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 18px 20px;
+  border-color: rgba(90, 210, 250, .28);
+  background: linear-gradient(145deg, rgba(18, 57, 86, .88), rgba(12, 38, 63, .88));
+}
+
+.capture-animation-setting-copy small {
+  color: #69dafa;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.capture-animation-setting-copy h3 {
+  margin: 3px 0 5px;
+  font-size: 18px;
+}
+
+.capture-animation-setting-copy p {
+  max-width: 600px;
+  margin: 0;
+  color: #a8c2d5;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+#capture-animation-toggle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 142px;
+  min-height: 48px;
+  padding: 0 16px;
+  color: #b8ccdc;
+  background: #20384e;
+  border: 1px solid rgba(146, 181, 205, .28);
+  border-radius: 999px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.capture-animation-toggle-dot {
+  width: 22px;
+  height: 22px;
+  background: #70879a;
+  border: 3px solid rgba(255, 255, 255, .18);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .12);
+}
+
+#capture-animation-toggle.enabled {
+  color: #082b1c;
+  background: linear-gradient(145deg, #74e8aa, #47c987);
+  border-color: #8bf0bb;
+}
+
+#capture-animation-toggle.enabled .capture-animation-toggle-dot {
+  background: #fff;
+  border-color: rgba(8, 43, 28, .16);
+}
+
+@media (max-width: 700px) {
+  .capture-animation-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #capture-animation-toggle {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-throw-ball { animation-duration: 280ms; }
+  .capture-impact-flash { animation-delay: 220ms; animation-duration: 120ms; }
+}
