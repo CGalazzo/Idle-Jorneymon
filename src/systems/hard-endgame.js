@@ -1,7 +1,9 @@
 import { addLog, randomEncounterTarget } from "../core/game-state.js";
 import {
-  HARD_CHALLENGES,
+  HARD_CHALLENGE_LEGENDARY_IDS,
+  HARD_CHALLENGE_SLOTS,
   getHardChallenge,
+  getHardChallengeCycle,
   getHardShopItem,
   normalizeHardEndgameState
 } from "../data/hard-endgame-data.js";
@@ -12,6 +14,7 @@ import { ENVIRONMENTS, TOTAL_ROUTES } from "../data/worlds.js";
 const MASTER_BALL_STOCK_LIMIT = 1;
 const CHALLENGE_LEVEL = 100;
 const CHALLENGE_IV = 31;
+const CHALLENGES_PER_ROTATION = 3;
 
 function hardJourney(state) {
   if (state.campaignMode === "hard") return state.journey;
@@ -62,13 +65,24 @@ function backfillHardRouteRewards(state, hardEndgame) {
   return reward;
 }
 
-function ensureHardEndgameState(state) {
+function ensureChallengeRotation(state, hardEndgame, now = Date.now()) {
+  const cycle = getHardChallengeCycle(now);
+  if (hardEndgame.challengeCycleKey !== cycle.key) {
+    hardEndgame.challengeCycleKey = cycle.key;
+    hardEndgame.completedChallengeIds = [];
+    if (!state.enemy?.hardChallengeBoss) hardEndgame.activeChallengeId = null;
+  }
+  return cycle;
+}
+
+function ensureHardEndgameState(state, now = Date.now()) {
   const target = state.hardEndgame && typeof state.hardEndgame === "object"
     ? state.hardEndgame
     : {};
   Object.assign(target, normalizeHardEndgameState(target));
   state.hardEndgame = target;
   backfillHardRouteRewards(state, target);
+  ensureChallengeRotation(state, target, now);
   return target;
 }
 
@@ -99,6 +113,97 @@ function spendEmblems(state, amount) {
   hardEndgame.emblems -= price;
   hardEndgame.totalEmblemsSpent += price;
   return true;
+}
+
+function seededRandom(seed) {
+  let value = (Number(seed) || 0) >>> 0;
+  return () => {
+    value = (value + 0x6D2B79F5) >>> 0;
+    let mixed = value;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled(items, seed) {
+  const result = [...items];
+  const random = seededRandom(seed);
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1));
+    [result[index], result[target]] = [result[target], result[index]];
+  }
+  return result;
+}
+
+function legendaryChallengePool() {
+  const byId = new Map(POKEDEX_SPECIES.map((pokemon) => [Number(pokemon.id), pokemon]));
+  const curated = HARD_CHALLENGE_LEGENDARY_IDS
+    .map((id) => byId.get(Number(id)))
+    .filter(Boolean);
+
+  if (curated.length >= CHALLENGES_PER_ROTATION * 2) return curated;
+
+  const supplements = POKEDEX_SPECIES.filter((pokemon) => (
+    pokemon.rarity === "legendary"
+    && !curated.some((entry) => Number(entry.id) === Number(pokemon.id))
+  ));
+  return [...curated, ...supplements];
+}
+
+function legendaryTemplatesForCycle(cycle) {
+  const pool = legendaryChallengePool();
+  if (!pool.length) return [];
+
+  const currentOrder = shuffled(pool, cycle.index ^ 0x45d9f3b);
+  const previousOrder = shuffled(pool, (cycle.index - 1) ^ 0x45d9f3b);
+  const previousIds = new Set(
+    previousOrder.slice(0, CHALLENGES_PER_ROTATION).map((pokemon) => Number(pokemon.id))
+  );
+
+  const selected = currentOrder
+    .filter((pokemon) => !previousIds.has(Number(pokemon.id)))
+    .slice(0, CHALLENGES_PER_ROTATION);
+
+  if (selected.length < CHALLENGES_PER_ROTATION) {
+    currentOrder.forEach((pokemon) => {
+      if (selected.length >= CHALLENGES_PER_ROTATION) return;
+      if (!selected.some((entry) => Number(entry.id) === Number(pokemon.id))) selected.push(pokemon);
+    });
+  }
+
+  return selected;
+}
+
+function multiplierLabel(multiplier) {
+  return Number(multiplier).toFixed(2).replace(/0$/, "").replace(".", ",");
+}
+
+export function getRotatingHardChallenges(now = Date.now()) {
+  const cycle = getHardChallengeCycle(now);
+  const templates = legendaryTemplatesForCycle(cycle);
+
+  return HARD_CHALLENGE_SLOTS.map((slot, index) => {
+    const template = templates[index];
+    if (!template) return null;
+    return {
+      id: `${cycle.key}:${slot.id}:${template.id}`,
+      cycleKey: cycle.key,
+      slotId: slot.id,
+      name: template.name,
+      subtitle: `${slot.label} · NÍVEL 100`,
+      description: `${template.name} com IV máximo, Fase 2 e atributos x${multiplierLabel(slot.statMultiplier)}. Mega Evolução automática quando compatível.`,
+      speciesId: Number(template.id),
+      statMultiplier: slot.statMultiplier,
+      reward: slot.reward,
+      shiny: false
+    };
+  }).filter(Boolean);
+}
+
+function currentHardChallenge(challengeId, now = Date.now()) {
+  return getRotatingHardChallenges(now)
+    .find((challenge) => challenge.id === String(challengeId || "")) || null;
 }
 
 export function grantHardRouteEmblems(state, route, { completedEnvironment = false, campaignComplete = false } = {}) {
@@ -166,7 +271,7 @@ function createChallengeEnemy(challenge) {
     level: CHALLENGE_LEVEL,
     iv: CHALLENGE_IV,
     isShiny: Boolean(challenge.shiny),
-    rarity: template.rarity === "mythical" ? "mythical" : "legendary",
+    rarity: "legendary",
     hp: Number.MAX_SAFE_INTEGER,
     maxHp: Number.MAX_SAFE_INTEGER
   }, { heal: true });
@@ -185,18 +290,30 @@ function createChallengeEnemy(challenge) {
     hardStatMultiplier: challenge.statMultiplier,
     hardChallengeBoss: true,
     hardChallengeId: challenge.id,
+    hardChallengeData: {
+      id: challenge.id,
+      cycleKey: challenge.cycleKey || "legacy",
+      name: challenge.name,
+      speciesId: challenge.speciesId,
+      statMultiplier: challenge.statMultiplier,
+      reward: Math.max(0, Number(challenge.reward ?? challenge.firstReward) || 0),
+      shiny: Boolean(challenge.shiny)
+    },
     xpReward: 1600,
     playerLevelAtEncounter: CHALLENGE_LEVEL
   };
 }
 
-export function startHardChallenge(state, challengeId) {
-  const challenge = getHardChallenge(challengeId);
+export function startHardChallenge(state, challengeId, now = Date.now()) {
+  const challenge = currentHardChallenge(challengeId, now);
   if (!challenge || state.campaignMode !== "hard" || !hardCampaignComplete(state)) return false;
+
+  const hardEndgame = ensureHardEndgameState(state, now);
+  if (hardEndgame.completedChallengeIds.includes(challenge.id)) return false;
+
   const enemy = createChallengeEnemy(challenge);
   if (!enemy) return false;
 
-  const hardEndgame = ensureHardEndgameState(state);
   hardEndgame.postGameUnlocked = true;
   hardEndgame.activeChallengeId = challenge.id;
   hardEndgame.challengeResult = null;
@@ -212,28 +329,55 @@ export function startHardChallenge(state, challengeId) {
   state.battleParticipants = [];
   state.battleCooldown = 0;
   state.megaEvolutionCooldown = 0;
-  addLog(state, `Desafio Hard iniciado: ${challenge.name}.`);
+  addLog(state, `Desafio Hard iniciado: ${challenge.name}. Recompensa: +${challenge.reward} Emblemas Hard.`);
   return true;
 }
 
-export function completeHardChallenge(state, defeated) {
-  const hardEndgame = ensureHardEndgameState(state);
-  const challenge = getHardChallenge(defeated?.hardChallengeId || hardEndgame.activeChallengeId);
+function challengeForCompletion(defeated, hardEndgame, now = Date.now()) {
+  if (defeated?.hardChallengeData?.id) return { ...defeated.hardChallengeData };
+
+  const challengeId = defeated?.hardChallengeId || hardEndgame.activeChallengeId;
+  const rotating = currentHardChallenge(challengeId, now);
+  if (rotating) return rotating;
+
+  const legacy = getHardChallenge(challengeId);
+  if (!legacy) return null;
+  return {
+    ...legacy,
+    cycleKey: "legacy",
+    reward: Math.max(0, Number(legacy.reward ?? legacy.firstReward) || 0)
+  };
+}
+
+export function completeHardChallenge(state, defeated, now = Date.now()) {
+  const hardEndgame = ensureHardEndgameState(state, now);
+  const cycle = getHardChallengeCycle(now);
+  const challenge = challengeForCompletion(defeated, hardEndgame, now);
   if (!challenge) return false;
 
-  const firstCompletion = !hardEndgame.completedChallengeIds.includes(challenge.id);
-  if (firstCompletion) hardEndgame.completedChallengeIds.push(challenge.id);
-  hardEndgame.challengeWins += 1;
-  const reward = firstCompletion ? challenge.firstReward : challenge.repeatReward;
-  grantEmblems(state, reward, firstCompletion ? `vencer ${challenge.name} pela primeira vez` : `repetir ${challenge.name}`);
+  const alreadyRewarded = hardEndgame.rewardedChallengeKeys.includes(challenge.id);
+  const reward = alreadyRewarded ? 0 : Math.max(0, Math.floor(Number(challenge.reward) || 0));
+
+  if (!alreadyRewarded) {
+    hardEndgame.rewardedChallengeKeys.push(challenge.id);
+    hardEndgame.rewardedChallengeKeys = hardEndgame.rewardedChallengeKeys.slice(-120);
+    hardEndgame.challengeWins += 1;
+    grantEmblems(state, reward, `vencer ${challenge.name} nesta rotação`);
+  }
+
+  if (challenge.cycleKey === cycle.key && !hardEndgame.completedChallengeIds.includes(challenge.id)) {
+    hardEndgame.completedChallengeIds.push(challenge.id);
+  }
 
   hardEndgame.activeChallengeId = null;
   hardEndgame.challengeResult = {
     challengeId: challenge.id,
+    cycleKey: challenge.cycleKey,
     name: challenge.name,
     reward,
-    firstCompletion,
-    completedAt: Date.now()
+    alreadyRewarded,
+    rotationChanged: challenge.cycleKey !== "legacy" && challenge.cycleKey !== cycle.key,
+    completedAt: now
   };
 
   state.team.forEach((pokemon) => { pokemon.hp = pokemon.maxHp; });
@@ -256,14 +400,21 @@ export function clearHardChallengeResult(state) {
   hardEndgame.challengeResult = null;
 }
 
-export function getHardEndgameStatus(state) {
-  const hardEndgame = ensureHardEndgameState(state);
+export function getHardEndgameStatus(state, now = Date.now()) {
+  const hardEndgame = ensureHardEndgameState(state, now);
+  const cycle = getHardChallengeCycle(now);
+  const challenges = getRotatingHardChallenges(now).map((challenge) => ({
+    ...challenge,
+    completed: hardEndgame.completedChallengeIds.includes(challenge.id)
+  }));
+
   return {
     ...hardEndgame,
     hardCampaignComplete: hardCampaignComplete(state),
-    challenges: HARD_CHALLENGES.map((challenge) => ({
-      ...challenge,
-      completed: hardEndgame.completedChallengeIds.includes(challenge.id)
-    }))
+    challengeCycleKey: cycle.key,
+    rotationStartsAt: cycle.startsAt,
+    rotationEndsAt: cycle.endsAt,
+    rotationRemainingMs: Math.max(0, cycle.endsAt - now),
+    challenges
   };
 }
