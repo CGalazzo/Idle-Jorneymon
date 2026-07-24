@@ -8,13 +8,15 @@
 
 .capture-throw-ball {
   position: absolute;
-  left: 12%;
-  top: 76%;
-  width: 46px;
-  height: 46px;
+  left: var(--capture-start-x, 10%);
+  top: var(--capture-start-y, 88%);
+  z-index: 2;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
-  animation: captureBallThrow 560ms cubic-bezier(.22, .7, .2, 1) forwards;
+  transform: translate(-50%, -50%);
+  animation: captureBallThrow 1450ms cubic-bezier(.18, .64, .22, 1) forwards;
 }
 
 .capture-throw-ball img {
@@ -23,25 +25,25 @@
   object-fit: contain;
   image-rendering: pixelated;
   filter: drop-shadow(0 8px 5px rgba(0, 0, 0, .32));
-  animation: captureBallSpin 180ms linear infinite;
+  animation: captureBallSpin 260ms linear infinite;
 }
 
 .capture-impact-flash {
   position: absolute;
-  left: 50%;
-  top: 34%;
-  width: 28px;
-  height: 28px;
+  left: var(--capture-target-x, 50%);
+  top: var(--capture-target-y, 34%);
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, .95);
   box-shadow: 0 0 0 0 rgba(117, 224, 255, .7), 0 0 28px 12px rgba(255, 255, 255, .65);
   opacity: 0;
   transform: translate(-50%, -50%) scale(.25);
-  animation: captureImpactFlash 230ms 500ms ease-out forwards;
+  animation: captureImpactFlash 350ms 1370ms ease-out forwards;
 }
 
 .capture-animation-target .capture-pokemon {
-  animation: captureTargetHit 260ms 470ms ease-out both;
+  animation: captureTargetHit 430ms 1320ms ease-out both;
 }
 
 .capture-animation-running {
@@ -49,9 +51,26 @@
 }
 
 @keyframes captureBallThrow {
-  0% { left: 12%; top: 76%; transform: translate(-50%, -50%) scale(.75); }
-  48% { left: 32%; top: 29%; transform: translate(-50%, -50%) scale(1.12); }
-  100% { left: 50%; top: 34%; transform: translate(-50%, -50%) scale(.9); }
+  0% {
+    left: var(--capture-start-x, 10%);
+    top: var(--capture-start-y, 88%);
+    transform: translate(-50%, -50%) scale(.72);
+  }
+  31% {
+    left: var(--capture-clear-x, 18%);
+    top: var(--capture-clear-y, 58%);
+    transform: translate(-50%, -50%) scale(.92);
+  }
+  68% {
+    left: var(--capture-arc-x, 34%);
+    top: var(--capture-arc-y, 20%);
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+  100% {
+    left: var(--capture-target-x, 50%);
+    top: var(--capture-target-y, 34%);
+    transform: translate(-50%, -50%) scale(.9);
+  }
 }
 
 @keyframes captureBallSpin {
@@ -148,6 +167,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .capture-throw-ball { animation-duration: 280ms; }
-  .capture-impact-flash { animation-delay: 220ms; animation-duration: 120ms; }
+  .capture-throw-ball { animation-duration: 900ms; }
+  .capture-impact-flash { animation-delay: 820ms; animation-duration: 180ms; }
+  .capture-animation-target .capture-pokemon { animation-delay: 790ms; animation-duration: 220ms; }
 }
