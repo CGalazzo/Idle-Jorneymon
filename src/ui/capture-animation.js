@@ -2,7 +2,7 @@ import "../styles/capture-animation.css";
 
 const SETTING_KEY = "idle-jorneymon-capture-animation-enabled";
 const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
-const ANIMATION_MS = 780;
+const ANIMATION_MS = 1800;
 
 let bypassNextCapture = false;
 let captureAnimating = false;
@@ -20,6 +20,53 @@ function selectedBallId(button) {
   return button?.dataset.captureBall || "poke-ball";
 }
 
+function setTrajectory(layer, scene) {
+  const sceneRect = scene.getBoundingClientRect();
+  const panelRect = document.querySelector("#capture-panel")?.getBoundingClientRect();
+  const target = document.querySelector("#battle-stage .capture-pokemon img")
+    || document.querySelector("#battle-stage .capture-pokemon");
+  const targetRect = target?.getBoundingClientRect();
+
+  const targetX = targetRect
+    ? targetRect.left - sceneRect.left + targetRect.width / 2
+    : sceneRect.width * 0.5;
+  const targetY = targetRect
+    ? targetRect.top - sceneRect.top + targetRect.height / 2
+    : sceneRect.height * 0.34;
+
+  const panelLeft = panelRect ? panelRect.left - sceneRect.left : sceneRect.width * 0.25;
+  const panelTop = panelRect ? panelRect.top - sceneRect.top : sceneRect.height * 0.62;
+  const hasSideSpace = panelLeft >= 82;
+
+  const startX = hasSideSpace
+    ? Math.max(28, panelLeft - 48)
+    : 30;
+  const startY = hasSideSpace
+    ? sceneRect.height - 34
+    : Math.max(targetY + 100, panelTop - 34);
+  const clearX = hasSideSpace
+    ? Math.max(30, panelLeft - 42)
+    : Math.max(34, sceneRect.width * 0.12);
+  const clearY = Math.max(targetY + 62, Math.min(panelTop - 48, targetY + 112));
+  const arcX = clearX + (targetX - clearX) * 0.52;
+  const arcY = Math.max(28, targetY - Math.min(58, sceneRect.height * 0.16));
+
+  const points = {
+    "--capture-start-x": startX,
+    "--capture-start-y": startY,
+    "--capture-clear-x": clearX,
+    "--capture-clear-y": clearY,
+    "--capture-arc-x": arcX,
+    "--capture-arc-y": arcY,
+    "--capture-target-x": targetX,
+    "--capture-target-y": targetY
+  };
+
+  Object.entries(points).forEach(([property, value]) => {
+    layer.style.setProperty(property, `${Math.round(value)}px`);
+  });
+}
+
 function createAnimationLayer(ballId) {
   const scene = document.querySelector("#scene");
   if (!scene) return null;
@@ -34,6 +81,7 @@ function createAnimationLayer(ballId) {
     </span>
     <span class="capture-impact-flash"></span>
   `;
+  setTrajectory(layer, scene);
   scene.appendChild(layer);
   return layer;
 }
@@ -61,7 +109,7 @@ function toggleMarkup() {
       <div class="capture-animation-setting-copy">
         <small>PREFERÊNCIA VISUAL</small>
         <h3>Animação de captura</h3>
-        <p>Mostra uma animação curta da Poké Bola sendo lançada antes do resultado da captura.</p>
+        <p>Mostra a Poké Bola sendo lançada em diagonal até o Pokémon antes do resultado da captura.</p>
       </div>
       <button id="capture-animation-toggle" type="button" role="switch" aria-checked="true">
         <span class="capture-animation-toggle-dot"></span>
