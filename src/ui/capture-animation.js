@@ -22,6 +22,15 @@ function selectedBallId(button) {
   return button?.dataset.captureBall || "poke-ball";
 }
 
+function captureButtonSelector(button) {
+  if (button?.id === "try-capture") return "#try-capture";
+  const ballId = selectedBallId(button);
+  const escaped = typeof CSS?.escape === "function"
+    ? CSS.escape(ballId)
+    : String(ballId).replace(/["\\]/g, "\\$&");
+  return `[data-capture-ball="${escaped}"]`;
+}
+
 function displayedCaptureChance(button) {
   const matches = [...String(button?.textContent || "").matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)];
   if (!matches.length) return 50;
@@ -287,6 +296,13 @@ function installToggleListener() {
   });
 }
 
+function restoreCaptureButtons(root) {
+  root?.querySelectorAll("button").forEach((entry) => {
+    entry.disabled = entry.dataset.captureAnimationDisabled === "true";
+    delete entry.dataset.captureAnimationDisabled;
+  });
+}
+
 function installCaptureInterceptor() {
   document.addEventListener("click", async (event) => {
     const button = event.target.closest("#try-capture, [data-capture-ball]");
@@ -298,24 +314,29 @@ function installCaptureInterceptor() {
     if (captureAnimating) return;
 
     captureAnimating = true;
+    window.__idleJorneymonPauseCaptureTimer?.();
+
     const options = button.closest("#capture-ball-options");
+    const buttonSelector = captureButtonSelector(button);
+    const ballId = selectedBallId(button);
     options?.querySelectorAll("button").forEach((entry) => {
       entry.dataset.captureAnimationDisabled = entry.disabled ? "true" : "false";
       entry.disabled = true;
     });
 
     const captureSucceeded = rollCaptureResult(button);
-    await playCaptureAnimation(selectedBallId(button), captureSucceeded);
+    await playCaptureAnimation(ballId, captureSucceeded);
 
-    options?.querySelectorAll("button").forEach((entry) => {
-      entry.disabled = entry.dataset.captureAnimationDisabled === "true";
-      delete entry.dataset.captureAnimationDisabled;
-    });
+    const liveOptions = document.querySelector("#capture-ball-options");
+    restoreCaptureButtons(options);
+    if (liveOptions !== options) restoreCaptureButtons(liveOptions);
 
+    const liveButton = liveOptions?.querySelector(buttonSelector) || button;
     try {
-      executeCaptureWithResult(button, captureSucceeded);
+      executeCaptureWithResult(liveButton, captureSucceeded);
     } finally {
       captureAnimating = false;
+      window.__idleJorneymonRestoreCaptureTimer?.();
     }
   }, true);
 }
