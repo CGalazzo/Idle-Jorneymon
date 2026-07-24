@@ -5,6 +5,7 @@ import { createAreaState, ENVIRONMENTS, getRouteDefinition, TOTAL_ROUTES } from 
 import { getMegaStone } from "../data/mega-data.js";
 import { ensureCampaignState, syncActiveCampaign } from "./campaign.js";
 import { restorePersistedMegaPokemon } from "./mega.js";
+import { restoreEquippedFormItems, restorePersistedFormPokemon } from "./form-items.js";
 import { updateApproach, updateExploration } from "./exploration.js";
 import { updateBattle, updateRecovery } from "./battle.js";
 import { updateCaptureDecision } from "./capture.js";
@@ -155,7 +156,7 @@ function restoreHardEncounterStats(original, normalized) {
 }
 
 function normalizePokemon(pokemon, refreshExperienceCurve = false, applyPendingEvolutions = true, environmentId = "bosque") {
-  const restored = restorePersistedMegaPokemon(pokemon);
+  const restored = restorePersistedFormPokemon(restorePersistedMegaPokemon(pokemon));
   const normalized = restoreHardEncounterStats(
     restored,
     normalizePokemonInstance(restored, { refreshExperienceCurve })
@@ -307,6 +308,7 @@ function migrateSave(saved) {
   const pokedex = { ...(saved.pokedex || { [starterId]: { seen: 1, caught: 1 } }) };
   const collection = { ...(saved.collection || { [starterId]: { count: 1, firstCaughtAt: saved.lastSavedAt || Date.now() } }) };
   const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), migratedTeam);
+  restoreEquippedFormItems(shop, migratedTeam);
   registerRosterEntries(pokedex, collection, [...migratedTeam, ...migratedStorage]);
 
   const migrated = {
@@ -371,6 +373,7 @@ export function loadGame() {
     const pokedex = { ...(saved.pokedex || base.pokedex) };
     const collection = { ...(saved.collection || base.collection) };
     const shop = normalizeMegaEquipment(normalizeShopState(saved.shop), team);
+    restoreEquippedFormItems(shop, team);
     registerRosterEntries(pokedex, collection, [...team, ...storage]);
 
     const loaded = {

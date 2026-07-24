@@ -8,6 +8,7 @@ import { randomEncounterTarget, startNewJourney } from "./core/game-state.js";
 import { loadOfficialPokemonData } from "./data/battle-data.js";
 import { getExplorationSpriteUrl } from "./data/exploration-sprites.js";
 import { MEGA_FORM_IDS } from "./data/mega-data.js";
+import { FORM_ITEM_FORM_IDS } from "./data/form-items-data.js";
 import { loadOfficialPokemonMetrics } from "./data/pokemon-metrics.js";
 import { POKEDEX_SPECIES, getPokemonSpriteUrls } from "./data/pokemon.js";
 import { createAreaState, getRouteDefinition } from "./data/worlds.js";
@@ -35,6 +36,7 @@ import {
   selectShopTab,
   showShopFeedback
 } from "./ui/shop-ui.js";
+import { decorateFormItemTeam, enhanceFormItemsMarkup, renderFormItems } from "./ui/form-items-ui.js";
 import { installSpriteFallbacks } from "./ui/sprite-fallbacks.js";
 import { updateApproach, updateExploration } from "./systems/exploration.js";
 import { updateBattle, updateRecovery } from "./systems/battle.js";
@@ -49,6 +51,7 @@ import { addToTeam, sendToStorage, setActivePokemon, setTeamPosition } from "./s
 import { attemptCapture, declineCapture, updateCaptureDecision } from "./systems/capture.js";
 import { acceptEeveeEvolution, declineEeveeEvolution } from "./systems/progression.js";
 import { equipMegaStone } from "./systems/mega.js";
+import { buyFormItem, equipFormItem } from "./systems/form-items.js";
 import { buyBall, buyExpShare, buyMegaStone } from "./systems/shop.js";
 
 const UI_RENDER_INTERVAL_MS = 50;
@@ -58,7 +61,8 @@ async function boot() {
   app.innerHTML = '<div class="game-loading"><strong>Preparando a jornada...</strong><span>Carregando atributos e tamanhos oficiais dos Pokémon</span></div>';
   const speciesIds = [...new Set([
     ...POKEDEX_SPECIES.map((pokemon) => pokemon.id),
-    ...MEGA_FORM_IDS
+    ...MEGA_FORM_IDS,
+    ...FORM_ITEM_FORM_IDS
   ])];
   await Promise.all([
     loadOfficialPokemonData(speciesIds),
@@ -94,6 +98,7 @@ async function boot() {
   enhanceProgressionMarkup();
   enhanceEeveeEvolutionMarkup();
   enhanceShopMarkup();
+  enhanceFormItemsMarkup();
   enhanceHardModeMarkup();
   enhanceHardEndgameMarkup();
 
@@ -126,9 +131,11 @@ async function boot() {
     "#shop-ball-grid",
     "#shop-exp-grid",
     "#shop-mega-grid",
+    "#shop-form-item-grid",
     "#inventory-ball-grid",
     "#inventory-exp-grid",
     "#inventory-mega-grid",
+    "#inventory-form-item-grid",
     "#hard-shop-grid",
     "#hard-challenge-grid"
   ].forEach((selector) => memoizeInnerHTML(document.querySelector(selector)));
@@ -162,7 +169,7 @@ async function boot() {
   }
 
   function preloadRouteSprites(currentState) {
-    const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.isShiny ? 1 : 0}`).join(",");
+    const teamKey = currentState.team.map((pokemon) => `${pokemon.id}:${pokemon.formItemFormId || 0}:${pokemon.isShiny ? 1 : 0}`).join(",");
     const routeKey = `${currentState.campaignMode}:${currentState.journey?.worldIndex || 0}:${currentState.journey?.routeIndex || 0}:${teamKey}`;
     if (routeKey === preloadedRouteKey) return preloadedRoutePromise;
     preloadedRouteKey = routeKey;
@@ -176,7 +183,7 @@ async function boot() {
 
     pokemon.forEach((entry) => {
       [false, true].forEach((isShiny) => {
-        const sprites = getPokemonSpriteUrls(entry.megaFormId || entry.id, isShiny);
+        const sprites = getPokemonSpriteUrls(entry.megaFormId || entry.formItemFormId || entry.id, isShiny);
         urls.add(sprites.sprite);
         urls.add(sprites.backSprite);
         urls.add(getExplorationSpriteUrl({ ...entry, isShiny }, isShiny));
@@ -245,7 +252,11 @@ async function boot() {
     renderShopHud(state);
     renderHardModeState(state);
     renderHardEndgame(state);
-    if (teamDialog.open) decorateHardCapturedRoster(state);
+    if (teamDialog.open) {
+      decorateHardCapturedRoster(state);
+      decorateFormItemTeam(state);
+    }
+    if (shopDialog.open || itemsDialog.open) renderFormItems(state);
     renderEeveeEvolutionChoice(state, !isMenuOpen && !isTeamOpen && !isShopOpen && !isItemsOpen && !isHardUnlockScreenOpen() && !isHardEndgameScreenOpen());
   }
 
@@ -419,6 +430,7 @@ async function boot() {
     isTeamOpen = true;
     saveGame(state);
     renderTeam(state);
+    decorateFormItemTeam(state);
     decorateHardCapturedRoster(state);
     teamDialog.showModal();
   });
@@ -447,10 +459,12 @@ async function boot() {
     if (actionButton.dataset.sendStorage) changed = sendToStorage(state, actionButton.dataset.sendStorage);
     if (actionButton.dataset.addTeam) changed = addToTeam(state, actionButton.dataset.addTeam);
     if (actionButton.dataset.equipMega) changed = equipMegaStone(state, actionButton.dataset.equipMega, actionButton.dataset.megaPokemon);
+    if (actionButton.dataset.equipFormItem) changed = equipFormItem(state, actionButton.dataset.equipFormItem, actionButton.dataset.formItemPokemon);
     if (changed) {
       preloadedRouteKey = "";
       saveGame(state);
       renderTeam(state);
+      decorateFormItemTeam(state);
       decorateHardCapturedRoster(state);
       renderGame();
     }
@@ -478,6 +492,7 @@ async function boot() {
     selectShopTab("balls");
     showShopFeedback("");
     renderShop(state);
+    renderFormItems(state);
     shopDialog.showModal();
   });
 
@@ -507,9 +522,11 @@ async function boot() {
     if (actionButton.dataset.buyBall) changed = buyBall(state, actionButton.dataset.buyBall);
     if (actionButton.dataset.buyExpShare) changed = buyExpShare(state, actionButton.dataset.buyExpShare);
     if (actionButton.dataset.buyMegaStone) changed = buyMegaStone(state, actionButton.dataset.buyMegaStone);
+    if (actionButton.dataset.buyFormItem) changed = buyFormItem(state, actionButton.dataset.buyFormItem);
     if (changed) {
       saveGame(state);
       renderShop(state);
+      renderFormItems(state);
       showShopFeedback("Compra concluída! O item já aparece no botão ITENS.");
       renderGame();
     }
@@ -520,6 +537,7 @@ async function boot() {
     isItemsOpen = true;
     saveGame(state);
     renderItems(state);
+    renderFormItems(state);
     itemsDialog.showModal();
   });
 
@@ -552,6 +570,7 @@ async function boot() {
       saveGame(state);
       renderHardEndgame(state);
       renderItems(state);
+      renderFormItems(state);
       showHardShopFeedback("Compra concluída! A recompensa foi aplicada e salva.");
       renderGame();
     }
