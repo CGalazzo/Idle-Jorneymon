@@ -9,6 +9,7 @@ import { createSafariPokemon } from "../data/safari-pokemon.js";
 import { registerPokedexSeen } from "./pokedex.js";
 
 const APPROACH_DURATION_SECONDS = 2.8;
+const ENCOUNTER_STAT_KEYS = ["maxHp", "attack", "defense", "specialAttack", "specialDefense", "speed"];
 
 function applyEvolutionSafeEncounterLevel(pokemon) {
   if (!pokemon) return pokemon;
@@ -17,10 +18,18 @@ function applyEvolutionSafeEncounterLevel(pokemon) {
   if (safeLevel >= previousLevel) return pokemon;
 
   const previousReward = Math.max(0, Number(pokemon.xpReward) || 0);
+  const hardMultiplier = Math.max(1, Number(pokemon.hardStatMultiplier) || 1);
   const normalized = normalizePokemonInstance({
     ...pokemon,
     level: safeLevel
   }, { refreshExperienceCurve: true, heal: true });
+
+  if (hardMultiplier > 1) {
+    ENCOUNTER_STAT_KEYS.forEach((key) => {
+      normalized[key] = Math.max(1, Math.round((Number(normalized[key]) || 1) * hardMultiplier));
+    });
+    normalized.hp = normalized.maxHp;
+  }
 
   if (previousReward > 0) {
     const previousScale = 1 + previousLevel * 0.12;
