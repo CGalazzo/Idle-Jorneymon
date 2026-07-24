@@ -1,5 +1,5 @@
 .shop-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.inventory-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.inventory-summary { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 .form-item-picker { margin-top: 7px; }
 @media (max-width: 700px) {
   .shop-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
