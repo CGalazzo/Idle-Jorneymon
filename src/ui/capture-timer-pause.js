@@ -72,6 +72,10 @@ function pauseCountdownClock() {
   cleanupTimer = window.setTimeout(restoreCountdownClock, MAX_PAUSE_MS);
 }
 
+// Permite que modos com tratamento próprio de toque, como o Salão dos
+// Campeões, pausem o relógio antes de gerar o clique programático.
+window.__idleJorneymonPauseCaptureTimer = pauseCountdownClock;
+
 // O Safari e o Salão dos Campeões possuem tratamentos próprios de pointerdown
 // que podem interromper o evento antes de chegar ao document. Escutar no window,
 // durante a captura, garante a pausa antes de qualquer modo especial agir.
