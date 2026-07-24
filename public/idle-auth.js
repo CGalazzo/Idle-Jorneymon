@@ -54,11 +54,33 @@
     element.className = `idle-auth-status${type ? ` ${type}` : ""}`;
   }
 
+  function placeAccountButton() {
+    const button = document.querySelector("#idle-account-button");
+    const screen = document.querySelector("#journey-menu-screen");
+    const card = screen?.querySelector(".journey-menu-card");
+    if (!button || !screen || !card) return false;
+
+    let stack = screen.querySelector(":scope > .journey-menu-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "journey-menu-stack";
+      card.before(stack);
+      stack.appendChild(card);
+    }
+
+    if (button.parentElement !== stack) stack.appendChild(button);
+    button.hidden = panelOpen;
+    return true;
+  }
+
   function ensureInterface() {
-    if (document.querySelector("#idle-auth-panel")) return;
+    if (document.querySelector("#idle-auth-panel")) {
+      placeAccountButton();
+      return;
+    }
 
     document.body.insertAdjacentHTML("beforeend", `
-      <button id="idle-account-button" class="idle-account-button" type="button">👤 Conta Google</button>
+      <button id="idle-account-button" class="idle-account-button" type="button" hidden>👤 Conta Google</button>
       <aside id="idle-auth-panel" class="idle-auth-panel" aria-live="polite" hidden>
         <button id="idle-auth-close" class="idle-auth-close" type="button" aria-label="Fechar conta">×</button>
         <section id="idle-auth-signed-out">
@@ -83,6 +105,16 @@
     document.querySelector("#idle-load-save")?.addEventListener("click", loadCloudSave);
     document.querySelector("#idle-sync-save")?.addEventListener("click", () => pushCloudSave(true));
     document.querySelector("#idle-logout")?.addEventListener("click", logout);
+    placeAccountButton();
+  }
+
+  function observeMenuPlacement() {
+    if (placeAccountButton()) return;
+    const observer = new MutationObserver(() => {
+      if (!placeAccountButton()) return;
+      observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   function setPanelOpen(open) {
@@ -91,10 +123,12 @@
     const button = document.querySelector("#idle-account-button");
     if (panel) panel.hidden = !panelOpen;
     if (button) button.hidden = panelOpen;
+    placeAccountButton();
   }
 
   function render() {
     ensureInterface();
+    placeAccountButton();
     const signedOut = document.querySelector("#idle-auth-signed-out");
     const signedIn = document.querySelector("#idle-auth-signed-in");
     const accountButton = document.querySelector("#idle-account-button");
@@ -102,7 +136,7 @@
     if (signedIn) signedIn.hidden = !currentUser;
 
     if (!currentUser) {
-      if (accountButton) accountButton.textContent = "👤 Conta Google";
+      if (accountButton) accountButton.textContent = "👤 Entrar com Google";
       return;
     }
 
@@ -121,7 +155,7 @@
         avatar.hidden = true;
       }
     }
-    if (accountButton) accountButton.textContent = `☁️ ${data.name.split(" ")[0]}`;
+    if (accountButton) accountButton.textContent = `☁️ Conta Google · ${data.name.split(" ")[0]}`;
     status(isLinked() ? "Save vinculado à conta" : "Conta conectada; escolha qual save usar", isLinked() ? "ok" : "warn");
   }
 
@@ -235,6 +269,7 @@
 
   async function initialize() {
     ensureInterface();
+    observeMenuPlacement();
     patchLocalStorage();
 
     if (!window.supabase?.createClient) {
