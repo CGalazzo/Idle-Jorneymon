@@ -41,6 +41,7 @@
     try {
       if (button.classList.contains("champions-hall-capture-button")) {
         button.dataset.captureBall = "luxury-ball";
+        window.__idleJorneymonPauseCaptureTimer?.();
       }
       button.click();
     } finally {
