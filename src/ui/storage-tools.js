@@ -24,9 +24,11 @@ const RARITY_LABELS = {
 };
 
 const TYPE_OPTIONS = [
-  "Normal", "Fogo", "Água", "Planta", "Elétrico", "Gelo", "Lutador",
-  "Veneno", "Terra", "Voador", "Psíquico", "Inseto", "Pedra", "Fantasma",
-  "Dragão", "Sombrio", "Aço", "Fada"
+  ["normal", "Normal"], ["fire", "Fogo"], ["water", "Água"], ["grass", "Planta"],
+  ["electric", "Elétrico"], ["ice", "Gelo"], ["fighting", "Lutador"], ["poison", "Veneno"],
+  ["ground", "Terra"], ["flying", "Voador"], ["psychic", "Psíquico"], ["bug", "Inseto"],
+  ["rock", "Pedra"], ["ghost", "Fantasma"], ["dragon", "Dragão"], ["dark", "Sombrio"],
+  ["steel", "Aço"], ["fairy", "Fada"]
 ];
 
 let storageObserver = null;
@@ -66,7 +68,7 @@ function pokemonTypes(pokemon) {
   const types = Array.isArray(pokemon?.types) && pokemon.types.length
     ? pokemon.types
     : String(pokemon?.type || "Normal").split("/");
-  return types.map((type) => String(type).trim()).filter(Boolean);
+  return types.map((type) => normalizeText(type)).filter(Boolean);
 }
 
 function pokemonOrigin(pokemon) {
@@ -89,7 +91,7 @@ function pokemonPower(pokemon) {
 }
 
 function toolbarMarkup() {
-  const typeOptions = TYPE_OPTIONS.map((type) => `<option value="${normalizeText(type)}">${type}</option>`).join("");
+  const typeOptions = TYPE_OPTIONS.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
   return `
     <div id="storage-tools" class="storage-tools">
       <label class="storage-search-field">
@@ -196,7 +198,7 @@ function matchesFilters(entry, filters, favorites) {
   const { pokemon } = entry;
   const uid = String(pokemon.uid || "");
   if (filters.search && !normalizeText(pokemon.name).includes(filters.search)) return false;
-  if (filters.type !== "all" && !pokemonTypes(pokemon).some((type) => normalizeText(type) === filters.type)) return false;
+  if (filters.type !== "all" && !pokemonTypes(pokemon).includes(filters.type)) return false;
   if (filters.rarity !== "all" && String(pokemon.rarity || "common") !== filters.rarity) return false;
   if (filters.origin !== "all" && pokemonOrigin(pokemon) !== filters.origin) return false;
   if (filters.shinyOnly && !pokemon.isShiny) return false;
@@ -217,9 +219,7 @@ function sortEntries(entries, filters, favorites) {
 }
 
 function observeStorageList(storageList) {
-  if (!storageObserver) {
-    storageObserver = new MutationObserver(() => scheduleApply());
-  }
+  if (!storageObserver) storageObserver = new MutationObserver(() => scheduleApply());
   storageObserver.disconnect();
   storageObserver.observe(storageList, { childList: true });
 }
@@ -230,7 +230,8 @@ function applyStorageView() {
 
   const storageList = document.querySelector("#storage-list");
   if (!storageList) return;
-  const savedStorage = Array.isArray(readSave().storage) ? readSave().storage : [];
+  const save = readSave();
+  const savedStorage = Array.isArray(save.storage) ? save.storage : [];
   const favorites = readFavorites();
   const filters = currentFilters();
   const pokemonByUid = new Map(savedStorage.map((pokemon, index) => [String(pokemon.uid || ""), { pokemon, originalIndex: index }]));
@@ -249,9 +250,7 @@ function applyStorageView() {
 
   storageObserver?.disconnect();
   storageList.querySelector(".storage-filter-empty")?.remove();
-  entries.forEach(({ card }) => {
-    card.hidden = !visibleCards.has(card);
-  });
+  entries.forEach(({ card }) => { card.hidden = !visibleCards.has(card); });
   visibleEntries.forEach(({ card }) => storageList.appendChild(card));
 
   if (savedStorage.length > 0 && visibleEntries.length === 0) {
