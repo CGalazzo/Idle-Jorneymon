@@ -1,9 +1,11 @@
 import "../styles/hard-endgame.css";
-import { HARD_CHALLENGES, HARD_SHOP_ITEMS } from "../data/hard-endgame-data.js";
+import { HARD_SHOP_ITEMS } from "../data/hard-endgame-data.js";
 import { getPokemonSpriteUrls } from "../data/pokemon.js";
 import { getHardEndgameStatus } from "../systems/hard-endgame.js";
 
 const ITEM_SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
+let activeHardEndgameState = null;
+let renderedChallengeCycleKey = "";
 
 function itemSprite(item) {
   const source = `${ITEM_SPRITE_BASE}/${item.spriteId}.png`;
@@ -13,7 +15,15 @@ function itemSprite(item) {
 
 function challengeSprite(challenge) {
   const sprites = getPokemonSpriteUrls(challenge.speciesId, Boolean(challenge.shiny));
-  return `<img src="${sprites.sprite}" alt="${challenge.subtitle}" loading="lazy" decoding="async" />`;
+  return `<img src="${sprites.sprite}" alt="${challenge.name}" loading="lazy" decoding="async" />`;
+}
+
+function formatCountdown(milliseconds) {
+  const totalSeconds = Math.max(0, Math.ceil((Number(milliseconds) || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
 export function enhanceHardEndgameMarkup() {
@@ -40,7 +50,7 @@ export function enhanceHardEndgameMarkup() {
           <div><small>RECOMPENSAS DO MODO HARD</small><h2>Loja de Emblemas</h2></div>
           <button id="close-hard-shop" class="icon-button" aria-label="Fechar Loja Hard">×</button>
         </div>
-        <div class="hard-emblem-wallet"><span>◆</span><strong><b id="hard-emblem-count">0</b> Emblemas Hard</strong><small>Ganhos na primeira conclusão das rotas Hard e nos desafios de campeão.</small></div>
+        <div class="hard-emblem-wallet"><span>◆</span><strong><b id="hard-emblem-count">0</b> Emblemas Hard</strong><small>Ganhos na primeira conclusão das rotas Hard e nos desafios lendários.</small></div>
         <div id="hard-shop-feedback" class="hard-shop-feedback" hidden></div>
         <div id="hard-shop-grid" class="hard-shop-grid"></div>
       </dialog>
@@ -54,7 +64,12 @@ export function enhanceHardEndgameMarkup() {
           <div><small>CONTEÚDO PÓS-ROTA 150</small><h2>Desafios Hard</h2></div>
           <button id="close-hard-challenges" class="icon-button" aria-label="Fechar desafios">×</button>
         </div>
-        <div class="hard-emblem-wallet"><span>◆</span><strong><b id="challenge-emblem-count">0</b> Emblemas Hard</strong><small>Primeiras vitórias concedem recompensas maiores. Os desafios podem ser repetidos.</small></div>
+        <div class="hard-emblem-wallet"><span>◆</span><strong><b id="challenge-emblem-count">0</b> Emblemas Hard</strong><small>Cada Lendário concede sua recompensa uma vez por rotação.</small></div>
+        <div class="hard-challenge-rotation">
+          <div><small>ROTAÇÃO AUTOMÁTICA</small><strong>Novos Lendários em</strong></div>
+          <b id="hard-challenge-countdown">06:00:00</b>
+          <p>Os três desafios mudam a cada 6 horas, mesmo que não tenham sido concluídos.</p>
+        </div>
         <div id="hard-challenge-grid" class="hard-challenge-grid"></div>
       </dialog>
     `);
@@ -111,18 +126,23 @@ function renderHardShop(state, status) {
   }).join("");
 }
 
+function renderChallengeRotation(status) {
+  const countdown = document.querySelector("#hard-challenge-countdown");
+  if (countdown) countdown.textContent = formatCountdown(status.rotationRemainingMs);
+}
+
 function renderChallenges(status) {
   const root = document.querySelector("#hard-challenge-grid");
   if (!root) return;
-  root.innerHTML = HARD_CHALLENGES.map((challenge) => {
-    const completed = status.completedChallengeIds.includes(challenge.id);
-    const reward = completed ? challenge.repeatReward : challenge.firstReward;
+
+  root.innerHTML = status.challenges.map((challenge) => {
+    const completed = Boolean(challenge.completed);
     return `<article class="hard-challenge-card ${completed ? "completed" : ""}">
       <span class="hard-challenge-sprite">${challengeSprite(challenge)}</span>
-      <small>${completed ? "CONCLUÍDO · REPETÍVEL" : challenge.subtitle}</small>
+      <small>${completed ? "CONCLUÍDO · AGUARDE A ROTAÇÃO" : challenge.subtitle}</small>
       <h3>${challenge.name}</h3>
       <p>${challenge.description}</p>
-      <button data-start-hard-challenge="${challenge.id}">ENFRENTAR · ◆ ${reward}</button>
+      <button data-start-hard-challenge="${challenge.id}" ${completed ? "disabled" : ""}>${completed ? "CONCLUÍDO NESTA ROTAÇÃO" : `ENFRENTAR · RECOMPENSA: +◆ ${challenge.reward}`}</button>
     </article>`;
   }).join("");
 }
@@ -141,10 +161,16 @@ function renderChallengeResult(status) {
   const copy = document.querySelector("#hard-result-copy");
   const reward = document.querySelector("#hard-result-reward");
   if (title) title.textContent = result.name;
-  if (copy) copy.textContent = result.firstCompletion
-    ? "Primeira vitória registrada! O desafio agora pode ser repetido por uma recompensa menor."
-    : "Você derrotou novamente este campeão do pós-jogo.";
-  if (reward) reward.textContent = `+${result.reward} Emblemas Hard`;
+  if (copy) {
+    copy.textContent = result.alreadyRewarded
+      ? "Este desafio já havia concedido sua recompensa nesta rotação."
+      : result.rotationChanged
+        ? "A rotação mudou durante a batalha, mas sua recompensa foi mantida."
+        : "Vitória registrada! Este Lendário ficará concluído até a próxima rotação.";
+  }
+  if (reward) reward.textContent = result.reward > 0
+    ? `+${result.reward} Emblemas Hard`
+    : "Recompensa já recebida";
   if (!dialog.open) dialog.showModal();
 }
 
@@ -156,7 +182,9 @@ export function showHardShopFeedback(message = "") {
 }
 
 export function renderHardEndgame(state) {
+  activeHardEndgameState = state;
   const status = getHardEndgameStatus(state);
+  renderedChallengeCycleKey = status.challengeCycleKey;
   const hardShopButton = document.querySelector("#hard-shop-button");
   const hardMenuActions = document.querySelector("#hard-menu-actions");
   const hardChallengesButton = document.querySelector("#hard-challenges-button");
@@ -176,9 +204,25 @@ export function renderHardEndgame(state) {
   if (challengeEmblemCount) challengeEmblemCount.textContent = String(status.emblems);
 
   renderHardShop(state, status);
+  renderChallengeRotation(status);
   renderChallenges(status);
   renderChallengeResult(status);
 }
+
+window.setInterval(() => {
+  const dialog = document.querySelector("#hard-challenges-dialog");
+  if (!dialog?.open || !activeHardEndgameState) return;
+
+  const status = getHardEndgameStatus(activeHardEndgameState, Date.now());
+  renderChallengeRotation(status);
+
+  if (status.challengeCycleKey !== renderedChallengeCycleKey) {
+    renderedChallengeCycleKey = status.challengeCycleKey;
+    const challengeEmblemCount = document.querySelector("#challenge-emblem-count");
+    if (challengeEmblemCount) challengeEmblemCount.textContent = String(status.emblems);
+    renderChallenges(status);
+  }
+}, 1000);
 
 export function isHardEndgameScreenOpen() {
   return ["#hard-shop-dialog", "#hard-challenges-dialog", "#hard-challenge-result-dialog"]
