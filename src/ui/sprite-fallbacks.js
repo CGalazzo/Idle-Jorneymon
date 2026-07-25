@@ -3,7 +3,7 @@ const SHOWDOWN_SPRITE_BASE = "https://play.pokemonshowdown.com/sprites";
 const SHOWDOWN_PATTERN = /\/sprites\/pokemon\/other\/showdown\/(back\/)?(shiny\/)?(\d+)\.gif(?:\?.*)?$/i;
 const STATIC_BACK_PATTERN = /\/sprites\/pokemon\/back\/(shiny\/)?(\d+)\.png(?:\?.*)?$/i;
 const NAMED_SHOWDOWN_ANIMATED_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(ani|ani-back|ani-shiny|ani-back-shiny)\/([^/?]+)\.gif(?:\?.*)?$/i;
-const NAMED_SHOWDOWN_STATIC_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(gen5|gen5-back|gen5-shiny|gen5-back-shiny)\/([^/?]+)\.png(?:\?.*)?$/i;
+const NAMED_SHOWDOWN_STATIC_PATTERN = /play\.pokemonshowdown\.com\/sprites\/(gen5|gen5-back|gen5-shiny|gen5-back-shiny|afd|afd-back|afd-shiny|afd-back-shiny)\/([^/?]+)\.png(?:\?.*)?$/i;
 
 function staticSpriteUrl(id, { shiny = false, back = false } = {}) {
   const backPath = back ? "back/" : "";
@@ -15,20 +15,44 @@ function namedShowdownUrl(directory, slug) {
   return `${SHOWDOWN_SPRITE_BASE}/${directory}/${slug}.png`;
 }
 
-function namedStaticDirectory(animatedDirectory) {
+function namedStaticFallbackDirectories(animatedDirectory) {
   return {
-    ani: "gen5",
-    "ani-back": "gen5-back",
-    "ani-shiny": "gen5-shiny",
-    "ani-back-shiny": "gen5-back-shiny"
-  }[animatedDirectory] || "gen5";
+    ani: ["gen5", "afd"],
+    "ani-back": ["gen5-back", "afd-back", "gen5", "afd"],
+    "ani-shiny": ["gen5-shiny", "afd-shiny", "gen5", "afd"],
+    "ani-back-shiny": [
+      "gen5-back-shiny",
+      "afd-back-shiny",
+      "gen5-back",
+      "afd-back",
+      "gen5-shiny",
+      "afd-shiny",
+      "gen5",
+      "afd"
+    ]
+  }[animatedDirectory] || ["gen5", "afd"];
 }
 
-function nextNamedStaticFallback(directory) {
-  if (directory === "gen5-back-shiny") return "gen5-back";
-  if (directory === "gen5-shiny") return "gen5";
-  if (directory === "gen5-back") return "gen5";
-  return null;
+function startNamedFallback(image, animatedDirectory, slug) {
+  const directories = namedStaticFallbackDirectories(animatedDirectory);
+  image.dataset.namedShowdownFallbackSlug = slug;
+  image.dataset.namedShowdownFallbackQueue = directories.slice(1).join(",");
+  image.src = namedShowdownUrl(directories[0], slug);
+}
+
+function continueNamedFallback(image, slug) {
+  const savedSlug = image.dataset.namedShowdownFallbackSlug;
+  if (savedSlug && savedSlug !== slug) return false;
+
+  const queue = String(image.dataset.namedShowdownFallbackQueue || "")
+    .split(",")
+    .filter(Boolean);
+  const nextDirectory = queue.shift();
+  if (!nextDirectory) return false;
+
+  image.dataset.namedShowdownFallbackQueue = queue.join(",");
+  image.src = namedShowdownUrl(nextDirectory, slug);
+  return true;
 }
 
 export function installSpriteFallbacks() {
@@ -46,19 +70,13 @@ export function installSpriteFallbacks() {
     const currentUrl = image.currentSrc || image.src || "";
     const namedAnimatedMatch = currentUrl.match(NAMED_SHOWDOWN_ANIMATED_PATTERN);
     if (namedAnimatedMatch) {
-      const directory = namedStaticDirectory(namedAnimatedMatch[1]);
-      image.dataset.namedShowdownFallbackDirectory = directory;
-      image.src = namedShowdownUrl(directory, namedAnimatedMatch[2]);
+      startNamedFallback(image, namedAnimatedMatch[1], namedAnimatedMatch[2]);
       return;
     }
 
     const namedStaticMatch = currentUrl.match(NAMED_SHOWDOWN_STATIC_PATTERN);
     if (namedStaticMatch) {
-      const nextDirectory = nextNamedStaticFallback(namedStaticMatch[1]);
-      if (nextDirectory && nextDirectory !== image.dataset.namedShowdownFallbackDirectory) {
-        image.dataset.namedShowdownFallbackDirectory = nextDirectory;
-        image.src = namedShowdownUrl(nextDirectory, namedStaticMatch[2]);
-      }
+      continueNamedFallback(image, namedStaticMatch[2]);
       return;
     }
 
