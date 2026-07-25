@@ -70,6 +70,13 @@ export const EXP_SHARE_UPGRADES = [
 
 export const BASE_PASSIVE_XP_MULTIPLIER = 0.5;
 
+const MEGA_Z_COMPENSATION_COINS = 30000;
+const REMOVED_MEGA_Z_REFUNDS = {
+  "lucarionite-z": 11000,
+  "garchompite-z": 14000
+};
+const REMOVED_MEGA_Z_IDS = new Set(Object.keys(REMOVED_MEGA_Z_REFUNDS));
+
 export function getExpShareMultiplier(level = 0) {
   const upgrade = EXP_SHARE_UPGRADES.find((entry) => entry.level === Number(level));
   return upgrade?.multiplier ?? BASE_PASSIVE_XP_MULTIPLIER;
@@ -89,7 +96,10 @@ export function createInitialShopState() {
     equippedFormItems: {},
     purchaseRepairApplied: true,
     legacyRefundCoins: 0,
-    testCoinGrantApplied: true
+    testCoinGrantApplied: true,
+    megaZCompensationApplied: true,
+    megaZCompensationCoins: 0,
+    megaZRefundCoins: 0
   };
 }
 
@@ -108,17 +118,33 @@ export function normalizeShopState(saved = {}) {
   const repairAlreadyApplied = hasRepairMarker && saved.purchaseRepairApplied === true;
   const legacyRefund = repairAlreadyApplied ? 0 : normalizedSpent;
 
+  const compensationAlreadyApplied = saved.megaZCompensationApplied === true;
+  const ownedMegaStones = [...new Set(
+    Array.isArray(saved.ownedMegaStones) ? saved.ownedMegaStones.map(String) : []
+  )];
+  const removedOwnedMegaZIds = compensationAlreadyApplied
+    ? []
+    : ownedMegaStones.filter((stoneId) => REMOVED_MEGA_Z_IDS.has(stoneId));
+  const megaZRefund = removedOwnedMegaZIds.reduce(
+    (total, stoneId) => total + (REMOVED_MEGA_Z_REFUNDS[stoneId] || 0),
+    0
+  );
+  const compensationCoins = compensationAlreadyApplied ? 0 : MEGA_Z_COMPENSATION_COINS;
+  const equippedMegaStoneId = saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null;
+
   return {
     ...base,
     ...saved,
-    coins: normalizedCoins + legacyRefund,
-    totalCoinsEarned: Math.max(0, Math.floor(Number(saved.totalCoinsEarned) || 0)),
-    totalCoinsSpent: repairAlreadyApplied ? normalizedSpent : 0,
+    coins: normalizedCoins + legacyRefund + compensationCoins + megaZRefund,
+    totalCoinsEarned: Math.max(0, Math.floor(Number(saved.totalCoinsEarned) || 0)) + compensationCoins,
+    totalCoinsSpent: Math.max(0, (repairAlreadyApplied ? normalizedSpent : 0) - megaZRefund),
     balls,
     expShareLevel: Math.max(0, Math.min(3, Math.floor(Number(saved.expShareLevel) || 0))),
-    ownedMegaStones: [...new Set(Array.isArray(saved.ownedMegaStones) ? saved.ownedMegaStones.map(String) : [])],
-    equippedMegaStoneId: saved.equippedMegaStoneId ? String(saved.equippedMegaStoneId) : null,
-    equippedMegaPokemonUid: saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null,
+    ownedMegaStones: ownedMegaStones.filter((stoneId) => !REMOVED_MEGA_Z_IDS.has(stoneId)),
+    equippedMegaStoneId: REMOVED_MEGA_Z_IDS.has(equippedMegaStoneId) ? null : equippedMegaStoneId,
+    equippedMegaPokemonUid: REMOVED_MEGA_Z_IDS.has(equippedMegaStoneId)
+      ? null
+      : (saved.equippedMegaPokemonUid ? String(saved.equippedMegaPokemonUid) : null),
     ownedFormItems: [...new Set(Array.isArray(saved.ownedFormItems) ? saved.ownedFormItems.map(String) : [])],
     equippedFormItems: Object.fromEntries(
       Object.entries(saved.equippedFormItems && typeof saved.equippedFormItems === "object" ? saved.equippedFormItems : {})
@@ -127,6 +153,9 @@ export function normalizeShopState(saved = {}) {
     ),
     purchaseRepairApplied: true,
     legacyRefundCoins: Math.max(0, Math.floor(Number(saved.legacyRefundCoins) || 0)) + legacyRefund,
-    testCoinGrantApplied: true
+    testCoinGrantApplied: true,
+    megaZCompensationApplied: true,
+    megaZCompensationCoins: Math.max(0, Math.floor(Number(saved.megaZCompensationCoins) || 0)) + compensationCoins,
+    megaZRefundCoins: Math.max(0, Math.floor(Number(saved.megaZRefundCoins) || 0)) + megaZRefund
   };
 }
