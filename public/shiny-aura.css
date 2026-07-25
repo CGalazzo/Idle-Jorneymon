@@ -1,0 +1,156 @@
+:root {
+  --shiny-aura-gold: rgba(255, 231, 112, 0.88);
+  --shiny-aura-cyan: rgba(101, 232, 255, 0.72);
+  --shiny-aura-pink: rgba(255, 136, 224, 0.58);
+}
+
+.partner-row.shiny-used,
+.player-card.shiny-used,
+.walker.shiny-used {
+  isolation: isolate;
+}
+
+.partner-row.shiny-used {
+  position: relative;
+}
+
+.partner-row.shiny-used::before,
+.player-card.shiny-used::before,
+.walker.shiny-used::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.78) 0 5%, var(--shiny-aura-gold) 18%, var(--shiny-aura-cyan) 43%, var(--shiny-aura-pink) 62%, transparent 74%);
+  filter: blur(7px);
+  opacity: .72;
+  animation: shinyAuraPulse 1.65s ease-in-out infinite alternate;
+}
+
+.partner-row.shiny-used::after,
+.player-card.shiny-used::after,
+.walker.shiny-used::after {
+  content: "✦";
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  color: #fff7ad;
+  font-size: 17px;
+  line-height: 1;
+  text-shadow:
+    28px 15px 0 #8cecff,
+    13px 48px 0 #ff9be5,
+    -20px 33px 0 #fff2a0,
+    35px 58px 0 #ffffff,
+    -13px 66px 0 #82e6ff;
+  filter: drop-shadow(0 0 5px rgba(255,255,255,.9));
+  animation: shinySparkle 1.45s ease-in-out infinite alternate;
+}
+
+.partner-row.shiny-used::before {
+  left: -2px;
+  top: 11px;
+  width: 112px;
+  height: 112px;
+}
+
+.partner-row.shiny-used::after {
+  left: 6px;
+  top: 19px;
+}
+
+.partner-row.shiny-used > img {
+  position: relative;
+  z-index: 2;
+  filter:
+    drop-shadow(0 0 6px rgba(255,242,143,.95))
+    drop-shadow(0 0 12px rgba(100,227,255,.65))
+    drop-shadow(0 8px 8px rgba(0,0,0,.25));
+}
+
+.player-card.shiny-used::before {
+  left: calc(18% - 12px);
+  bottom: 1%;
+  width: 174px;
+  height: 174px;
+}
+
+.player-card.shiny-used::after {
+  left: calc(18% + 4px);
+  bottom: 40%;
+}
+
+.player-card.shiny-used .pokemon-sprite {
+  z-index: 2;
+  filter:
+    drop-shadow(0 0 7px rgba(255,242,143,.95))
+    drop-shadow(0 0 15px rgba(100,227,255,.72))
+    drop-shadow(0 10px 5px rgba(24,42,31,.22));
+}
+
+.walker.shiny-used::before {
+  left: 50%;
+  bottom: calc(var(--exploration-ground-offset, 0px) - 7px);
+  width: calc(var(--exploration-sprite-size, 72px) + 35px);
+  height: calc(var(--exploration-sprite-size, 72px) + 35px);
+  transform: translateX(-50%);
+}
+
+.walker.shiny-used::after {
+  left: 29%;
+  top: 10%;
+}
+
+.walker.shiny-used img {
+  filter:
+    drop-shadow(0 0 6px rgba(255,242,143,.95))
+    drop-shadow(0 0 13px rgba(100,227,255,.72));
+}
+
+@keyframes shinyAuraPulse {
+  from {
+    opacity: .5;
+    transform: scale(.88) rotate(-6deg);
+  }
+  to {
+    opacity: .9;
+    transform: scale(1.08) rotate(6deg);
+  }
+}
+
+@keyframes shinySparkle {
+  from {
+    opacity: .45;
+    transform: translateY(2px) scale(.82) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.15) rotate(15deg);
+  }
+}
+
+@media (max-width: 620px) {
+  .player-card.shiny-used::before {
+    left: calc(18% - 20px);
+    width: 154px;
+    height: 154px;
+  }
+
+  .partner-row.shiny-used::before {
+    width: 102px;
+    height: 102px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partner-row.shiny-used::before,
+  .partner-row.shiny-used::after,
+  .player-card.shiny-used::before,
+  .player-card.shiny-used::after,
+  .walker.shiny-used::before,
+  .walker.shiny-used::after {
+    animation: none;
+  }
+}
