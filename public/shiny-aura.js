@@ -7,14 +7,43 @@
     return Boolean(document.querySelector("#team-mini .mini-member.active.shiny"));
   }
 
+  function resolveWalkerSprite() {
+    const walker = document.querySelector("#walker");
+    if (!walker) return null;
+
+    if (walker.matches("img, picture, canvas, svg")) {
+      return walker;
+    }
+
+    return walker.querySelector("img, picture, canvas, svg") || walker;
+  }
+
+  function currentAuraTargets() {
+    return new Set([
+      document.querySelector("#partner-sprite"),
+      document.querySelector("#battle-stage .player-card .pokemon-sprite"),
+      resolveWalkerSprite()
+    ].filter(Boolean));
+  }
+
   function syncShinyAura() {
     scheduled = false;
     const isShiny = activePokemonIsShiny();
+    const targets = currentAuraTargets();
 
     document.querySelector(".partner-row")?.classList.toggle("shiny-used", isShiny);
-    document.querySelector("#partner-sprite")?.classList.toggle("shiny-used", isShiny);
     document.querySelector("#battle-stage .player-card")?.classList.toggle("shiny-used", isShiny);
     document.querySelector("#walker")?.classList.toggle("shiny-used", isShiny);
+
+    document.querySelectorAll(".shiny-sprite-aura").forEach((element) => {
+      if (!isShiny || !targets.has(element)) {
+        element.classList.remove("shiny-sprite-aura");
+      }
+    });
+
+    if (isShiny) {
+      targets.forEach((element) => element.classList.add("shiny-sprite-aura"));
+    }
   }
 
   function scheduleSync() {
