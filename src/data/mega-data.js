@@ -46,8 +46,8 @@ const NEW_MEGA_STONES = [
   { id: "chimechoite", name: "Chimechoite", baseSpeciesId: 358, baseName: "Chimecho", formId: "chimechomega", showdownKey: "chimechomega", spriteSlug: "chimecho-mega", megaName: "Mega Chimecho", type: "Psíquico", price: INTERMEDIATE_PRICE, newMega: true },
   { id: "baxcalibrite", name: "Baxcalibrite", baseSpeciesId: 998, baseName: "Baxcalibur", formId: "baxcaliburmega", showdownKey: "baxcaliburmega", spriteSlug: "baxcalibur-mega", megaName: "Mega Baxcalibur", type: "Dragão/Gelo", price: PSEUDO_LEGENDARY_PRICE, newMega: true },
   { id: "zeraorite", name: "Zeraorite", baseSpeciesId: 807, baseName: "Zeraora", formId: "zeraoramega", showdownKey: "zeraoramega", spriteSlug: "zeraora-mega", megaName: "Mega Zeraora", type: "Elétrico", price: LEGENDARY_PRICE, legendary: true, newMega: true },
-  { id: "lucarionite-z", name: "Lucarionite Z", baseSpeciesId: 448, baseName: "Lucario", formId: "lucariomegaz", showdownKey: "lucariomegaz", spriteSlug: "lucario-megaz", megaName: "Mega Lucario Z", type: "Lutador/Aço", price: POWERFUL_PRICE, newMega: true },
-  { id: "garchompite-z", name: "Garchompite Z", baseSpeciesId: 445, baseName: "Garchomp", formId: "garchompmegaz", showdownKey: "garchompmegaz", spriteSlug: "garchomp-megaz", megaName: "Mega Garchomp Z", type: "Dragão/Terra", price: PSEUDO_LEGENDARY_PRICE, newMega: true }
+  { id: "lucarionite-z", name: "Lucarionite Z", baseSpeciesId: 448, baseName: "Lucario", formId: "lucariomegaz", showdownKey: "lucariomegaz", spriteSlug: "lucario-megaz", spriteUrl: "https://static.rotomlabs.net/images/sprites/legends-z-a/0448-lucario-mega-z.png", shinySpriteUrl: "https://static.rotomlabs.net/images/sprites/legends-z-a/0448-lucario-mega-z-shiny.png", megaName: "Mega Lucario Z", type: "Lutador/Aço", price: POWERFUL_PRICE, newMega: true },
+  { id: "garchompite-z", name: "Garchompite Z", baseSpeciesId: 445, baseName: "Garchomp", formId: "garchompmegaz", showdownKey: "garchompmegaz", spriteSlug: "garchomp-megaz", spriteUrl: "https://static.rotomlabs.net/images/sprites/mega-dimension/0445-garchomp-mega-z.png", shinySpriteUrl: "https://static.rotomlabs.net/images/sprites/mega-dimension/0445-garchomp-mega-z-shiny.png", megaName: "Mega Garchomp Z", type: "Dragão/Terra", price: PSEUDO_LEGENDARY_PRICE, newMega: true }
 ];
 
 export const MEGA_STONES = [
@@ -200,7 +200,23 @@ export function getMegaFormData(stoneOrId) {
 
 export function getMegaSpriteUrls(stoneOrId, isShiny = false) {
   const stone = typeof stoneOrId === "object" ? stoneOrId : getMegaStone(stoneOrId);
-  if (!stone?.spriteSlug) return null;
+  if (!stone) return null;
+
+  const customSprite = isShiny
+    ? stone.shinySpriteUrl || stone.spriteUrl
+    : stone.spriteUrl;
+  const customBackSprite = isShiny
+    ? stone.shinyBackSpriteUrl || stone.backSpriteUrl || customSprite
+    : stone.backSpriteUrl || customSprite;
+
+  if (customSprite) {
+    return {
+      sprite: customSprite,
+      backSprite: customBackSprite
+    };
+  }
+
+  if (!stone.spriteSlug) return null;
   const frontDirectory = isShiny ? "ani-shiny" : "ani";
   const backDirectory = isShiny ? "ani-back-shiny" : "ani-back";
   return {
