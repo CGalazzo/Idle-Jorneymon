@@ -1,18 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Medalha da Insígnia do Campeão Hard</title>
+  <desc id="desc">Medalha dourada com fita azul e vermelha, louros e símbolo de Poké Bola.</desc>
   <defs>
-    <linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ef4b55"/><stop offset="1" stop-color="#8d1728"/></linearGradient>
-    <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4da8ff"/><stop offset="1" stop-color="#174d9b"/></linearGradient>
-    <radialGradient id="g"><stop stop-color="#fff4a8"/><stop offset=".55" stop-color="#f6c63d"/><stop offset="1" stop-color="#a9670b"/></radialGradient>
+    <linearGradient id="ribbonBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#6bc8ff"/>
+      <stop offset=".45" stop-color="#2576c9"/>
+      <stop offset="1" stop-color="#123b82"/>
+    </linearGradient>
+    <linearGradient id="ribbonRed" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff7a82"/>
+      <stop offset=".48" stop-color="#d52f45"/>
+      <stop offset="1" stop-color="#7c1429"/>
+    </linearGradient>
+    <radialGradient id="goldFace" cx="38%" cy="30%" r="72%">
+      <stop stop-color="#fff8bd"/>
+      <stop offset=".3" stop-color="#ffd95f"/>
+      <stop offset=".67" stop-color="#e9a91d"/>
+      <stop offset="1" stop-color="#9c5705"/>
+    </radialGradient>
+    <linearGradient id="goldRing" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff1a0"/>
+      <stop offset=".35" stop-color="#f4bd32"/>
+      <stop offset=".72" stop-color="#b96b08"/>
+      <stop offset="1" stop-color="#704005"/>
+    </linearGradient>
+    <linearGradient id="laurel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff0a1"/>
+      <stop offset=".5" stop-color="#e5a918"/>
+      <stop offset="1" stop-color="#8d5005"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#210f05" flood-opacity=".48"/>
+    </filter>
+    <filter id="shine" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
   </defs>
-  <path fill="url(#r)" d="M25 8h27v48H25z"/><path fill="#ffd3d6" d="M32 8h8v40h-8z"/>
-  <path fill="url(#b)" d="M76 8h27v48H76z"/><path fill="#d4eaff" d="M88 8h8v40h-8z"/>
-  <path fill="#7a4207" d="M20 48h88v12H20zM14 60h100v42H14zM26 102h76v12H26z"/>
-  <path fill="url(#g)" d="M24 54h80v8h10v36h-10v10H24V98H14V62h10z"/>
-  <path fill="#fff1a3" d="M31 61h66v6H31zM22 69h7v24h-7z" opacity=".75"/>
-  <path fill="#8c5708" d="M52 69h24v7h9v24H43V76h9z"/>
-  <path fill="#fff" d="M52 73h24v8H52zM47 81h34v8H47z"/>
-  <path fill="#e4464f" d="M47 81h34v8H47z"/>
-  <path fill="#222d3d" d="M43 87h42v7H43z"/>
-  <path fill="#fff" d="M57 82h14v14H57z"/><path fill="#c58b18" d="M60 85h8v8h-8z"/>
-  <path fill="#fff4b0" d="M34 72h7v7h-7zM87 72h7v7h-7zM34 91h7v7h-7zM87 91h7v7h-7z"/>
+
+  <g filter="url(#shadow)">
+    <path fill="url(#ribbonBlue)" stroke="#0d2d63" stroke-width="3" d="M31 7h25v55L43.5 75 31 62z"/>
+    <path fill="url(#ribbonRed)" stroke="#6d1325" stroke-width="3" d="M72 7h25v55L84.5 75 72 62z"/>
+    <path fill="#dceeff" opacity=".8" d="M37 10h6v45l-6 7z"/>
+    <path fill="#ffd8dc" opacity=".8" d="M78 10h6v45l-6 7z"/>
+
+    <g fill="url(#laurel)" stroke="#754204" stroke-width="1.4">
+      <path d="M22 78c-8 2-12 8-11 15 7-1 12-6 11-15z"/>
+      <path d="M24 91c-8 4-10 10-7 17 7-3 11-9 7-17z"/>
+      <path d="M29 103c-7 5-7 12-2 18 6-5 8-11 2-18z"/>
+      <path d="M106 78c8 2 12 8 11 15-7-1-12-6-11-15z"/>
+      <path d="M104 91c8 4 10 10 7 17-7-3-11-9-7-17z"/>
+      <path d="M99 103c7 5 7 12 2 18-6-5-8-11-2-18z"/>
+    </g>
+
+    <circle cx="64" cy="78" r="43" fill="#6d3b04"/>
+    <circle cx="64" cy="76" r="42" fill="url(#goldRing)" stroke="#fff0a0" stroke-width="2"/>
+    <circle cx="64" cy="76" r="33" fill="url(#goldFace)" stroke="#9a5706" stroke-width="2"/>
+    <circle cx="64" cy="76" r="27" fill="none" stroke="#ffe58a" stroke-width="2" opacity=".72"/>
+
+    <path fill="#fff4ac" opacity=".8" d="M38 58c7-12 19-18 32-18 7 0 14 2 19 5-12-2-28 1-39 10-6 5-10 11-13 18-1-5-1-10 1-15z"/>
+
+    <g transform="translate(64 75)">
+      <circle r="19" fill="#f8f7ef" stroke="#5a3506" stroke-width="3"/>
+      <path fill="#e8424f" d="M-18-2a18 18 0 0 1 36 0z"/>
+      <path fill="#26364a" d="M-19-3h38v7h-38z"/>
+      <circle r="7.2" fill="#fffaf0" stroke="#26364a" stroke-width="3"/>
+      <circle r="2.8" fill="#f5c84b"/>
+    </g>
+
+    <path fill="#fff7bf" stroke="#9a5706" stroke-width="1.5" d="m64 43 4 8 9 1-7 6 2 9-8-4-8 4 2-9-7-6 9-1z"/>
+    <path fill="#ffffff" opacity=".9" d="M44 53h8v4h-8zM86 63h6v3h-6z" filter="url(#shine)"/>
+  </g>
 </svg>
