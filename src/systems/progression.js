@@ -11,6 +11,7 @@ import { CAPTURE_DECISION_MS } from "./capture.js";
 import { recalculateActiveFormItemForLevel } from "./form-items.js";
 
 const EEVEE_ID = 133;
+const HARD_CHAMPION_XP_MULTIPLIER = 1.1;
 
 function registerEvolution(state, pokemon, evolution) {
   const entry = state.pokedex[evolution.toId] || { seen: 0, caught: 0, shinyCaught: 0 };
@@ -163,6 +164,16 @@ function grantPokemonExperience(state, pokemon, amount) {
   }
 }
 
+function hardChampionExperienceAmount(state, amount) {
+  const badgeOwned = Boolean(state.hardEndgame?.championBadgeOwned);
+  const eligibleHardContent = Boolean(state.enemy?.hardChallengeBoss)
+    || (state.campaignMode === "hard" && !state.safari?.active && !state.championsHall?.active);
+  const baseAmount = Math.max(1, Math.round(Number(amount) || 0));
+  return badgeOwned && eligibleHardContent
+    ? Math.max(1, Math.round(baseAmount * HARD_CHAMPION_XP_MULTIPLIER))
+    : baseAmount;
+}
+
 export function acceptEeveeEvolution(state) {
   const choice = state.pendingEvolutionChoices?.[0];
   if (!choice) return false;
@@ -208,11 +219,12 @@ export function declineEeveeEvolution(state) {
 export function grantTeamExperience(state, amount) {
   const participants = new Set(state.battleParticipants);
   const passiveMultiplier = getExpShareMultiplier(state.shop?.expShareLevel);
+  const rewardedAmount = hardChampionExperienceAmount(state, amount);
   state.team.forEach((pokemon) => {
     if (participants.has(pokemon.uid)) {
-      grantPokemonExperience(state, pokemon, amount);
+      grantPokemonExperience(state, pokemon, rewardedAmount);
     } else if (pokemon.hp > 0) {
-      grantPokemonExperience(state, pokemon, Math.max(1, Math.round(amount * passiveMultiplier)));
+      grantPokemonExperience(state, pokemon, Math.max(1, Math.round(rewardedAmount * passiveMultiplier)));
     }
   });
 
