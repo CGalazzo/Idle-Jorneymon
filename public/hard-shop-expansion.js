@@ -61,6 +61,14 @@
 
   function purchaseAndReload(save, message, feedback) {
     writeSave(save, message);
+    const preservedSave = JSON.stringify(save);
+    window.addEventListener("beforeunload", () => {
+      try {
+        window.localStorage.setItem(SAVE_KEY, preservedSave);
+      } catch {
+        // A gravação principal já foi concluída antes da atualização da página.
+      }
+    }, { once: true });
     try {
       window.sessionStorage.setItem(FEEDBACK_KEY, feedback);
     } catch {
@@ -190,9 +198,14 @@
       image.removeAttribute("data-fallback-src");
     }
     const description = card.querySelector("p");
-    if (description) description.innerHTML = "Medalha permanente que funciona como <strong>Amuleto de Experiência Hard</strong>: concede <b>+10% de XP</b> nas rotas do Modo Hard e nos Desafios Hard. Não aumenta o XP no Modo Normal, Zona Safari ou Salão dos Campeões.";
+    if (description && description.dataset.hardChampionXpCopy !== "1") {
+      description.innerHTML = "Medalha permanente que funciona como <strong>Amuleto de Experiência Hard</strong>: concede <b>+10% de XP</b> nas rotas do Modo Hard e nos Desafios Hard. Não aumenta o XP no Modo Normal, Zona Safari ou Salão dos Campeões.";
+      description.dataset.hardChampionXpCopy = "1";
+    }
     const status = card.querySelector("small");
-    if (status && save?.hardEndgame?.championBadgeOwned) status.textContent = "ATIVA · +10% XP NO HARD";
+    if (status && save?.hardEndgame?.championBadgeOwned && status.textContent !== "ATIVA · +10% XP NO HARD") {
+      status.textContent = "ATIVA · +10% XP NO HARD";
+    }
   }
 
   function renderHardShopExpansion() {
