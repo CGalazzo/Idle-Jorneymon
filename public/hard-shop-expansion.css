@@ -1,0 +1,117 @@
+.hard-shop-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hard-expanded-card p strong,
+.hard-champion-medal-card p strong {
+  color: #ffe4a3;
+}
+
+.hard-expanded-card p b,
+.hard-champion-medal-card p b {
+  color: #fff4c9;
+}
+
+.hard-item-selector {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.hard-item-selector span {
+  color: #f2a9b1;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+
+.hard-item-selector select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 9px;
+  color: #fff2d1;
+  background: #1c2532;
+  border: 1px solid rgba(255, 211, 107, .35);
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.hard-shop-card.active-consumable {
+  border-color: rgba(244, 212, 88, .65);
+  box-shadow: inset 0 0 28px rgba(255, 213, 70, .08), 0 0 20px rgba(255, 209, 82, .06);
+}
+
+.hard-champion-medal-card .hard-item-sprite {
+  background: radial-gradient(circle, rgba(255, 223, 114, .34), rgba(255, 92, 112, .08) 48%, transparent 72%);
+}
+
+.hard-champion-medal-card .hard-item-sprite img {
+  width: 78px;
+  height: 78px;
+}
+
+.partner-panel.hard-champion-frame {
+  position: relative;
+  border-color: rgba(255, 218, 91, .72) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 236, 158, .12),
+    inset 0 0 28px rgba(255, 202, 48, .07),
+    0 0 22px rgba(255, 204, 52, .12);
+}
+
+.partner-row.hard-champion-frame-inner {
+  position: relative;
+  border-radius: 14px;
+}
+
+.partner-row.hard-champion-frame-inner::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: 0;
+  pointer-events: none;
+  border: 2px solid rgba(255, 218, 90, .5);
+  border-radius: 16px;
+  box-shadow: inset 0 0 13px rgba(255, 221, 100, .1);
+}
+
+.partner-row.hard-champion-frame-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hard-champion-title {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  margin: 0 0 4px;
+  padding: 4px 7px;
+  color: #4f3100;
+  background: linear-gradient(145deg, #fff2a8, #e9ae25);
+  border: 1px solid rgba(255, 249, 195, .75);
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(90, 53, 0, .22);
+  font-size: 7px;
+  font-weight: 1000;
+  letter-spacing: .1em;
+}
+
+.hard-champion-title img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+#battle-stage .player-card.hard-champion-frame-battle {
+  outline: 2px solid rgba(255, 217, 82, .62);
+  outline-offset: 3px;
+  border-radius: 16px;
+  box-shadow: 0 0 18px rgba(255, 208, 58, .16);
+}
+
+@media (max-width: 760px) {
+  .hard-shop-grid { grid-template-columns: 1fr; }
+}
