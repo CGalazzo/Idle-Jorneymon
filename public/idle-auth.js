@@ -7,12 +7,15 @@
   const SAVE_KEY = "idle-jorneymon-save";
   const LINK_PREFIX = "idleJorneymonCloudLinked:";
   const SYNC_DELAY_MS = 1800;
+  const AUTO_SYNC_INTERVAL_MS = 30000;
+  const TIMESTAMP_TOLERANCE_MS = 1000;
 
   let client = null;
   let currentUser = null;
   let syncTimer = null;
   let syncing = false;
   let panelOpen = false;
+  let autoSyncInterval = null;
 
   function localSave() {
     try {
@@ -36,6 +39,22 @@
     if (!key) return;
     if (value) localStorage.setItem(key, "1");
     else localStorage.removeItem(key);
+  }
+
+  function saveTimestamp(save, rowUpdatedAt = "") {
+    const embedded = Number(save?.lastSavedAt);
+    if (Number.isFinite(embedded) && embedded > 0) return embedded;
+    const rowTimestamp = Date.parse(rowUpdatedAt || "");
+    return Number.isFinite(rowTimestamp) ? rowTimestamp : 0;
+  }
+
+  function formatTimestamp(timestamp) {
+    const safe = Number(timestamp) || 0;
+    if (!safe) return "horário desconhecido";
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(new Date(safe));
   }
 
   function profile() {
@@ -156,7 +175,7 @@
       }
     }
     if (accountButton) accountButton.textContent = `☁️ Conta Google · ${data.name.split(" ")[0]}`;
-    status(isLinked() ? "Save vinculado à conta" : "Conta conectada; escolha qual save usar", isLinked() ? "ok" : "warn");
+    status(isLinked() ? "Sincronização automática ativa" : "Conta conectada; escolha qual save usar", isLinked() ? "ok" : "warn");
   }
 
   async function fetchCloudSave() {
@@ -185,6 +204,7 @@
     if (!client) return;
     await client.auth.signOut();
     currentUser = null;
+    window.clearTimeout(syncTimer);
     render();
   }
 
@@ -197,7 +217,38 @@
     }
 
     syncing = true;
-    status("Sincronizando…");
+    status(showFeedback ? "Verificando os saves…" : "Sincronizando automaticamente…");
+
+    const cloud = await fetchCloudSave();
+    if (cloud.error) {
+      syncing = false;
+      status("Não foi possível verificar a conta", "error");
+      if (showFeedback) alert(cloud.error.message || "Não foi possível verificar o save da conta.");
+      return false;
+    }
+
+    const localTime = saveTimestamp(snapshot);
+    const cloudTime = saveTimestamp(cloud.data?.save_data, cloud.data?.updated_at);
+    const cloudIsNewer = Boolean(cloud.data?.save_data) && cloudTime > localTime + TIMESTAMP_TOLERANCE_MS;
+
+    if (cloudIsNewer) {
+      if (!showFeedback) {
+        syncing = false;
+        status("Existe um save mais novo na conta; carregue-o antes de continuar", "warn");
+        return false;
+      }
+
+      const replaceNewerCloud = window.confirm(
+        `O save da conta é mais recente (${formatTimestamp(cloudTime)}) que o save deste dispositivo (${formatTimestamp(localTime)}).\n\n` +
+        "Deseja substituir mesmo assim o save mais novo da conta pelo save deste dispositivo?"
+      );
+      if (!replaceNewerCloud) {
+        syncing = false;
+        status("Sincronização cancelada para proteger o save mais novo", "warn");
+        return false;
+      }
+    }
+
     const { error } = await client.from(CLOUD_TABLE).upsert({
       user_id: currentUser.id,
       save_data: snapshot,
@@ -211,7 +262,7 @@
       return false;
     }
 
-    status("Save sincronizado agora", "ok");
+    status(showFeedback ? "Save sincronizado agora" : "Sincronizado automaticamente", "ok");
     if (showFeedback) alert("Progresso salvo na sua conta Google.");
     return true;
   }
@@ -230,7 +281,16 @@
     const { data, error } = await fetchCloudSave();
     if (error) return alert(error.message || "Não foi possível verificar o save da conta.");
     if (data?.save_data) {
-      const replace = window.confirm(`Já existe um save nesta conta:\n${saveSummary(data.save_data)}\n\nDeseja substituir esse save pelo progresso atual deste navegador?`);
+      const localTime = saveTimestamp(snapshot);
+      const cloudTime = saveTimestamp(data.save_data, data.updated_at);
+      const cloudWarning = cloudTime > localTime + TIMESTAMP_TOLERANCE_MS
+        ? "\n\nATENÇÃO: o save da conta é mais recente que este save local."
+        : "";
+      const replace = window.confirm(
+        `Save atual deste dispositivo:\n${saveSummary(snapshot)}\nSalvo em ${formatTimestamp(localTime)}\n\n` +
+        `Save existente na conta:\n${saveSummary(data.save_data)}\nSalvo em ${formatTimestamp(cloudTime)}` +
+        `${cloudWarning}\n\nDeseja substituir o save da conta pelo progresso deste dispositivo?`
+      );
       if (!replace) return;
     }
 
@@ -247,13 +307,20 @@
 
     const local = localSave();
     if (local?.hasStarted) {
-      const replace = window.confirm(`Save local atual:\n${saveSummary(local)}\n\nSave da conta:\n${saveSummary(data.save_data)}\n\nDeseja substituir o save local pelo save da conta?`);
+      const localTime = saveTimestamp(local);
+      const cloudTime = saveTimestamp(data.save_data, data.updated_at);
+      const newest = cloudTime >= localTime ? "O save da conta é o mais recente." : "O save local é o mais recente.";
+      const replace = window.confirm(
+        `Save local atual:\n${saveSummary(local)}\nSalvo em ${formatTimestamp(localTime)}\n\n` +
+        `Save da conta:\n${saveSummary(data.save_data)}\nSalvo em ${formatTimestamp(cloudTime)}\n\n` +
+        `${newest}\n\nDeseja substituir o save local pelo save da conta?`
+      );
       if (!replace) return;
     }
 
     localStorage.setItem(SAVE_KEY, JSON.stringify(data.save_data));
     setLinked(true);
-    status("Save da conta carregado", "ok");
+    status("Save da conta carregado; sincronização automática ativa", "ok");
     window.location.reload();
   }
 
@@ -267,10 +334,62 @@
     };
   }
 
+  async function reconcileOnStart() {
+    if (!currentUser) return;
+    const local = localSave();
+    const cloud = await fetchCloudSave();
+
+    if (cloud.error) {
+      status("Não foi possível verificar o save da conta", "error");
+      return;
+    }
+
+    if (!local?.hasStarted && cloud.data?.save_data) {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(cloud.data.save_data));
+      setLinked(true);
+      window.location.reload();
+      return;
+    }
+
+    if (!isLinked()) {
+      setPanelOpen(true);
+      return;
+    }
+
+    const localTime = saveTimestamp(local);
+    const cloudTime = saveTimestamp(cloud.data?.save_data, cloud.data?.updated_at);
+    if (cloud.data?.save_data && cloudTime > localTime + TIMESTAMP_TOLERANCE_MS) {
+      status("Existe um save mais novo na conta; use Carregar save da conta", "warn");
+      setPanelOpen(true);
+      return;
+    }
+
+    queueCloudSave();
+  }
+
+  function installAutomaticSyncTriggers() {
+    if (autoSyncInterval) window.clearInterval(autoSyncInterval);
+    autoSyncInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") pushCloudSave(false);
+    }, AUTO_SYNC_INTERVAL_MS);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) pushCloudSave(false);
+      else if (currentUser && isLinked()) queueCloudSave();
+    });
+    window.addEventListener("pageshow", () => {
+      if (currentUser && isLinked()) queueCloudSave();
+    });
+    window.addEventListener("online", () => {
+      if (currentUser && isLinked()) queueCloudSave();
+    });
+  }
+
   async function initialize() {
     ensureInterface();
     observeMenuPlacement();
     patchLocalStorage();
+    installAutomaticSyncTriggers();
 
     if (!window.supabase?.createClient) {
       status("Serviço de login indisponível", "error");
@@ -282,23 +401,15 @@
     currentUser = data.session?.user || null;
     render();
 
-    if (currentUser) {
-      const local = localSave();
-      const cloud = await fetchCloudSave();
-      if (!local?.hasStarted && cloud.data?.save_data) {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(cloud.data.save_data));
-        setLinked(true);
-        window.location.reload();
-        return;
-      }
-      if (isLinked()) queueCloudSave();
-      else setPanelOpen(true);
-    }
+    if (currentUser) await reconcileOnStart();
 
     client.auth.onAuthStateChange((_event, session) => {
       currentUser = session?.user || null;
       render();
-      if (currentUser) setPanelOpen(true);
+      if (currentUser) {
+        setPanelOpen(true);
+        window.setTimeout(reconcileOnStart, 0);
+      }
     });
   }
 
