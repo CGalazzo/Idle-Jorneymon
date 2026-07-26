@@ -10,6 +10,7 @@ import { registerPokedexSeen } from "./pokedex.js";
 
 const APPROACH_DURATION_SECONDS = 2.8;
 const ENCOUNTER_STAT_KEYS = ["maxHp", "attack", "defense", "specialAttack", "specialDefense", "speed"];
+const HARD_SHINY_INCENSE_CHANCE = 1 / 64;
 
 function applyEvolutionSafeEncounterLevel(pokemon) {
   if (!pokemon) return pokemon;
@@ -40,6 +41,30 @@ function applyEvolutionSafeEncounterLevel(pokemon) {
   return normalized;
 }
 
+function hardIncenseCanAffectEncounter(state) {
+  if (state.campaignMode !== "hard" || state.safari?.active || state.championsHall?.active) return false;
+  const remaining = Math.max(0, Math.floor(Number(state.hardEndgame?.shinyIncenseEncountersRemaining) || 0));
+  if (!remaining) return false;
+  const bossReady = state.area?.regularVictories >= state.area?.requiredVictories && !state.area?.bossDefeated;
+  return !bossReady;
+}
+
+function createHardIncenseRandom(random) {
+  let callCount = 0;
+  return () => {
+    callCount += 1;
+    if (callCount === 3) return random() < HARD_SHINY_INCENSE_CHANCE ? 0 : 1;
+    return random();
+  };
+}
+
+function consumeHardIncenseEncounter(state) {
+  if (!state.hardEndgame) state.hardEndgame = {};
+  const previous = Math.max(0, Math.floor(Number(state.hardEndgame.shinyIncenseEncountersRemaining) || 0));
+  state.hardEndgame.shinyIncenseEncountersRemaining = Math.max(0, previous - 1);
+  if (previous === 1) addLog(state, "O efeito do Incenso Shiny Hard terminou após 100 encontros normais.");
+}
+
 export function updateExploration(state, deltaSeconds, random = Math.random) {
   const completedJourneyWithoutActiveMode = state.journey?.complete
     && !state.revisit?.active
@@ -55,11 +80,14 @@ export function updateExploration(state, deltaSeconds, random = Math.random) {
   if (!evolutionLevelCapsReady()) return;
 
   const activePokemon = getActivePokemon(state);
+  const useHardIncense = hardIncenseCanAffectEncounter(state);
+  const encounterRandom = useHardIncense ? createHardIncenseRandom(random) : random;
   const generatedPokemon = state.championsHall?.active
     ? createChampionsHallPokemon(random)
     : state.safari?.active
       ? createSafariPokemon(state, random)
-      : createWildPokemon(state, activePokemon.level, random);
+      : createWildPokemon(state, activePokemon.level, encounterRandom);
+  if (useHardIncense) consumeHardIncenseEncounter(state);
   state.enemy = applyEvolutionSafeEncounterLevel(generatedPokemon);
   state.battleParticipants = [activePokemon.uid];
   state.approachProgress = 0;
