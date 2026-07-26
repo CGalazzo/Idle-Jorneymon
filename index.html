@@ -5,6 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1830" />
     <meta name="description" content="Idle Jorneymon — uma jornada Pokémon automática." />
+    <script>
+      (() => {
+        "use strict";
+
+        const CLEANUP_VERSION = "20260726-2";
+        const CLEANUP_KEY = "idleJorneymonFreshAssetsVersion";
+        const REFRESH_PARAM = "__idle_refresh";
+        const currentUrl = new URL(window.location.href);
+        const alreadyRefreshed = currentUrl.searchParams.get(REFRESH_PARAM) === CLEANUP_VERSION;
+        let alreadyClean = false;
+
+        try {
+          alreadyClean = window.localStorage.getItem(CLEANUP_KEY) === CLEANUP_VERSION;
+        } catch {
+          alreadyClean = false;
+        }
+
+        if (alreadyClean || alreadyRefreshed) {
+          try {
+            window.localStorage.setItem(CLEANUP_KEY, CLEANUP_VERSION);
+          } catch {
+            // O parâmetro da URL impede um ciclo de atualização quando o armazenamento está bloqueado.
+          }
+
+          if (alreadyRefreshed) {
+            currentUrl.searchParams.delete(REFRESH_PARAM);
+            window.history.replaceState(null, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+          }
+          return;
+        }
+
+        // Interrompe esta primeira carga para nenhum módulo antigo iniciar antes da limpeza.
+        window.stop();
+
+        (async () => {
+          try {
+            if ("serviceWorker" in window.navigator) {
+              const registrations = await window.navigator.serviceWorker.getRegistrations();
+              await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+            }
+
+            if ("caches" in window) {
+              const names = await window.caches.keys();
+              await Promise.allSettled(
+                names
+                  .filter((name) => name.startsWith("idle-jorneymon-"))
+                  .map((name) => window.caches.delete(name))
+              );
+            }
+          } finally {
+            try {
+              window.localStorage.setItem(CLEANUP_KEY, CLEANUP_VERSION);
+            } catch {
+              // O save permanece intacto; somente os arquivos temporários são limpos.
+            }
+
+            const refreshedUrl = new URL(window.location.href);
+            refreshedUrl.searchParams.set(REFRESH_PARAM, CLEANUP_VERSION);
+            window.location.replace(refreshedUrl.toString());
+          }
+        })();
+      })();
+    </script>
     <link rel="stylesheet" href="/brand-logo.css" />
     <link rel="stylesheet" href="/safari-hotfix.css" />
     <link rel="stylesheet" href="/pokedex-readable.css" />
@@ -19,7 +82,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="/idle-auth-mobile-persistence.js?v=20260724-2" defer></script>
     <script src="/idle-auth-native.js?v=20260724-1" defer></script>
-    <script src="/idle-auth.js?v=20260726-1" defer></script>
+    <script src="/idle-auth.js?v=20260726-2" defer></script>
     <script src="/idle-auth-silent-sync.js?v=20260724-1" defer></script>
     <script src="/safari-hotfix.js?v=20260722-2" defer></script>
     <script src="/safari-session-hotfix.js?v=20260722-1" defer></script>
@@ -31,8 +94,8 @@
     <script src="/shiny-aura.js?v=20260725-2" defer></script>
     <script type="module" src="/src/ui/pokedex-variants.js?v=20260722-2"></script>
     <script type="module" src="/src/ui/pokedex-search.js?v=20260724-1"></script>
-    <script type="module" src="/src/ui/install-app.js?v=20260722-6"></script>
-    <script type="module" src="/src/boot.js?v=20260725-5"></script>
+    <script type="module" src="/src/ui/install-app.js?v=20260726-1"></script>
+    <script type="module" src="/src/boot.js?v=20260726-1"></script>
     <script type="module" src="/src/ui/storage-tools.js?v=20260724-1"></script>
     <script type="module" src="/src/ui/capture-timer-pause.js?v=20260724-4"></script>
     <script type="module" src="/src/ui/capture-animation.js?v=20260724-3"></script>
